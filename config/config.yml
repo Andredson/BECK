@@ -1,0 +1,7 @@
+version: "3.8"
+
+smb:
+  user: ""
+  passwd: ""
+  server: "recalbox.local"
+  port: 445
