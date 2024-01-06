@@ -1,4 +1,4 @@
-# BECK - BIOS CHECKER for ReCALBOX! 
+# BECK - BIOS CHECKER for RECALBOX! 
 simple script to validate and send verified bios files via smb to your RECALBOX system.
 
 ## Pre-requisites
