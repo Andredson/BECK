@@ -8,6 +8,7 @@ pip install -r requirements
 ```
 
 ## Structure
+```
 ┌───────────────────┐
 │       BECK        │
 └───────────────────┘
@@ -23,7 +24,7 @@ pip install -r requirements
 ├── .gitignore
 ├── readme.MD
 └── LICENSE
-
+```
 ## Usage
 Please put your possible bios files into the **bios** folder.
 
