@@ -4,7 +4,7 @@ simple script to validate and send verified bios files via smb to your RECALBOX 
 ## Pre-requisites
 Minimun python 3.10 and the dependencies will be installed with the command below.
 ```sh
-$ pip install -r requirements
+pip install -r requirements
 ```
 
 ## Structure
