@@ -105,14 +105,30 @@ def smb_connect(share: str, folder: str, operation: str, file=None) -> str:
 
         case 'cd':
             try:
-                conn.createDirectory("bios", folder)
+                conn.createDirectory(share, folder)
+
+            except Exception as e:
+                print(f'Error creating directory {RED}{file}{RESET}: {YELLOW}{e}{RESET}')
+                exit(1)
+        
+        case 'ld':
+            try:
+
+                folder_names = []
+                response = conn.listPath(share, folder)
+
+                for item in response:
+                    if item.isDirectory and item.filename not in ['.', '..']:
+                        folder_names.append(item.filename)
+
+                response = folder_names
 
             except Exception as e:
                 print(f'Error creating directory {RED}{file}{RESET}: {YELLOW}{e}{RESET}')
                 exit(1)
 
-            return
-        
+            return response
+
         case _:
             print(f'Invalid operation for function: {RED}smb_connect{RESET}')
             exit(1)
@@ -121,7 +137,7 @@ def smb_connect(share: str, folder: str, operation: str, file=None) -> str:
 def get_missing_bios():
     missing_regex = r"(MISSING (O|R)(.*\n[^\n].*)+)"
     path_file_regex = r"(?<=Path: )\/(?:[^\/\s]+\/)+(?=[^\/\s]+)"
-    # path_file_regex = r"(?<=Path: \/recalbox\/share\/bios\/)(?:[^\/\s]+\/)+(?=[^\/\s]+)" ### NEW IMPROVED REGEX
+    #relative_path_file_regex = r"(?<=Path: \/recalbox\/share\/bios\/)(?:[^\/]+\/)+(?=[^\/]+)"
     file_regex = r"([a-zA-Z0-9_]+\.[a-zA-Z0-9]+)"
     md5_regex = r"([a-fA-F0-9]{32})"
 
@@ -137,9 +153,10 @@ def get_missing_bios():
             item = str(item)
             name = re.search(file_regex, item)
             path = re.search(path_file_regex, item)
+            relative_path = path.group(0).replace('/recalbox/share/bios/','')
             hashs = set(re.findall(md5_regex, item))
             missing.append(
-                {"name": name.group(0), "path": path.group(0), "hashs": list(hashs)}
+                {"name": name.group(0), "path": path.group(0), "relativePath": relative_path, "hashs": list(hashs)}
             )
     else:
         print(f'{CYAN}No missing bios were found in your RECALBOX!{RESET}')
@@ -148,13 +165,13 @@ def get_missing_bios():
     return missing
 
 
-def get_bios(folder_path):
+def get_possible_bios(folder_path):
     
     bios = []
 
     for root, _, files in os.walk(folder_path):
         if len(files) > 0:
-            print(f'There are {MAGENTA}{len(files)}{RESET} bios to be analysed in your system')
+            print(f'There are {MAGENTA}{len(files)}{RESET} possible bios to be analysed in your system')
             for filename in files:
                 file_path = os.path.join(root, filename)
                 with open(file_path, "rb") as f:
@@ -167,28 +184,39 @@ def get_bios(folder_path):
     return bios
 
 
-# Validate the directory listPath(share, folder)
-def validate_directory():
-
-    return
-
-
-def validate_md5_dict(bios, md5sums):
+def validate_bios(bios, report):
     
     script_path = f"{os.path.dirname(__file__)}/bios/"
+    bios_found = 0
 
     for item in bios:
         found = False
-        for sums in md5sums:
+        for sums in report:
             for sum in sums["hashs"]:
                 if sum == item["hash"]:
                     found = True
-                    try:
-                        os.rename(f"{script_path}{item['name']}",f"{script_path}{sums['name']}",)
-                        print(f"{GREEN}FOUND:{RESET} {BLUE}{sums['path']}{RESET}")
-                    except Exception as e:
-                        print(f"Error renaming {RED}{item['name']}{RESET}: {YELLOW}{e}{RESET}")
-                    smb_connect('bios', item["name"], "w", f"{script_path}{item['name']}")
+                    if item['name'] != sums['name']:
+                        try:
+                            os.rename(f"{script_path}{item['name']}",f"{script_path}{sums['name']}",)
+                        except Exception as e:
+                            print(f"Error renaming {RED}{item['name']}{RESET}: {YELLOW}{e}{RESET}")
+                            exit(1)
+                    if not sums['relativePath'] == '':
+                        
+                        directories = smb_connect('bios', '', 'ld')
+                        dir_exist = False
+                        path = sums['relativePath'][:-1]
+                        for dir in directories:
+                            if dir == path:
+                                dir_exist = True
+                                break
+
+                        if not dir_exist:
+                            smb_connect('bios', sums['relativePath'], 'cd')
+
+                    smb_connect('bios', f"{sums['relativePath']}{sums['name']}", 'w', f"{script_path}{sums['name']}")
+                    bios_found += 1
+                    print(f"{GREEN}FOUND:{RESET} {sums['name']}")
 
         if not found:
             try:
@@ -198,13 +226,18 @@ def validate_md5_dict(bios, md5sums):
                 print(f"Failed to remove the file: {RED}{item['name']}{RESET}")
                 exit(1)
 
+    return bios_found
 
 def main():
 
     report = get_missing_bios()
-    bios = get_bios('./bios')
-    #validate_md5_dict(bios, report)
+    bios = get_possible_bios('./bios')
+    # Create a validation for duplicated md5sum of files
+    validated_bios = validate_bios(bios, report)
+    print(f'Final result of {GREEN}bios found{RESET}/{BLUE}files analysed{RESET}: ({GREEN}{validated_bios}{RESET}/{BLUE}{len(bios)}{RESET})')
 
+    if validated_bios > 0:
+        print(f'{MAGENTA}*** PLEASE SCAN THE BIOS ON YOUR RECALBOX ***{RESET}')
 
 if __name__ == "__main__":
     main()
