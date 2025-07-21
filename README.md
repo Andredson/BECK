@@ -14,10 +14,9 @@ pip install -r requirements
 └───────────────────┘
 
 ┌BECK
-├── bios_bios.py
+├── check_bios.py
 ├─┬─bios
 │ └── *
-├──bios
 ├─┬─config
 │ └── config.yml
 ├── requirements.txt
