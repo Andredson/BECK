@@ -67,7 +67,8 @@ checked against vendor documentation and by testing on 2026-11-02:
   `schema_version` 2 and an owner decision.
 
 ## DEC-43 — Agents never perform git writes
-- **Status:** The *commit* part is superseded by [DEC-46](#dec-46--agents-may-commit-locally); the rest stands.
+- **Status:** The *commit* part is superseded by [DEC-46](#dec-46--agents-may-commit-locally) and the *push*
+  part by [DEC-47](#dec-47--agents-may-push-the-stage-branch); the rest stands.
 - **Decision:** Agents never commit, push, create branches, push tags, run `git rm --cached`, or open PRs or
   releases. They print the exact commands, and the human runs them.
 - **Alternatives considered:** None were offered. This was the owner's instruction when approving the plan.
@@ -86,6 +87,17 @@ checked against vendor documentation and by testing on 2026-11-02:
 - **Alternatives considered:** None were offered; this was the owner's instruction.
 - **Consequences:** Each step ends with a local commit, and the owner reviews what they push. Branches still have
   to exist before a stage's first step, because the agent can't create them.
+
+## DEC-47 — Agents may push the stage branch
+- **Date:** 2026-11-02 (before step 02.10). Supersedes the push part of DEC-43.
+- **Context:** With commits allowed (DEC-46), the owner still ran `git push` after every step. They then allowed
+  the agent to push after each step.
+- **Decision:** After committing a step, agents push the **current stage branch** with a plain `git push`. Never
+  `--force`, never directly to `main`, never tags. Branch creation, PRs, merges, tags and releases stay
+  human-only.
+- **Alternatives considered:** None were offered; this was the owner's instruction.
+- **Consequences:** Every step reaches GitHub right away. Once a stage PR exists, its CI runs on every step.
+  `main` is still only changed by the owner's merges, which branch protection enforces from step 02.16.
 
 ## DEC-44 — The support matrix covers the owner's agents
 - **Decision:** `docs/agents.md` lists only agents the owner actually uses; on 2026-11-02 that meant Claude Code

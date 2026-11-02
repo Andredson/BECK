@@ -46,8 +46,10 @@ under that safety net → then the CLI, configuration, docs, skills, release, an
    git commit -m "<commit message from the step>"
    ```
 
-   Creating branches, pushing, tagging and opening PRs stay human-only (DEC-43). The agent prints those commands
-   as one copy-paste line, e.g. `git switch -c stage/NN-slug` for the first step of a stage, or `git push`.
+   Then, per **DEC-47**, the agent pushes the current stage branch with a plain `git push`: never `--force`,
+   never to `main`, never tags. Creating branches, tagging, and opening or merging PRs stay human-only (DEC-43).
+   The agent prints those commands as one copy-paste line, e.g. `git switch -c stage/NN-slug` before a
+   stage's first step.
 
 7. When the last step of a stage is done, run the stage's **Closing step**: update AGENTS.md, re-score
    [00-assessment.md](00-assessment.md), then the human pushes and opens one PR for the stage. The PR is merged
@@ -113,6 +115,7 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-23 | `--json` output carries `schema_version`, is described by a JSON Schema file, and is checked by contract tests; exit codes 0–5 are documented. `jsonschema` is a dev-only dependency. |
 | DEC-43 | Agents never commit, push, create branches, push tags or open PRs. They print the exact `git` / `gh` commands for the human to run. |
 | DEC-46 | **Supersedes the commit part of DEC-43.** Agents may stage (`git add`, `git rm --cached`) and run `git commit` with the step's message, never adding a `Co-Authored-By` or other attribution trailer. Pushing, creating or switching branches, tags, PRs, merges and releases stay human-only; agents hand those over as one copy-paste line. *(2026-11-02, before step 02.8)* |
+| DEC-47 | **Supersedes the push part of DEC-43.** After committing a step, agents may push the **current stage branch** with a plain `git push`: never `--force` / `--force-with-lease`, never directly to `main`, never tags. Creating branches, PRs, merges, tags and releases stay human-only. *(2026-11-02, before step 02.10)* |
 | DEC-44 | The agent support matrix (`docs/agents.md`) covers only agents the owner actually uses (2026-11-02: Claude Code, opencode). Other agents are added when a contributor tests one. *(2026-11-02, step 01.3)* |
 
 ### Tooling

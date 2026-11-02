@@ -57,20 +57,22 @@ python3 -m py_compile check_bios.py             # safe syntax check; touches no 
    git add <files touched by the step>
    git commit -m "<the step's Commit message>"
    ```
-   Then give the human the `git push` (and, for a stage's first step, `git switch -c stage/NN-slug` **before** you
-   start) as one copy-paste line.
-7. On a stage's closing step, print the `git push` and `gh pr create` commands. The human merges with a
+   Then push the current stage branch with a plain `git push` (DEC-47). Before a stage's first step, ask the
+   human to create the branch (`git switch -c stage/NN-slug`), as a one copy-paste line.
+7. On a stage's closing step, print the `gh pr create` command for the human. The human merges with a
    **merge commit** (DEC-39).
 8. If the step needs something missing (data, access, a human-only setting), mark it `BLOCKED` as described in
    the roadmap README and move to the next unblocked step.
 
 ## Hard rules
 
-- **Commits yes, everything else no.** You may `git add`, `git rm --cached` and `git commit` (DEC-46), with
-  **no** `Co-Authored-By` or other attribution trailer. Never run `git push`, `git tag`, `git switch -c` /
-  `git checkout -b` / `git branch <name>`, `gh pr create` / `gh pr merge` / `gh release`, and never rewrite
-  history (`commit --amend` on pushed commits, `rebase`, `reset --hard`, force push). Hand those over to the
-  human as one copy-paste line (DEC-43). Read-only git (`status`, `diff`, `log`, `show`) is fine.
+- **Commit and push yes; branches, PRs and tags no.** You may `git add`, `git rm --cached` and `git commit`
+  (DEC-46), with **no** `Co-Authored-By` or other attribution trailer, and push the **current stage branch** with
+  a plain `git push` after each step (DEC-47). Never push to `main`, never force-push, never push tags. Never
+  run `git tag`, `git switch -c` / `git checkout -b` / `git branch <name>`, `gh pr create` / `gh pr merge` /
+  `gh release`, and never rewrite history (`commit --amend` on pushed commits, `rebase`, `reset --hard`). Hand
+  those over to the human as one copy-paste line (DEC-43). Read-only git and gh (`status`, `diff`, `log`,
+  `gh run view`, `gh pr view`) are fine.
 - **No BIOS files, ever.** Never add, download, generate from real dumps, or commit BIOS/ROM files. Tests use
   random bytes. MD5 values and file names are fine.
 - **No real credentials or personal data.** Never write a real password anywhere in the repo, in logs or in test
@@ -133,7 +135,8 @@ skill below, **read its whole `SKILL.md` before acting** and follow it.
   ci, chore, perf). Add `!` for breaking changes. CI checks this with commitizen from stage 02 (DEC-38).
 - One branch and one PR per stage (`stage/NN-slug`), one commit per step, merged with a merge commit (DEC-14,
   DEC-39).
-- Agents commit locally (DEC-46); the human pushes, creates branches, opens and merges PRs, and tags (DEC-43).
+- Agents commit (DEC-46) and push the stage branch (DEC-47); the human creates branches, opens and merges PRs,
+  and tags (DEC-43).
 
 ## Legal
 
