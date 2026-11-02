@@ -149,7 +149,7 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 - **Commit message:** `chore: add editorconfig, gitattributes and tool caches to gitignore`
 
 ### 02.8 — Repository hygiene guard
-- [ ] Done
+- [x] Done (2026-11-02: 39 tracked files pass; 15 unit tests; checked that it fails on a staged `bios/scph5501.bin` using a temporary index. `.github/` is exempt from the config-name rule, so the 12.4 issue-form `config.yml` is allowed. Added `scripts/__init__.py` so mypy and the tests see `scripts` as a package.)
 - **What:** `scripts/check_repo_hygiene.py` (standard library only). It runs `git ls-files -z` and fails, with a
   clear message per file, if:
   - any tracked file is under `bios/` other than `bios/.keep`;

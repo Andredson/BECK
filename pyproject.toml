@@ -46,8 +46,7 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM", "RET", "PTH", "RUF", "S"]
 [tool.mypy]
 python_version = "3.11"
 strict = true
-# Step 02.8 adds "scripts" here when that folder is created.
-files = ["check_bios.py", "tests"]
+files = ["check_bios.py", "tests", "scripts"]
 
 [[tool.mypy.overrides]]
 # Legacy script: untyped functions allowed until stage 04 (step 04.14 removes this override).
