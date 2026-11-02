@@ -1,6 +1,6 @@
 # Stage 01 — Agent-ready repository
 
-**Status:** In progress · **Depends on:** — · **Branch:** `stage/01-agent-ready-repo` · **Effort:** S
+**Status:** Done (2026-11-02) · **Depends on:** — · **Branch:** `stage/01-agent-ready-repo` · **Effort:** S
 
 ## Goal
 Any AI coding agent, from any vendor, that opens this repository should immediately know what the project is,
@@ -88,7 +88,7 @@ DEC-05, DEC-06, DEC-16, DEC-21, DEC-22, DEC-43.
 - **Commit message:** `chore(github): add pull request template with roadmap checklist`
 
 ### 01.6 — Close the stage
-- [ ] Done
+- [x] Done (2026-11-02; re-scored, statuses updated, PR command handed over. The owner merges with a merge commit.)
 - **What:** Re-read AGENTS.md against the repository; add a row to the
   [re-scoring history](00-assessment.md#re-scoring-history) (aspect 19 should move from 0 to about 4, aspect
   18 slightly); set this file's **Status** to Done and update the table in [README](README.md#stages). The

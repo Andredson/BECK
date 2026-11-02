@@ -26,6 +26,7 @@ folders on the Recalbox over SMB.
 | `docs/agents.md` | Which AI agents were tested loading this file, and how to test another one. |
 | `.github/pull_request_template.md` | PR description template with the roadmap checklist. Fill it in when preparing a PR description for the human. |
 | `docs/adr/` | [Architecture Decision Records](docs/adr/README.md): the reasoning and rejected alternatives behind every DEC. Read the relevant ADR before proposing to change a decision. |
+| `README.md` | User-facing readme. Its install and run commands are **wrong** until step 03.1 (D13); use the [Commands](#commands-current-state) section below instead. |
 | `LICENSE` | GNU GPL v3 text. Package metadata uses `GPL-3.0-only` (DEC-13). |
 
 ## Commands (current state)

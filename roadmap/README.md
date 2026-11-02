@@ -12,7 +12,7 @@ executed **one step at a time**, by a human or an AI agent, in the order below. 
 | # | Stage | Depends on | Branch | Effort | Status |
 |---|---|---|---|---|---|
 | 00 | [Assessment](00-assessment.md) | — | — | — | Done (baseline 2026-11-02) |
-| 01 | [Agent-ready repository](01-agent-ready-repo.md) | — | `stage/01-agent-ready-repo` | S | In progress |
+| 01 | [Agent-ready repository](01-agent-ready-repo.md) | — | `stage/01-agent-ready-repo` | S | Done (2026-11-02) |
 | 02 | [Foundation tooling & CI](02-foundation-tooling-and-ci.md) | 01 | `stage/02-foundation` | M | Not started |
 | 03 | [Critical fixes & data safety](03-critical-fixes-and-data-safety.md) | 02 | `stage/03-critical-fixes` | M | Not started |
 | 04 | [Architecture refactor](04-architecture-refactor.md) | 03 | `stage/04-architecture` | L | Not started |

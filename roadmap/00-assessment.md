@@ -105,3 +105,4 @@ Line numbers refer to `check_bios.py` at `d1ad68d`.
 | Date | After stage | Overall | Notes |
 |---|---|---|---|
 | 2026-11-02 | baseline | 3 / 10 | Initial review. |
+| 2026-11-02 | 01 | 3 / 10 (sum 65 / 19 = 3.4) | **AI-agent readiness 0 → 4:** AGENTS.md verified loading natively in Claude Code and opencode, decision records give agents the reasoning, PR template carries the roadmap checklist; no machine-readable output or skills yet (stages 06, 09). **Community & governance 1 → 2:** ADRs, a documented decision process, PR template; no CONTRIBUTING or security policy yet. Everything else unchanged: no code was touched, and the user-facing README is still wrong (D13). |
