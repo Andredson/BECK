@@ -1,0 +1,232 @@
+# Stage 06 — CLI, UX & machine-readable output
+
+**Status:** Not started · **Depends on:** 05 · **Branch:** `stage/06-cli` · **Effort:** M
+
+## Goal
+Give BECK a real command-line interface (subcommands, flags, help) that is safe by default and pleasant for
+humans. Add a **versioned JSON output with stable exit codes** so that scripts and any AI agent can drive it
+reliably (DEC-05, DEC-23).
+
+## Why
+- UX/CLI scored 4/10: no arguments, no dry run, no way to choose source or target.
+- Machine-readable output is the most vendor-neutral form of AI-agent support: it works with every agent,
+  script and CI system, and needs no integration code.
+- The opt-in destructive flags promised by DEC-02 live here.
+
+## Decisions applied
+DEC-01, DEC-02, DEC-04, DEC-05, DEC-17, DEC-23, DEC-36.
+
+## Command-line design (reference for all steps)
+
+```text
+beck [--version] [-v | -q] [--no-color] [--json] <command> [options]
+
+beck check   [--source DIR] [--target URL | --target-dir DIR] [--frontend recalbox]
+             [--report-file FILE] [--dry-run] [--move] [--clean-unmatched] [--yes]
+             [--fail-if-missing]
+beck scan    [--source DIR]                         # hash local files only, no network
+beck report  [--target URL | --target-dir DIR | --report-file FILE]
+                                                    # parse and list missing BIOS, no upload
+beck config  init | show | path                     # added in stage 07
+```
+
+- `--target smb://[user@]host[:port]/share[/sub/path]`. A password inside the URL is **rejected** with a
+  usage error pointing to `BECK_SMB_PASSWORD` or the prompt (stage 07).
+- `--target-dir DIR` uses the local transport: a mounted SD card or USB drive, or running on the device.
+- Defaults (until stage 07 adds config precedence): source `./bios`, target from the legacy config file.
+
+### Exit codes (stable contract, DEC-23)
+
+| Code | Meaning |
+|---|---|
+| 0 | The run completed. BIOS files may still be missing unless `--fail-if-missing` is used. |
+| 1 | Unexpected internal error (a bug, please report it). |
+| 2 | Usage or configuration error (bad flag, bad URL, invalid config, refused confirmation). |
+| 3 | Transport error: couldn't connect or authenticate, or at least one upload failed. |
+| 4 | Report error: the missing-BIOS report wasn't found or couldn't be parsed. |
+| 5 | `--fail-if-missing` was given and required BIOS files are still missing after the run. |
+
+## Steps
+
+### 06.1 — CLI design document
+- [ ] Done
+- **What:** `docs/cli.md`, the hand-written user reference: the design block and exit-code table above, one
+  example per command, and the safety semantics (what each destructive flag deletes and when it asks for
+  confirmation). Add `docs/adr/0007-cli-contract.md` describing the exit codes and the JSON compatibility
+  promise (06.7).
+- **Files:** `docs/cli.md`, `docs/adr/0007-cli-contract.md`
+- **Done when:** The document covers every command and flag implemented in this stage.
+- **Verify:** `uv run pytest tests/test_docs_links.py -q`
+- **Commit message:** `docs(cli): specify commands, flags and exit codes`
+
+### 06.2 — Subcommand skeleton with argparse
+- [ ] Done
+- **What:** Build the parser in `cli.py` with `argparse` subparsers. Global options go on a parent parser so they
+  work before or after the subcommand. `--version` prints `beck <version>`. Help text includes examples
+  (`epilog` with `RawDescriptionHelpFormatter`). Bare `beck` with no command keeps working as `beck check` for
+  one release and prints a hint. A deprecation note goes into `docs/cli.md`.
+- **Files:** `src/beck/cli.py`, `tests/unit/test_cli.py`
+- **Done when:** `beck --help`, `beck check --help`, `beck scan --help` and `beck report --help` all render, and
+  unknown flags exit 2.
+- **Verify:** `uv run beck --help && uv run beck check --help && uv run pytest tests/unit/test_cli.py -q`
+- **Commit message:** `feat(cli): add check, scan and report subcommands`
+
+### 06.3 — Target selection and frontend flag
+- [ ] Done
+- **What:** Parse `--target` URLs into an SMB target (`host`, `port` defaulting to 445, `share`, optional
+  sub-path, optional user) and reject passwords inside URLs. `--target-dir` builds a `LocalTransport`; it is
+  mutually exclusive with `--target`. `--frontend` chooses from the adapter registry (only `recalbox` for now).
+- **Files:** `src/beck/cli.py`, `src/beck/targets.py`, `tests/unit/test_targets.py`
+- **Done when:** Tests cover valid URLs (with and without port, user, sub-path), a URL with a password
+  (exit 2 and a helpful message), both target flags given together (exit 2), and an unknown frontend (exit 2,
+  lists the known ones).
+- **Verify:** `uv run pytest tests/unit/test_targets.py -q`
+- **Commit message:** `feat(cli): select SMB or local targets and the frontend adapter`
+
+### 06.4 — Source folder and offline report options
+- [ ] Done
+- **What:** `--source DIR` (default `./bios`) for `check` and `scan`. `--report-file FILE` makes `check` and
+  `report` parse a local copy of the report instead of reading it through the transport. That's useful offline,
+  for bug reports, and for agents.
+- **Files:** `src/beck/cli.py`, `tests/unit/test_cli.py`
+- **Done when:** `beck report --report-file tests/fixtures/...` lists entries with no network access.
+- **Verify:** `uv run beck report --report-file "$(ls tests/fixtures/reports/*/*.txt | head -n1)"`
+- **Commit message:** `feat(cli): add --source and offline --report-file options`
+
+### 06.5 — Owner decision: remote files that already exist
+- [ ] Done
+- **Blocked by:** an owner decision (record a new DEC first).
+- **What:** If the target path already exists on the device, Recalbox still reporting it missing means the
+  existing file is a **bad dump**. Today BECK overwrites it silently. Ask the owner, explaining the trade-offs,
+  which default to adopt:
+  1. overwrite (current behavior);
+  2. skip and report, with an `--overwrite` flag;
+  3. rename the existing file to `<name>.beck-backup-<timestamp>`, then upload;
+  4. skip by default and offer `--overwrite` and `--backup` flags.
+
+  Record the answer as the next free `DEC-NN` in the [decision log](README.md#decision-log), then implement it
+  in the executor with tests.
+- **Files:** `roadmap/README.md`, `src/beck/executor.py`, `src/beck/cli.py`, `tests/unit/test_executor.py`
+- **Done when:** The chosen policy is recorded, implemented, tested and documented in `docs/cli.md`.
+- **Verify:** `uv run pytest tests/unit/test_executor.py -q -k existing`
+- **Commit message:** `feat(executor): apply the agreed policy for existing remote files`
+
+### 06.6 — Safety flags: `--dry-run`, `--move`, `--clean-unmatched`, `--yes`
+- [ ] Done
+- **What:**
+  - `--dry-run`: build and show the full plan, including what *would* be deleted, and change nothing.
+  - `--move`: after a file has been uploaded to **all** of its targets **and** each remote size matches, delete
+    the local source. Nothing is deleted if any upload of that file failed.
+  - `--clean-unmatched`: delete local files that matched nothing. Duplicates are kept and reported.
+  - Confirmation: when `--move` or `--clean-unmatched` would delete files, list them and ask `Delete N files?
+    [y/N]` on a TTY. Without a TTY (scripts, agents, CI), deletion requires `--yes`; otherwise exit 2 with a
+    message explaining that. `--json` implies no prompt, so it also requires `--yes`.
+  - Deletions are recorded in the result (`deleted` list).
+- **Files:** `src/beck/executor.py`, `src/beck/cli.py`, `tests/unit/test_safety_flags.py`
+- **Done when:** Tests cover a dry run with the move and clean flags (nothing deleted, plan lists them), move
+  after success, no move after a partial failure, refusal without `--yes` off-TTY, and acceptance with `--yes`.
+- **Verify:** `uv run pytest tests/unit/test_safety_flags.py -q`
+- **Commit message:** `feat(cli): add dry-run and opt-in move/clean flags with confirmation`
+
+### 06.7 — JSON output and schema v1 (DEC-23)
+- [ ] Done
+- **What:**
+  - `output/json.py` renders a `RunResult` (or an error) as a single JSON document on **stdout**. All logs and
+    prompts go to stderr, so stdout is always parseable.
+  - Top-level fields: `schema_version` (1), `beck_version`, `command`, `ok` (bool), `dry_run`, `frontend`,
+    `target` (URL **without** credentials), `summary` {`missing_entries`, `satisfied`, `still_missing`,
+    `files_scanned`, `uploaded`, `duplicates`, `unmatched`, `deleted`, `errors`}, `uploads[]` {`source`,
+    `target`, `md5`, `status`: planned|uploaded|failed|skipped, `error`}, `still_missing[]` {`name`, `target`,
+    `md5s`, `required`}, `duplicates[]`, `unmatched[]`, `deleted[]`, `errors[]` {`code`, `message`, `item`}.
+  - Errors that stop a run (config, connection, report) still print a valid document with `ok: false` and the
+    matching exit code.
+  - `docs/schemas/check-result.v1.json` (JSON Schema draft 2020-12) describes `check`, plus small schemas for
+    `scan` and `report` (`scan-result.v1.json`, `report-result.v1.json`).
+  - **Compatibility promise** (in `docs/json-output.md`): within `schema_version` 1, fields are only *added*;
+    renaming, removing or changing the meaning of a field means `schema_version` 2. Consumers must ignore
+    unknown fields.
+- **Files:** `src/beck/output/json.py`, `docs/schemas/*.json`, `docs/json-output.md`, `src/beck/cli.py`
+- **Done when:** `--json` works for `check`, `scan` and `report`, including error cases.
+- **Verify:** `uv run beck --json report --report-file "$(ls tests/fixtures/reports/*/*.txt | head -n1)" | python3 -m json.tool`
+- **Commit message:** `feat(output): add versioned JSON output for all commands`
+
+### 06.8 — JSON contract tests
+- [ ] Done
+- **What:** `uv add --dev jsonschema` (dev-only, DEC-23). Tests run every command in success **and** error
+  scenarios with `--json` and validate the output against the schema files. Another test fails if a field
+  present in the v1 schema disappears, which guards the compatibility promise.
+- **Files:** `pyproject.toml`, `uv.lock`, `tests/unit/test_json_contract.py`
+- **Done when:** Every JSON-producing path is validated against its schema.
+- **Verify:** `uv run pytest tests/unit/test_json_contract.py -q`
+- **Commit message:** `test(output): validate JSON output against the published schemas`
+
+### 06.9 — Exit codes and `--fail-if-missing`
+- [ ] Done
+- **What:** Implement the exit-code table exactly as documented. `--fail-if-missing` returns 5 when any entry
+  with `required` true (or unknown) is still missing after the run. An item-level upload failure returns 3 even
+  though the run continued.
+- **Files:** `src/beck/cli.py`, `tests/unit/test_cli.py`
+- **Done when:** Each code 0–5 is produced by at least one test.
+- **Verify:** `uv run pytest tests/unit/test_cli.py -q -k exit`
+- **Commit message:** `feat(cli): return documented exit codes and support --fail-if-missing`
+
+### 06.10 — Verbosity, logging and color flags
+- [ ] Done
+- **What:** `-v` sets debug logs on stderr (connection steps, timings, plan details; **never** credentials).
+  `-q` prints only errors and the final summary. `--no-color` is equivalent to `NO_COLOR`. Hashing many files
+  shows a simple progress counter on stderr, on a TTY only.
+- **Files:** `src/beck/cli.py`, `src/beck/output/console.py`, `tests/unit/test_console.py`
+- **Done when:** Tests check that `-v` output never contains the configured password (use a sentinel value).
+- **Verify:** `uv run pytest tests/unit/test_console.py -q`
+- **Commit message:** `feat(cli): add verbosity and color controls`
+
+### 06.11 — `beck scan` and `beck report`
+- [ ] Done
+- **What:** `scan` lists local files with relative path, size and MD5. `report` lists missing entries, grouped
+  by folder, with the `required` / optional marker. Both support `--json`. Neither ever writes anything.
+- **Files:** `src/beck/cli.py`, `tests/unit/test_cli.py`
+- **Done when:** Both commands work offline (`scan`, and `report --report-file`) and are covered by tests.
+- **Verify:** `uv run beck scan --source tests && uv run beck --json scan --source tests | python3 -m json.tool`
+- **Commit message:** `feat(cli): add read-only scan and report commands`
+
+### 06.12 — Agent guidance for driving BECK
+- [ ] Done
+- **What:** Add a **"Using BECK as a tool"** section to AGENTS.md:
+  - always run `beck --json check --dry-run …` first and show the plan to the human;
+  - parse stdout as JSON and branch on the exit code;
+  - never add `--yes`, `--move` or `--clean-unmatched` without the human's explicit approval in this session;
+  - never pass passwords on the command line.
+
+  Link `docs/json-output.md` and `docs/cli.md`.
+- **Files:** `AGENTS.md`
+- **Done when:** The rules are in AGENTS.md and link to the schema docs.
+- **Verify:** `uv run pytest tests/test_docs_links.py -q`
+- **Commit message:** `docs(agents): explain how agents should drive the beck CLI safely`
+
+### 06.13 — Close the stage
+- [ ] Done
+- **What:** Update the README usage section briefly (the full rewrite is 08.1). Re-score
+  [00-assessment](00-assessment.md#re-scoring-history): UX and AI-readiness should rise. Update the
+  [README](README.md#stages) status. Print the push and PR commands for the human:
+
+  ```sh
+  git push -u origin stage/06-cli
+  gh pr create --base main --title "Stage 06: CLI, UX and machine-readable output" --body "Closes roadmap stage 06."
+  ```
+
+- **Files:** `README.md`, `roadmap/00-assessment.md`, `roadmap/README.md`, this file
+- **Done when:** The PR is merged with a merge commit.
+- **Verify:** The full check suite in AGENTS.md passes.
+- **Commit message:** `docs(roadmap): close stage 06 and re-score assessment`
+
+## Stage acceptance criteria
+- Destructive actions are impossible without an explicit flag, and impossible off-TTY without `--yes`.
+- Every command has `--json` output validated against a published schema; exit codes match the table.
+- A dry run never changes anything, locally or remotely.
+
+## Out of scope
+- Config files, env vars and credential prompts (stage 07). Agent Skills (stage 09).
+
+## Agent notes
+- The JSON schema is a public contract. Before changing an existing field, stop and ask the owner. The answer
+  will usually be a `schema_version` bump.
