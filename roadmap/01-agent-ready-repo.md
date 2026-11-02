@@ -72,7 +72,7 @@ DEC-05, DEC-06, DEC-16, DEC-21, DEC-22, DEC-43.
 - **Commit message:** `docs(adr): record initial architecture decisions`
 
 ### 01.5 — Pull request template
-- [ ] Done
+- [x] Done (2026-11-02)
 - **What:** `.github/pull_request_template.md` with a checklist that works for humans and agents:
   - Stage and step IDs covered (e.g. `03.1–03.4`).
   - For each step: paste the output of its **Verify** command.
