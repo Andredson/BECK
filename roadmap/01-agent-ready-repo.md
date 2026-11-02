@@ -54,7 +54,7 @@ DEC-05, DEC-06, DEC-16, DEC-21, DEC-22, DEC-43.
 - **Commit message:** `docs(agents): add agent support matrix for AGENTS.md`
 
 ### 01.4 — Architecture Decision Records
-- [ ] Done
+- [x] Done (2026-11-02: ADR-0001 to 0005 cover DEC-01…44)
 - **What:** Create `docs/adr/` with:
   - `0000-template.md` (sections: Status, Date, Context, Decision, Alternatives considered, Consequences).
   - One ADR per decision **group** in the [decision log](README.md#decision-log), not one per row, to keep it

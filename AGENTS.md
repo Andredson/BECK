@@ -24,6 +24,7 @@ folders on the Recalbox over SMB.
 | `requirements.txt` | Runtime dependencies (pysmb, PyYAML). |
 | `roadmap/` | The improvement plan: [index and decision log](roadmap/README.md), [assessment](roadmap/00-assessment.md), one file per stage. |
 | `docs/agents.md` | Which AI agents were tested loading this file, and how to test another one. |
+| `docs/adr/` | [Architecture Decision Records](docs/adr/README.md): the reasoning and rejected alternatives behind every DEC. Read the relevant ADR before proposing to change a decision. |
 | `LICENSE` | GNU GPL v3 text. Package metadata uses `GPL-3.0-only` (DEC-13). |
 
 ## Commands (current state)
@@ -76,7 +77,8 @@ python3 -m py_compile check_bios.py             # safe syntax check; touches no 
   in this session. Use the local transport, fakes, or the Samba test container (stage 05).
 - **No silent tools or dependencies.** Don't add a library, tool, service, GitHub Action or bot that isn't in the
   [decision log](roadmap/README.md#decision-log). Explain to the human what it's for, give 2–4 alternatives with
-  trade-offs and a recommendation, and record the answer as a new DEC before using it.
+  trade-offs and a recommendation, and record the answer as a new DEC and in an ADR
+  ([how to](docs/adr/README.md#adding-a-decision)) before using it.
 - **Python ≥ 3.11 compatible** (DEC-08): no syntax or stdlib APIs newer than 3.11 unless guarded.
 - **Vendor-neutral.** Project knowledge goes in this file, `docs/`, or `.agents/skills/`, never in
   vendor-specific files.

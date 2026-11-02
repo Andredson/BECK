@@ -59,11 +59,13 @@ the same stage. A stage can't be closed while it has blocked steps.
 ### When a decision is missing
 If a step needs a choice that isn't in the decision log below (a new tool, library, service, or behavior),
 **stop and ask the project owner**. Explain what the tool is for, give 2–4 alternatives with trade-offs, and
-recommend one. Record the answer as a new `DEC-NN` row here (and as an ADR once `docs/adr/` exists, stage 01).
-Never introduce a dependency or tool silently.
+recommend one. Record the answer as a new `DEC-NN` row here, and record the reasoning and the rejected
+alternatives in an ADR ([how to](../docs/adr/README.md#adding-a-decision)). Never introduce a dependency or
+tool silently.
 
 ### Changing a decision
-Don't edit an existing row. Add a new row that says `Supersedes DEC-NN`, and update the affected stage files.
+Don't edit an existing row. Add a new row that says `Supersedes DEC-NN`, mark the old ADR section as superseded
+([how to](../docs/adr/README.md#changing-a-decision)), and update the affected stage files.
 
 ## Step format used in every stage file
 
@@ -81,7 +83,8 @@ Don't edit an existing row. Add a new row that says `Supersedes DEC-NN`, and upd
 ## Decision log
 
 All decisions confirmed with the project owner. DEC-01 to DEC-43 were made on 2026-11-02 while planning;
-later rows give their own date and step.
+later rows give their own date and step. The reasoning and rejected alternatives for every row are in the
+[Architecture Decision Records](../docs/adr/README.md).
 
 ### Product and scope
 
