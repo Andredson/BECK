@@ -73,11 +73,12 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
   3. implement only that step;
   4. run its Verify plus the standard checks;
   5. tick the box;
-  6. **print** the `git add` / `git commit` commands (DEC-43);
-  7. on the closing step, print the push and PR commands.
+  6. commit with the step's message and no attribution trailer (DEC-46), then print `git push` as one copy-paste
+     line;
+  7. on the closing step, print the push and PR commands (human-only, DEC-43).
 
-  Include a short "common mistakes" list: doing two steps at once, adding an unlisted tool, running git
-  write commands, touching a real Recalbox.
+  Include a short "common mistakes" list: doing two steps at once, adding an unlisted tool, pushing or creating
+  branches/PRs/tags, adding an attribution trailer to commits, touching a real Recalbox.
 - **Files:** `.agents/skills/execute-roadmap-step/SKILL.md`, `AGENTS.md` (index row)
 - **Done when:** An agent given only "do the next roadmap step" follows it correctly in a dry exercise.
 - **Verify:** `uv run pytest tests/test_skills.py -q` (after 09.9; until then, a manual review)

@@ -38,14 +38,16 @@ under that safety net → then the CLI, configuration, docs, skills, release, an
 4. Run the step's **Verify** command(s) and make sure they pass. When CI exists (stage 02+), also run the
    standard checks listed in [AGENTS.md](../AGENTS.md).
 5. Tick the box (`- [x] Done`) in the same change, and update the stage's **Status** line.
-6. Commit with the step's **Commit message** (Conventional Commits, DEC-14). Per **DEC-43**, an AI agent never
-   runs `git commit`, `git push`, creates branches, or opens PRs. It prints the exact commands and the human runs them:
+6. Commit with the step's **Commit message** (Conventional Commits, DEC-14). Per **DEC-46**, an AI agent may
+   stage and commit itself, with **no** `Co-Authored-By` or other attribution trailer:
 
    ```sh
-   git switch -c stage/NN-slug           # first step of a stage only
    git add <files touched by the step>
    git commit -m "<commit message from the step>"
    ```
+
+   Creating branches, pushing, tagging and opening PRs stay human-only (DEC-43). The agent prints those commands
+   as one copy-paste line, e.g. `git switch -c stage/NN-slug` for the first step of a stage, or `git push`.
 
 7. When the last step of a stage is done, run the stage's **Closing step**: update AGENTS.md, re-score
    [00-assessment.md](00-assessment.md), then the human pushes and opens one PR for the stage. The PR is merged
@@ -110,6 +112,7 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-22 | Skills live in `.agents/skills/<name>/SKILL.md` (agentskills.io format, spec fields only) and are indexed in AGENTS.md. No vendor folders or symlinks. |
 | DEC-23 | `--json` output carries `schema_version`, is described by a JSON Schema file, and is checked by contract tests; exit codes 0–5 are documented. `jsonschema` is a dev-only dependency. |
 | DEC-43 | Agents never commit, push, create branches, push tags or open PRs. They print the exact `git` / `gh` commands for the human to run. |
+| DEC-46 | **Supersedes the commit part of DEC-43.** Agents may stage (`git add`, `git rm --cached`) and run `git commit` with the step's message, never adding a `Co-Authored-By` or other attribution trailer. Pushing, creating or switching branches, tags, PRs, merges and releases stay human-only; agents hand those over as one copy-paste line. *(2026-11-02, before step 02.8)* |
 | DEC-44 | The agent support matrix (`docs/agents.md`) covers only agents the owner actually uses (2026-11-02: Claude Code, opencode). Other agents are added when a contributor tests one. *(2026-11-02, step 01.3)* |
 
 ### Tooling

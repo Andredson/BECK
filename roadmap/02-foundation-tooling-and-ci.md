@@ -144,8 +144,8 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 - **Files:** `.editorconfig`, `.gitattributes`, `.gitignore`
 - **Done when:** A fresh clone on Windows produces LF files and `git status` stays clean after running all tools.
 - **Verify:** Run all tools, then `git status --porcelain` lists only the intended files, and
-  `git ls-files --eol` shows `i/lf` and `attr/text=auto eol=lf` for every text file. (Read-only commands:
-  the earlier `git add --renormalize .` wrote to the index, which agents don't do, DEC-43.)
+  `git ls-files --eol` shows `i/lf` and `attr/text=auto eol=lf` for every text file. (Read-only commands; they
+  replaced an earlier `git add --renormalize .` that would have staged unrelated files.)
 - **Commit message:** `chore: add editorconfig, gitattributes and tool caches to gitignore`
 
 ### 02.8 — Repository hygiene guard

@@ -45,8 +45,8 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
   - Add `config/config.example.yml` with the same keys and empty credentials, and **without** the meaningless
     `version: "3.8"` key.
   - Add `config/config.yml` to `.gitignore`.
-  - Remove `config/config.yml` from the index **while keeping the local file**. That's a git write, so the agent
-    prints `git rm --cached config/config.yml` and the human runs it (DEC-43).
+  - Remove `config/config.yml` from the index **while keeping the local file**: `git rm --cached
+    config/config.yml`, staged as part of this step's commit (DEC-46).
   - `load_configs`: if `config/config.yml` doesn't exist, print "Copy config/config.example.yml to
     config/config.yml and fill it in" and exit 1. Catch `FileNotFoundError` explicitly, not with a bare except.
   - Remove the allow-list entry for `config/config.yml` from `scripts/check_repo_hygiene.py` (added in 02.8).

@@ -120,8 +120,8 @@ flowchart LR
 - [ ] Done
 - **What:** Complete `docs/releasing.md` with a numbered checklist, and mark who does each step:
   1. *(agent or owner)* Make sure the planned stages are closed and `main` is green.
-  2. *(agent)* Bump the version, regenerate `CHANGELOG.md` and `docs/cli-reference.md`, then **print** the
-     commit commands for `chore(release): X.Y.Z`.
+  2. *(agent)* Bump the version, regenerate `CHANGELOG.md` and `docs/cli-reference.md`, and commit
+     `chore(release): X.Y.Z` (DEC-46).
   3. *(owner)* Push, open the PR, merge with a merge commit.
   4. *(owner)* `git tag -a vX.Y.Z -m "beck-bios X.Y.Z" && git push origin vX.Y.Z`.
   5. *(owner)* Approve the `pypi` environment.
@@ -135,8 +135,8 @@ flowchart LR
 ### 10.8 — Skill: `cut-release`
 - [ ] Done
 - **What:** `.agents/skills/cut-release/SKILL.md` wrapping 10.7 for agents. It does the bump and the
-  regeneration, then **stops and prints** the git and tag commands (DEC-43). It never pushes, tags or approves
-  anything. Add it to the AGENTS.md skills index; `tests/test_skills.py` covers it automatically.
+  regeneration and commits them (DEC-46), then **stops and prints** the push and tag commands (DEC-43). It never
+  pushes, tags or approves anything. Add it to the AGENTS.md skills index; `tests/test_skills.py` covers it automatically.
 - **Files:** `.agents/skills/cut-release/SKILL.md`, `AGENTS.md`
 - **Done when:** The skill validation test passes with the new skill.
 - **Verify:** `uv run pytest tests/test_skills.py -q`

@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-02
-- **Decisions covered:** DEC-05, DEC-06, DEC-21, DEC-22, DEC-23, DEC-43, DEC-44
+- **Decisions covered:** DEC-05, DEC-06, DEC-21, DEC-22, DEC-23, DEC-43, DEC-44, DEC-46
 
 ## Context
 The owner asked for AI-agent support that is vendor-agnostic where possible. Two open standards cover most of
@@ -67,12 +67,25 @@ checked against vendor documentation and by testing on 2026-11-02:
   `schema_version` 2 and an owner decision.
 
 ## DEC-43 — Agents never perform git writes
+- **Status:** The *commit* part is superseded by [DEC-46](#dec-46--agents-may-commit-locally); the rest stands.
 - **Decision:** Agents never commit, push, create branches, push tags, run `git rm --cached`, or open PRs or
   releases. They print the exact commands, and the human runs them.
 - **Alternatives considered:** None were offered. This was the owner's instruction when approving the plan.
 - **Consequences:** Every step's *Commit message* is something to hand over, not to execute. Human-only steps
   (tags, environment approvals, GitHub settings) stay human-only. The `execute-roadmap-step` and `cut-release`
   skills (09.3, 10.8) encode this.
+
+## DEC-46 — Agents may commit locally
+- **Date:** 2026-11-02 (before step 02.8). Supersedes the commit part of DEC-43.
+- **Context:** Through stage 01 and steps 02.1–02.7 the owner ran every commit from a handed-over command line.
+  The owner then allowed the agent to run the commits, with one condition: no `Co-Authored-By` trailer.
+- **Decision:** Agents may stage (`git add`, `git rm --cached`) and `git commit` with the step's Conventional
+  Commits message, never adding a `Co-Authored-By` or other attribution line. Everything that leaves the machine
+  or changes branch structure stays human-only: push, branch creation or switching, tags, PRs, merges, releases.
+  Agents also never rewrite history. They hand human-only commands over as one copy-paste line.
+- **Alternatives considered:** None were offered; this was the owner's instruction.
+- **Consequences:** Each step ends with a local commit, and the owner reviews what they push. Branches still have
+  to exist before a stage's first step, because the agent can't create them.
 
 ## DEC-44 — The support matrix covers the owner's agents
 - **Decision:** `docs/agents.md` lists only agents the owner actually uses; on 2026-11-02 that meant Claude Code
