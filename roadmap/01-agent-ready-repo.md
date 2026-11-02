@@ -35,10 +35,10 @@ DEC-05, DEC-06, DEC-16, DEC-21, DEC-22, DEC-43.
 - **Commit message:** `docs: add staged improvement roadmap and baseline assessment`
 
 ### 01.3 — Agent support matrix
-- [ ] Done
+- [x] Done (2026-11-02: Claude Code 2.1.316 and opencode 1.18.33 both pass; other agents left out per DEC-44)
 - **What:** Check which agents actually load `AGENTS.md` from this repository **without any extra file in the
-  repo** (DEC-21). For each agent the owner uses or expects contributors to use (at least Claude Code, OpenAI
-  Codex, GitHub Copilot coding agent / VS Code, Cursor, Gemini CLI):
+  repo** (DEC-21). Cover each agent the owner uses (DEC-44: only those installed and used by the owner, which on
+  2026-11-02 meant Claude Code and opencode; contributors add rows for other agents when they test them):
   1. Open the repo with the agent and ask: *"Without reading any file now, list this repository's hard rules."*
   2. Record whether it answered from `AGENTS.md`, plus the tool version and the date.
   3. If an agent needs **user-side** configuration, document that configuration. Example: Gemini CLI's
@@ -47,9 +47,10 @@ DEC-05, DEC-06, DEC-16, DEC-21, DEC-22, DEC-43.
      directory makes it skip `AGENTS.md`. Users who need a private `CLAUDE.local.md` must set *Project
      instructions* to `claude-md-and-agents-md` in `/config`.
 - **Files:** `docs/agents.md` (new: support-matrix table + per-tool notes), `AGENTS.md` (link to it)
-- **Done when:** The table has a row per agent with: reads AGENTS.md natively (yes/no/needs user setting),
-  version tested, date, and notes.
-- **Verify:** `grep -c '^|' docs/agents.md` returns at least 7 (header, separator and ≥ 5 agent rows)
+- **Done when:** The table has a row per tested agent with: reads AGENTS.md natively (yes/no/needs user
+  setting), version tested, date, the exact test command, and notes. There is also a written procedure for
+  testing another agent.
+- **Verify:** `grep -q '^| Claude Code |' docs/agents.md && grep -q '^| opencode |' docs/agents.md && grep -q 'How to test an agent' docs/agents.md`
 - **Commit message:** `docs(agents): add agent support matrix for AGENTS.md`
 
 ### 01.4 — Architecture Decision Records
@@ -58,7 +59,7 @@ DEC-05, DEC-06, DEC-16, DEC-21, DEC-22, DEC-43.
   - `0000-template.md` (sections: Status, Date, Context, Decision, Alternatives considered, Consequences).
   - One ADR per decision **group** in the [decision log](README.md#decision-log), not one per row, to keep it
     readable: `0001-product-scope.md` (DEC-01–04, 09, 10, 12, 13, 15), `0002-ai-agent-support.md` (DEC-05, 06,
-    21, 22, 23, 43), `0003-tooling.md` (DEC-07, 08, 17–19, 24, 26–29, 36, 40, 42),
+    21, 22, 23, 43, 44), `0003-tooling.md` (DEC-07, 08, 17–19, 24, 26–29, 36, 40, 42),
     `0004-ci-security-release.md` (DEC-11, 25, 32–35, 37, 38, 41), `0005-process-and-docs.md` (DEC-14, 16, 20,
     30, 31, 39).
   - Each ADR records the **alternatives that were rejected and why**, using the trade-offs discussed when the
@@ -67,7 +68,7 @@ DEC-05, DEC-06, DEC-16, DEC-21, DEC-22, DEC-43.
     superseded ADRs are marked, never deleted.
 - **Files:** `docs/adr/*.md`, `roadmap/README.md` (link the ADR index), `AGENTS.md` (link)
 - **Done when:** Every DEC-NN appears in exactly one ADR.
-- **Verify:** `for n in $(seq -w 1 43); do grep -lq "DEC-$n" docs/adr/0*.md || echo "missing DEC-$n"; done` prints nothing
+- **Verify:** `for n in $(grep -oE '^\| DEC-[0-9]+' roadmap/README.md | grep -oE '[0-9]+'); do grep -lq "DEC-$n" docs/adr/0*.md || echo "missing DEC-$n"; done` prints nothing (covers every DEC in the log, however many there are)
 - **Commit message:** `docs(adr): record initial architecture decisions`
 
 ### 01.5 — Pull request template

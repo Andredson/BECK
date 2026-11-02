@@ -80,7 +80,8 @@ Don't edit an existing row. Add a new row that says `Supersedes DEC-NN`, and upd
 
 ## Decision log
 
-All decisions confirmed with the project owner on 2026-11-02.
+All decisions confirmed with the project owner. DEC-01 to DEC-43 were made on 2026-11-02 while planning;
+later rows give their own date and step.
 
 ### Product and scope
 
@@ -106,6 +107,7 @@ All decisions confirmed with the project owner on 2026-11-02.
 | DEC-22 | Skills live in `.agents/skills/<name>/SKILL.md` (agentskills.io format, spec fields only) and are indexed in AGENTS.md. No vendor folders or symlinks. |
 | DEC-23 | `--json` output carries `schema_version`, is described by a JSON Schema file, and is checked by contract tests; exit codes 0–5 are documented. `jsonschema` is a dev-only dependency. |
 | DEC-43 | Agents never commit, push, create branches, push tags or open PRs. They print the exact `git` / `gh` commands for the human to run. |
+| DEC-44 | The agent support matrix (`docs/agents.md`) covers only agents the owner actually uses (2026-11-02: Claude Code, opencode). Other agents are added when a contributor tests one. *(2026-11-02, step 01.3)* |
 
 ### Tooling
 
@@ -160,7 +162,9 @@ All decisions confirmed with the project owner on 2026-11-02.
   `.claude/skills/`. The AGENTS.md skills index (DEC-22) is what makes `.agents/skills/` reachable for it and
   for any other agent.
 - Gemini CLI has a `context.fileName` setting that each user can point at `AGENTS.md`. Whether it reads
-  `AGENTS.md` by default is verified in step 01.3.
+  `AGENTS.md` by default was **not** tested: step 01.3 covered only the owner's agents (DEC-44).
+- Step 01.3 (2026-11-02) confirmed by test that Claude Code 2.1.316 and opencode 1.18.33 both load `AGENTS.md`
+  natively from this repository ([docs/agents.md](../docs/agents.md)).
 - The availability of the PyPI name `beck-bios` could not be checked from the planning session. Step 10.1 checks it.
 
 ## Glossary

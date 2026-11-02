@@ -23,6 +23,7 @@ folders on the Recalbox over SMB.
 | `bios/` | Input folder for the user's BIOS files. Everything except `bios/.keep` is gitignored. |
 | `requirements.txt` | Runtime dependencies (pysmb, PyYAML). |
 | `roadmap/` | The improvement plan: [index and decision log](roadmap/README.md), [assessment](roadmap/00-assessment.md), one file per stage. |
+| `docs/agents.md` | Which AI agents were tested loading this file, and how to test another one. |
 | `LICENSE` | GNU GPL v3 text. Package metadata uses `GPL-3.0-only` (DEC-13). |
 
 ## Commands (current state)
@@ -88,7 +89,8 @@ python3 -m py_compile check_bios.py             # safe syntax check; touches no 
   `claude-md-and-agents-md` in Claude Code's `/config` so this file still loads.
 - **Gemini CLI** users can point their own (user-level) `context.fileName` setting at `AGENTS.md`. Don't add
   `.gemini/` to the repo.
-- The tested support matrix lives in `docs/agents.md` (created in step 01.3).
+- The tested support matrix, and the procedure for testing another agent, live in
+  [docs/agents.md](docs/agents.md). Tested so far: Claude Code and opencode (DEC-44).
 
 ### Skills
 

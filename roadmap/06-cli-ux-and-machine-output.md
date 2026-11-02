@@ -104,8 +104,8 @@ beck config  init | show | path                     # added in stage 07
   3. rename the existing file to `<name>.beck-backup-<timestamp>`, then upload;
   4. skip by default and offer `--overwrite` and `--backup` flags.
 
-  Record the answer as `DEC-44` in the [decision log](README.md#decision-log), then implement it in the executor
-  with tests.
+  Record the answer as the next free `DEC-NN` in the [decision log](README.md#decision-log), then implement it
+  in the executor with tests.
 - **Files:** `roadmap/README.md`, `src/beck/executor.py`, `src/beck/cli.py`, `tests/unit/test_executor.py`
 - **Done when:** The chosen policy is recorded, implemented, tested and documented in `docs/cli.md`.
 - **Verify:** `uv run pytest tests/unit/test_executor.py -q -k existing`
