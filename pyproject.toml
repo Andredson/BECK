@@ -46,8 +46,8 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM", "RET", "PTH", "RUF", "S"]
 [tool.mypy]
 python_version = "3.11"
 strict = true
-# Steps 02.5 and 02.8 add "tests" and "scripts" here when those folders are created.
-files = ["check_bios.py"]
+# Step 02.8 adds "scripts" here when that folder is created.
+files = ["check_bios.py", "tests"]
 
 [[tool.mypy.overrides]]
 # Legacy script: untyped functions allowed until stage 04 (step 04.14 removes this override).
@@ -69,6 +69,16 @@ disable_error_code = [
 # pysmb ships no type hints; it is replaced by smbprotocol in step 04.9.
 module = ["smb.*", "nmb.*"]
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers --strict-config"
+markers = ["integration: needs the Samba test container (stage 05)"]
+
+[tool.coverage.run]
+branch = true
+source = ["check_bios"]
 
 [dependency-groups]
 dev = [

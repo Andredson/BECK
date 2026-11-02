@@ -101,7 +101,7 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 - **Commit message:** `build: configure mypy with strict defaults and a relaxed legacy module`
 
 ### 02.5 — Pytest configuration and smoke test
-- [ ] Done
+- [x] Done (2026-11-02: 1 test passes; checked that it fails when an import-time side effect is injected; `tests` added to mypy `files`)
 - **What:**
   ```toml
   [tool.pytest.ini_options]
