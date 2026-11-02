@@ -10,7 +10,7 @@ the consequences. The short form of every decision is a `DEC-NN` row in the
 |---|---|---|---|
 | [0001](0001-product-scope.md) | Product scope | Accepted | DEC-01, 02, 03, 04, 09, 10, 12, 13, 15 |
 | [0002](0002-ai-agent-support.md) | AI-agent support | Accepted | DEC-05, 06, 21, 22, 23, 43, 44 |
-| [0003](0003-tooling.md) | Tooling | Accepted | DEC-07, 08, 17, 18, 19, 24, 26, 27, 28, 29, 36, 40, 42 |
+| [0003](0003-tooling.md) | Tooling | Accepted | DEC-07, 08, 17, 18, 19, 24, 26, 27, 28, 29, 36, 40, 42, 45 |
 | [0004](0004-ci-security-release.md) | CI, security and release | Accepted | DEC-11, 25, 32, 33, 34, 35, 37, 38, 41 |
 | [0005](0005-process-and-docs.md) | Process and documentation | Accepted | DEC-14, 16, 20, 30, 31, 39 |
 

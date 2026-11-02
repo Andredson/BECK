@@ -82,6 +82,9 @@ python3 -m py_compile check_bios.py             # safe syntax check; touches no 
   trade-offs and a recommendation, and record the answer as a new DEC and in an ADR
   ([how to](docs/adr/README.md#adding-a-decision)) before using it.
 - **Python ≥ 3.11 compatible** (DEC-08): no syntax or stdlib APIs newer than 3.11 unless guarded.
+- **Respect the 14-day dependency cooldown** (DEC-45, `exclude-newer` in `pyproject.toml`). Never remove or shorten
+  it to get a newer release; ask the human. Pin GitHub Actions and downloaded tools to releases at least 14 days
+  old as well.
 - **Vendor-neutral.** Project knowledge goes in this file, `docs/`, or `.agents/skills/`, never in
   vendor-specific files.
 

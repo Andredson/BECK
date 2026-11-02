@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-11-02
 - **Decisions covered:** DEC-07, DEC-08, DEC-17, DEC-18, DEC-19, DEC-24, DEC-26, DEC-27, DEC-28, DEC-29, DEC-36,
-  DEC-40, DEC-42
+  DEC-40, DEC-42, DEC-45
 
 ## Context
 At baseline the project had no tooling: no lockfile, tests, linters or packaging. The owner asked that every
@@ -101,3 +101,21 @@ dependencies**, even where a tool was recommended.
   *no link checking*: not chosen.
 - **Consequences:** External URLs aren't checked. The test (step 02.6) runs in the normal suite and covers the
   roadmap's many cross-links.
+
+## DEC-45 — 14-day dependency cooldown
+- **Date:** 2026-11-02 (step 02.2)
+- **Context:** When the dev dependencies were first added, 6 of the 20 locked packages had been published less
+  than 14 days earlier (types-PyYAML 3 days; mypy 5; pyasn1, pytest and ruff 6; coverage 11). Malicious releases
+  on package indexes are usually detected and yanked within days. With no update bot (DEC-29), a cooldown is a
+  cheap guard that needs no new tool.
+- **Decision:** `exclude-newer = "14 days"` in `[tool.uv]`. Every resolution, local or in CI, ignores
+  distributions uploaded in the last 14 days. uv records the rolling span (`exclude-newer-span = "P14D"`) in
+  `uv.lock`, so `uv lock --check` stays stable. An urgent security fix can bypass the cooldown for one package
+  with `exclude-newer-package`; the reason is recorded in the commit and in the monthly maintenance notes.
+- **Alternatives considered:**
+  - *A 7-day cooldown*: half the delay for fixes, while still catching most quickly-yanked releases. Not chosen.
+  - *No cooldown*, relying on Trivy and the monthly review: not chosen.
+- **Consequences:** Re-locking moved six packages to slightly older releases (e.g. pyasn1 0.6.5 → 0.6.4,
+  mypy 2.4.1 → 2.4.0). Dependency upgrades always lag at least 14 days behind upstream. The same rule should
+  guide manual pins elsewhere (GitHub Action SHAs, gitleaks, Trivy and commitizen versions): pick releases at
+  least 14 days old.

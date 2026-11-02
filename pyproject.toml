@@ -13,3 +13,15 @@ dependencies = [
 [tool.uv]
 # Not an installable package yet: the src/beck package arrives in stage 04 (step 04.3).
 package = false
+# Supply-chain cooldown (DEC-45): only resolve releases uploaded at least 14 days ago.
+# For an urgent security fix, override per package with `exclude-newer-package` and record why.
+exclude-newer = "14 days"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.1",
+    "types-pyyaml>=6.0.12.20260906",
+]

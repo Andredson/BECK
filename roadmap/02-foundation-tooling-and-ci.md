@@ -44,7 +44,7 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 - **Commit message:** `build: manage project with uv and require Python 3.11+`
 
 ### 02.2 — Dev dependency group
-- [ ] Done
+- [x] Done (2026-11-02: pytest 9.1.1, pytest-cov 7.1.0, ruff 0.17.1, mypy 2.4.0, types-PyYAML 6.0.12.20260906; resolved under the 14-day cooldown added here, DEC-45)
 - **What:** `uv add --dev pytest pytest-cov ruff mypy types-PyYAML` (written to `[dependency-groups] dev`).
   `types-PyYAML` is temporary; it goes away when PyYAML is dropped in stage 07 (DEC-24).
 - **Files:** `pyproject.toml`, `uv.lock`
@@ -252,10 +252,12 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 ### 02.15 — Manual maintenance routine (DEC-29)
 - [ ] Done
 - **What:** `docs/maintenance.md`, a monthly checklist that replaces an update bot:
-  1. `uv lock --upgrade`, then run all checks from AGENTS.md; read the changelogs of upgraded packages.
+  1. `uv lock --upgrade` (it respects the 14-day cooldown, DEC-45), then run all checks from AGENTS.md; read the
+     changelogs of upgraded packages. List any active `exclude-newer-package` overrides, and remove those that are
+     no longer needed.
   2. Regenerate `requirements.txt` (02.9).
-  3. For each pinned GitHub Action, gitleaks, Trivy and commitizen: look up the latest release, verify its
-     checksum or SHA, and update the pin and comment.
+  3. For each pinned GitHub Action, gitleaks, Trivy and commitizen: look up the latest release **that is at least
+     14 days old**, verify its checksum or SHA, and update the pin and comment.
   4. Review the last weekly security run (02.14).
   5. Review the Python versions in the CI matrix against python.org's end-of-life dates.
   6. Commit with `build(deps): monthly dependency refresh (YYYY-MM)`.

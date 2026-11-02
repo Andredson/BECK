@@ -129,6 +129,7 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-36 | No extra test tools: pytest + pytest-cov + Samba container only (no hypothesis, snapshot libraries, or mutation testing). |
 | DEC-40 | The Samba test server is built from our own minimal Dockerfile (pinned Debian-slim + `samba`, Recalbox-like `smb.conf`). |
 | DEC-42 | Docs link check: a small pytest test that resolves relative links and anchors between repository Markdown files. |
+| DEC-45 | Dependency cooldown: `[tool.uv] exclude-newer = "14 days"`, so uv only resolves releases uploaded at least 14 days ago, for runtime and dev dependencies. Urgent fixes use a per-package `exclude-newer-package` override with a recorded reason. *(2026-11-02, step 02.2)* |
 
 ### CI/CD, security, and release
 
