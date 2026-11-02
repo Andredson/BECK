@@ -168,7 +168,7 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 - **Commit message:** `ci: add repository hygiene guard against BIOS files and tracked secrets`
 
 ### 02.9 — Keep `requirements.txt` generated
-- [ ] Done
+- [x] Done (2026-11-02: pins now match `uv.lock` (pysmb 1.2.15, PyYAML 6.0.3, plus transitive dependencies); uv's own header marks the file as generated and names the command; re-export is byte-identical; installs and imports in a fresh 3.11 venv)
 - **What:** Users who don't have uv still use `pip install -r requirements.txt` until 1.0 (stage 10). Generate
   it from the lockfile instead of editing it by hand:
   `uv export --no-dev --no-hashes -o requirements.txt`. Add a header comment saying it's generated.
