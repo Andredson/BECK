@@ -17,6 +17,32 @@ package = false
 # For an urgent security fix, override per package with `exclude-newer-package` and record why.
 exclude-newer = "14 days"
 
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# S = flake8-bandit security rules (SAST, DEC-32).
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "RET", "PTH", "RUF", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"] # assert is how pytest works
+# Legacy script: temporary ignores. Each one names the step in
+# roadmap/03-critical-fixes-and-data-safety.md that removes it; 03.12 removes whatever is left.
+"check_bios.py" = [
+    "SIM115", # open() without a context manager                     -> 03.3
+    "S324",   # MD5 flagged as insecure; fix is usedforsecurity=False -> 03.6
+    "SIM201", # `not x == ""` in validate_bios                       -> 03.8
+    "PTH104", # os.rename                                            -> 03.11
+    "PTH107", # os.remove                                            -> 03.11
+    "PTH118", # os.path.join                                         -> 03.11
+    "PTH120", # os.path.dirname                                      -> 03.11
+    "PTH123", # builtin open() instead of Path.open()                -> 03.11
+    "E501",   # long message lines                                   -> 03.12
+    "E722",   # bare except                                          -> 03.12
+    "E741",   # ambiguous variable name `l`                          -> 03.12
+]
+
 [dependency-groups]
 dev = [
     "mypy>=2.4.0",

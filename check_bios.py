@@ -1,11 +1,11 @@
-from smb.SMBConnection import SMBConnection
-import tempfile
 import hashlib
-import socket
-import yaml
-import json
-import re
 import os
+import re
+import socket
+import tempfile
+
+import yaml
+from smb.SMBConnection import SMBConnection
 
 RESET = "\033[0m"
 BOLD = "\033[1m"
@@ -50,13 +50,13 @@ def smb_connect(share: str, folder: str, operation: str, file=None) -> str:
     try:
         conn.connect(server, port)
     except Exception as e:
-        print(f'{RED}Error connecting to SMB server {server}:{RESET} {e}')
+        print(f"{RED}Error connecting to SMB server {server}:{RESET} {e}")
         exit(1)
 
     try:
         shares = conn.listShares()
     except Exception as e:
-        print(f'{RED}Error listing shares of the {server} SMB server:{RESET} {e}')
+        print(f"{RED}Error listing shares of the {server} SMB server:{RESET} {e}")
         exit(1)
 
     found = False
@@ -66,78 +66,79 @@ def smb_connect(share: str, folder: str, operation: str, file=None) -> str:
             found = True
 
     if not found:
-        print(f'The specified share {RED}({share}){RESET} dosent exist in the server {RED}{server}{RESET}.')
+        print(
+            f"The specified share {RED}({share}){RESET} dosent exist in the server {RED}{server}{RESET}."
+        )
         exit(1)
 
     match operation:
-        case 'r':
+        case "r":
             try:
                 f = tempfile.NamedTemporaryFile()
-                conn.retrieveFile(share,f'{folder}{file}',f)
+                conn.retrieveFile(share, f"{folder}{file}", f)
                 f.seek(0)
                 f = f.read()
-                report = f.decode('utf-8')
+                report = f.decode("utf-8")
                 f = open("test.txt", "w")
                 f.write(report)
                 f.close()
-                f = open("test.txt", "r")
+                f = open("test.txt")
                 report = f.read()
-                os.remove('test.txt')
+                os.remove("test.txt")
                 response = report
-                
+
             except Exception as e:
-                print(f'Error reading {RED}{file}{RESET}: {YELLOW}{e}{RESET}')
+                print(f"Error reading {RED}{file}{RESET}: {YELLOW}{e}{RESET}")
                 exit(1)
 
             return response
 
-        case 'w':
+        case "w":
             try:
                 file_content = open(file, "rb")
                 conn.storeFile(share, folder, file_content)
                 os.remove(file)
 
             except Exception as e:
-                print(f'Error writing {RED}{file}{RESET}: {YELLOW}{e}{RESET}')
+                print(f"Error writing {RED}{file}{RESET}: {YELLOW}{e}{RESET}")
                 exit(1)
 
-            return
+            return None
 
-        case 'cd':
+        case "cd":
             try:
                 conn.createDirectory(share, folder)
 
             except Exception as e:
-                print(f'Error creating directory {RED}{file}{RESET}: {YELLOW}{e}{RESET}')
+                print(f"Error creating directory {RED}{file}{RESET}: {YELLOW}{e}{RESET}")
                 exit(1)
-        
-        case 'ld':
-            try:
 
+        case "ld":
+            try:
                 folder_names = []
                 response = conn.listPath(share, folder)
 
                 for item in response:
-                    if item.isDirectory and item.filename not in ['.', '..']:
+                    if item.isDirectory and item.filename not in [".", ".."]:
                         folder_names.append(item.filename)
 
                 response = folder_names
 
             except Exception as e:
-                print(f'Error creating directory {RED}{file}{RESET}: {YELLOW}{e}{RESET}')
+                print(f"Error creating directory {RED}{file}{RESET}: {YELLOW}{e}{RESET}")
                 exit(1)
 
             return response
 
         case _:
-            print(f'Invalid operation for function: {RED}smb_connect{RESET}')
+            print(f"Invalid operation for function: {RED}smb_connect{RESET}")
             exit(1)
 
 
 def get_missing_bios():
     missing_regex = r"(MISSING (O|R)(.*\n[^\n].*)+)"
     path_file_regex = r"(?<=Path: )\/(?:[^\/\s]+\/)+(?=[^\/\s]+)"
-    #relative_path_file_regex = r"(?<=Path: \/recalbox\/share\/bios\/)(?:[^\/]+\/)+(?=[^\/]+)"
+    # relative_path_file_regex = r"(?<=Path: \/recalbox\/share\/bios\/)(?:[^\/]+\/)+(?=[^\/]+)"
     file_regex = r"([a-zA-Z0-9_]+\.[a-zA-Z0-9]+)"
     md5_regex = r"([a-fA-F0-9]{32})"
 
@@ -147,31 +148,37 @@ def get_missing_bios():
     missing = []
 
     if len(itens) > 0:
-        print(f'There are {MAGENTA}{len(itens)}{RESET} missing bios in your RECALBOX')
+        print(f"There are {MAGENTA}{len(itens)}{RESET} missing bios in your RECALBOX")
         for item in itens:
-
             item = str(item)
             name = re.search(file_regex, item)
             path = re.search(path_file_regex, item)
-            relative_path = path.group(0).replace('/recalbox/share/bios/','')
+            relative_path = path.group(0).replace("/recalbox/share/bios/", "")
             hashs = set(re.findall(md5_regex, item))
             missing.append(
-                {"name": name.group(0), "path": path.group(0), "relativePath": relative_path, "hashs": list(hashs)}
+                {
+                    "name": name.group(0),
+                    "path": path.group(0),
+                    "relativePath": relative_path,
+                    "hashs": list(hashs),
+                }
             )
     else:
-        print(f'{CYAN}No missing bios were found in your RECALBOX!{RESET}')
+        print(f"{CYAN}No missing bios were found in your RECALBOX!{RESET}")
         exit()
 
     return missing
 
 
 def get_possible_bios(folder_path):
-    
+
     bios = []
 
     for root, _, files in os.walk(folder_path):
         if len(files) > 0:
-            print(f'There are {MAGENTA}{len(files)}{RESET} possible bios to be analysed in your system')
+            print(
+                f"There are {MAGENTA}{len(files)}{RESET} possible bios to be analysed in your system"
+            )
             for filename in files:
                 file_path = os.path.join(root, filename)
                 with open(file_path, "rb") as f:
@@ -179,13 +186,13 @@ def get_possible_bios(folder_path):
                     file_md5 = hashlib.md5(file_data).hexdigest()
                     bios.append({"name": filename, "hash": file_md5.upper()})
         else:
-            print(f'{CYAN}No bios were found to analyse in your system!{RESET}')
+            print(f"{CYAN}No bios were found to analyse in your system!{RESET}")
             exit()
     return bios
 
 
 def validate_bios(bios, report):
-    
+
     script_path = f"{os.path.dirname(__file__)}/bios/"
     bios_found = 0
 
@@ -195,26 +202,33 @@ def validate_bios(bios, report):
             for sum in sums["hashs"]:
                 if sum == item["hash"]:
                     found = True
-                    if item['name'] != sums['name']:
+                    if item["name"] != sums["name"]:
                         try:
-                            os.rename(f"{script_path}{item['name']}",f"{script_path}{sums['name']}",)
+                            os.rename(
+                                f"{script_path}{item['name']}",
+                                f"{script_path}{sums['name']}",
+                            )
                         except Exception as e:
                             print(f"Error renaming {RED}{item['name']}{RESET}: {YELLOW}{e}{RESET}")
                             exit(1)
-                    if not sums['relativePath'] == '':
-                        
-                        directories = smb_connect('bios', '', 'ld')
+                    if not sums["relativePath"] == "":
+                        directories = smb_connect("bios", "", "ld")
                         dir_exist = False
-                        path = sums['relativePath'][:-1]
+                        path = sums["relativePath"][:-1]
                         for dir in directories:
                             if dir == path:
                                 dir_exist = True
                                 break
 
                         if not dir_exist:
-                            smb_connect('bios', sums['relativePath'], 'cd')
+                            smb_connect("bios", sums["relativePath"], "cd")
 
-                    smb_connect('bios', f"{sums['relativePath']}{sums['name']}", 'w', f"{script_path}{sums['name']}")
+                    smb_connect(
+                        "bios",
+                        f"{sums['relativePath']}{sums['name']}",
+                        "w",
+                        f"{script_path}{sums['name']}",
+                    )
                     bios_found += 1
                     print(f"{GREEN}FOUND:{RESET} {sums['name']}")
 
@@ -228,16 +242,20 @@ def validate_bios(bios, report):
 
     return bios_found
 
+
 def main():
 
     report = get_missing_bios()
-    bios = get_possible_bios('./bios')
+    bios = get_possible_bios("./bios")
     # Create a validation for duplicated md5sum of files
     validated_bios = validate_bios(bios, report)
-    print(f'Final result of {GREEN}bios found{RESET}/{BLUE}files analysed{RESET}: ({GREEN}{validated_bios}{RESET}/{BLUE}{len(bios)}{RESET})')
+    print(
+        f"Final result of {GREEN}bios found{RESET}/{BLUE}files analysed{RESET}: ({GREEN}{validated_bios}{RESET}/{BLUE}{len(bios)}{RESET})"
+    )
 
     if validated_bios > 0:
-        print(f'{MAGENTA}*** PLEASE SCAN THE BIOS ON YOUR RECALBOX ***{RESET}')
+        print(f"{MAGENTA}*** PLEASE SCAN THE BIOS ON YOUR RECALBOX ***{RESET}")
+
 
 if __name__ == "__main__":
     main()

@@ -53,7 +53,7 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 - **Commit message:** `build: add pytest, ruff and mypy as dev dependencies`
 
 ### 02.3 — Ruff configuration and first pass (SAST via `S` rules)
-- [ ] Done
+- [x] Done (2026-11-02: 34 findings → formatting + 4 safe fixes, verified AST-equivalent apart from import order, `json` removal, the redundant `"r"` mode and `return None`; 23 remaining findings across 11 rules ignored per file, each pointing to its 03.x step)
 - **What:**
   ```toml
   [tool.ruff]

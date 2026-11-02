@@ -68,8 +68,8 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
   class SmbSession:  # context manager: connects once, checks the share once, always closes
       def __init__(self, server: str, port: int, user: str, password: str, share: str) -> None: ...
       def __enter__(self) -> "SmbSession": ...
-      def __exit__(self, *exc: object) -> None: ...      # conn.close()
-      def read_text(self, path: str) -> str: ...          # io.BytesIO, decode("utf-8", errors="replace")
+      def __exit__(self, *exc: object) -> None: ...  # conn.close()
+      def read_text(self, path: str) -> str: ...  # io.BytesIO, decode("utf-8", errors="replace")
       def upload(self, local: Path, remote: str) -> None: ...  # `with open(local, "rb")`
       def list_dirs(self, path: str) -> list[str]: ...
       def make_dir(self, path: str) -> None: ...
@@ -163,7 +163,8 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
     straight from the original local path. **No local rename** any more; renaming was only a way to upload
     under the right name.
   - If several local files share an MD5, use the first (sorted by relative path) and list the others as
-    "duplicate, skipped". This resolves the TODO at line 235.
+    "duplicate, skipped". This resolves the comment in `main()` that reads "Create a validation for
+    duplicated md5sum of files" (line 235 at `d1ad68d`).
   - Count **distinct report entries satisfied**, not loop iterations. The final summary reads
     `entries satisfied / entries missing` and `files analysed`.
 - **Files:** `check_bios.py`, `tests/test_matching.py`
