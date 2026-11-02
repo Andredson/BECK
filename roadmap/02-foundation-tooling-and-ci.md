@@ -136,14 +136,16 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 - **Commit message:** `test(docs): check relative links and anchors in Markdown files`
 
 ### 02.7 — Editor and line-ending settings
-- [ ] Done
+- [x] Done (2026-11-02: all 37 tracked files already LF; TOML indent is 4 spaces, not 2, to match how uv writes `pyproject.toml`; image extensions added as binary for the optional 08.2 screenshots. The Windows checkout is exercised by the CI matrix in 02.10.)
 - **What:** `.editorconfig` (UTF-8, LF, final newline, 4-space Python, 2-space YAML/TOML/JSON, no trailing
   whitespace except in Markdown). `.gitattributes` with `* text=auto eol=lf`, and `*.bin *.rom *.zip *.img
   *.7z binary` as a safety net. Also extend `.gitignore` for `.venv/`, `__pycache__/`, `.pytest_cache/`,
   `.mypy_cache/`, `.ruff_cache/`, `.coverage`, `coverage.xml`, `dist/`.
 - **Files:** `.editorconfig`, `.gitattributes`, `.gitignore`
 - **Done when:** A fresh clone on Windows produces LF files and `git status` stays clean after running all tools.
-- **Verify:** `git add --renormalize . && git status --porcelain` lists only the intended files
+- **Verify:** Run all tools, then `git status --porcelain` lists only the intended files, and
+  `git ls-files --eol` shows `i/lf` and `attr/text=auto eol=lf` for every text file. (Read-only commands:
+  the earlier `git add --renormalize .` wrote to the index, which agents don't do, DEC-43.)
 - **Commit message:** `chore: add editorconfig, gitattributes and tool caches to gitignore`
 
 ### 02.8 — Repository hygiene guard

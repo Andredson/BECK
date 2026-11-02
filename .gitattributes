@@ -1,0 +1,17 @@
+# Normalize text files to LF in the repository and in every checkout (including Windows).
+* text=auto eol=lf
+
+# Safety net: never treat BIOS/ROM/archive files as text. They must not be committed at all
+# (see scripts/check_repo_hygiene.py, step 02.8), but if one slips in, git won't mangle it.
+*.bin binary
+*.rom binary
+*.img binary
+*.zip binary
+*.7z binary
+
+# Images (e.g. optional screenshots in docs/user-guide, step 08.2).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
