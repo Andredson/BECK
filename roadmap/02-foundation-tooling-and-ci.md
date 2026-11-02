@@ -1,6 +1,6 @@
 # Stage 02 — Foundation tooling & CI
 
-**Status:** Not started · **Depends on:** 01 · **Branch:** `stage/02-foundation` · **Effort:** M
+**Status:** In progress · **Depends on:** 01 · **Branch:** `stage/02-foundation` · **Effort:** M
 
 ## Goal
 Put the project on a modern, reproducible toolchain (uv, ruff, mypy, pytest) and a CI pipeline that gates every
@@ -19,7 +19,7 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 ## Steps
 
 ### 02.1 — Add `pyproject.toml` and `uv.lock` (D15)
-- [ ] Done
+- [x] Done (2026-11-02: uv 0.13.6, CPython 3.11.18; locked pysmb 1.2.15, PyYAML 6.0.3)
 - **What:** Create a **non-package** uv project for now. The package layout comes in stage 04.
   ```toml
   [project]

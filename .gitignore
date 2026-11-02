@@ -3,3 +3,6 @@ bios/*
 
 # But do not ignore the .keep file
 !bios/.keep
+
+# uv virtual environment (the full list of tool caches is added in step 02.7)
+.venv/
