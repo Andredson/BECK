@@ -122,7 +122,7 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 - **Commit message:** `test: add pytest configuration and import smoke test`
 
 ### 02.6 — Markdown link test (DEC-42)
-- [ ] Done
+- [x] Done (2026-11-02: 25 Markdown files checked; also covers reference-style links and links escaping the repo; unit tests for the slug rule and the checker; checked that it fails on a broken file name and a broken anchor in real files)
 - **What:** `tests/test_docs_links.py` (about 30–60 lines, standard library only):
   - Collect tracked `*.md` files (`git ls-files '*.md'`, falling back to a glob if git isn't available).
   - Skip fenced code blocks; find `[text](target)` links whose target is not `http(s):`, `mailto:` or `tel:`.
