@@ -178,7 +178,7 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 - **Commit message:** `build: generate requirements.txt from uv.lock`
 
 ### 02.10 — CI workflow: quality and test jobs
-- [ ] Done
+- [x] Done (2026-11-02: PR #2, all 13 checks green on the first run. Pins: checkout v7.0.1, setup-uv v10.3.0, upload-artifact v7.0.2, uv 0.13.2, each ≥ 14 days old (DEC-45). A per-Python `cache-suffix` was added after the first run showed cache-save races between matrix cells.)
 - **What:** `.github/workflows/ci.yml`, on `pull_request` and `push` to `main`:
   - Top level: `permissions: contents: read`; `concurrency` group per ref with `cancel-in-progress: true`.
   - Every third-party action pinned to a **full commit SHA**, with the version in a trailing comment

@@ -58,6 +58,7 @@ jobs:
         with:
           version: ${{ env.UV_VERSION }}
           enable-cache: true
+          cache-suffix: py${{ matrix.python }} # one cache per Python version; avoids save races
       - run: uv sync --locked
       - run: uv run pytest --cov --cov-report=xml
       - name: Upload coverage report
