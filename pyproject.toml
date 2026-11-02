@@ -43,6 +43,33 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM", "RET", "PTH", "RUF", "S"]
     "E741",   # ambiguous variable name `l`                          -> 03.12
 ]
 
+[tool.mypy]
+python_version = "3.11"
+strict = true
+# Steps 02.5 and 02.8 add "tests" and "scripts" here when those folders are created.
+files = ["check_bios.py"]
+
+[[tool.mypy.overrides]]
+# Legacy script: untyped functions allowed until stage 04 (step 04.14 removes this override).
+module = ["check_bios"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+# Errors inside code that stage 03 rewrites. Each code names the step that removes it;
+# 03.12 deletes whatever is left of this list.
+disable_error_code = [
+    "return",        # smb_connect is annotated `-> str` but returns str/None/list -> 03.3
+    "return-value",  # same                                                     -> 03.3
+    "no-any-return", # same                                                     -> 03.3
+    "assignment",    # variables `f`/`response` reused for different types       -> 03.3
+    "union-attr",    # `.group()` on a possibly-None regex match (defect D10)    -> 03.5
+]
+
+[[tool.mypy.overrides]]
+# pysmb ships no type hints; it is replaced by smbprotocol in step 04.9.
+module = ["smb.*", "nmb.*"]
+ignore_missing_imports = true
+
 [dependency-groups]
 dev = [
     "mypy>=2.4.0",

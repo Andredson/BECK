@@ -86,7 +86,9 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
 - **Files:** `check_bios.py`, `tests/fakes.py`, `tests/test_smb_session.py`
 - **Done when:** Tests prove that a full run opens exactly one connection and closes it; that reading the report
   creates no file in the working directory (`monkeypatch.chdir(tmp_path)`, then assert the directory is still
-  empty); and that the local file can be deleted right after `upload` on Windows CI.
+  empty); and that the local file can be deleted right after `upload` on Windows CI. The `return`,
+  `return-value`, `no-any-return` and `assignment` entries are removed from the mypy legacy override (added in
+  02.4), and `uv run mypy` still passes.
 - **Verify:** `uv run pytest tests/test_smb_session.py -q`
 - **Commit message:** `fix(smb): use one closed-on-exit SMB session and read reports in memory`
 
@@ -129,6 +131,7 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
   - The `/recalbox/share/bios/` prefix becomes a named constant (`RECALBOX_BIOS_ROOT`).
 - **Files:** `check_bios.py`, `tests/test_parser.py`
 - **Done when:** `parse_report` matches the `.expected.json` for every fixture, parametrized by fixture file.
+  The `union-attr` entry is removed from the mypy legacy override (added in 02.4), and `uv run mypy` still passes.
 - **Verify:** `uv run pytest tests/test_parser.py -q`
 - **Commit message:** `fix(parser): extract full file names and parse report blocks robustly`
 
@@ -218,9 +221,11 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
   - Replace bare `except:` with the specific exceptions (`KeyError`/`TypeError` for config, `OSError` for files).
   - Use `sys.exit()` only in `main()`.
   - Fix typos: credentials, doesn't, hashes, items.
-  - Remove every remaining per-file ruff ignore added in 02.3.
+  - Remove every remaining per-file ruff ignore added in 02.3, and every remaining mypy `disable_error_code`
+    entry added in 02.4.
 - **Files:** `check_bios.py`, `pyproject.toml`
-- **Done when:** No per-file ignores remain for `check_bios.py`, and the whole test suite passes.
+- **Done when:** No per-file ruff ignores and no mypy `disable_error_code` entries remain for `check_bios.py`,
+  and the whole test suite passes.
 - **Verify:** `uv run ruff check . && uv run mypy && uv run pytest -q`
 - **Commit message:** `refactor: clean up messages, exceptions and unused code`
 

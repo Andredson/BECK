@@ -77,7 +77,7 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 - **Commit message:** `style: adopt ruff formatting and lint rules including security checks`
 
 ### 02.4 — Mypy configuration
-- [ ] Done
+- [x] Done (2026-11-02: strict, `files = ["check_bios.py"]` for now, because `tests`/`scripts` don't exist yet and are added by 02.5/02.8. The 11 legacy errors (wrong `-> str` on `smb_connect`, reused variables, D10's `.group()` on `None`) are all in code that stage 03 rewrites, so they're disabled per error code with the step that removes each (03.3, 03.5; leftovers 03.12). No code changes.)
 - **What:**
   ```toml
   [tool.mypy]
@@ -116,7 +116,7 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
   ```
   `tests/test_smoke.py`: import `check_bios`, assert `main` is callable, and assert that importing performs
   no network or file I/O (monkeypatch `smb_connect` to raise if it gets called).
-- **Files:** `pyproject.toml`, `tests/__init__.py` (empty), `tests/test_smoke.py`
+- **Files:** `pyproject.toml` (also add `"tests"` to mypy `files`), `tests/__init__.py` (empty), `tests/test_smoke.py`
 - **Done when:** `uv run pytest` passes with coverage output.
 - **Verify:** `uv run pytest --cov`
 - **Commit message:** `test: add pytest configuration and import smoke test`
@@ -158,7 +158,8 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 
   This replaces what a pre-commit hook would do (DEC-28). It's the main guard against committing copyrighted
   BIOS files or credentials.
-- **Files:** `scripts/check_repo_hygiene.py`, `tests/test_repo_hygiene.py` (unit tests on fake file lists)
+- **Files:** `scripts/check_repo_hygiene.py`, `tests/test_repo_hygiene.py` (unit tests on fake file lists),
+  `pyproject.toml` (add `"scripts"` to mypy `files`)
 - **Done when:** The script passes on the repository today **except** for the tracked `config/config.yml`,
   which is allow-listed with a comment pointing to 03.2.
 - **Verify:** `uv run python scripts/check_repo_hygiene.py && uv run pytest tests/test_repo_hygiene.py -q`
