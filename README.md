@@ -36,8 +36,29 @@ uv sync
 
 ## Configuration
 
-Edit `config/config.yml`. `server` is your Recalbox's address (`recalbox.local` by default, or its IP address), and
-`port` is `445`. `user` and `passwd` can stay empty if your Recalbox allows guest access.
+Copy the example settings, then edit your copy:
+
+```sh
+cp config/config.example.yml config/config.yml
+```
+
+`server` is your Recalbox's address (`recalbox.local` by default, or its IP address), and `port` is `445`. `user`
+and `passwd` can stay empty if your Recalbox allows guest access. Git ignores `config/config.yml`, so your password
+is never committed.
+
+## Upgrading
+
+Older versions tracked `config/config.yml` in git. If you edited that file, `git pull` now refuses to update. Move
+your settings out of the way, pull, and put them back:
+
+```sh
+cp config/config.yml ../beck-config.yml
+git checkout -- config/config.yml
+git pull
+cp ../beck-config.yml config/config.yml
+```
+
+If you never edited it, `git pull` removes it; create it again as described in [Configuration](#configuration).
 
 ## Usage
 
@@ -58,7 +79,8 @@ Edit `config/config.yml`. `server` is your Recalbox's address (`recalbox.local` 
 ├─┬─bios
 │ └── *
 ├─┬─config
-│ └── config.yml
+│ ├── config.example.yml
+│ └── config.yml            (your copy, ignored by git)
 ├── requirements.txt
 ├── pyproject.toml
 ├── uv.lock

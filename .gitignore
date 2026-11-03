@@ -4,6 +4,9 @@ bios/*
 # But do not ignore the .keep file
 !bios/.keep
 
+# Your SMB settings, copied from config/config.example.yml: never commit them
+config/config.yml
+
 # uv virtual environment
 .venv/
 

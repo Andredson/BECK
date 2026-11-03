@@ -3,6 +3,7 @@ import os
 import re
 import socket
 import tempfile
+from typing import Any
 
 import yaml
 from smb.SMBConnection import SMBConnection
@@ -23,14 +24,22 @@ CYAN = "\033[36m"
 WHITE = "\033[37m"
 
 
-def load_configs(file):
-    with open(file) as l:
-        data = yaml.safe_load(l)
-        try:
-            configs = data["smb"]
-        except:
-            print(f"{RED}Error{RESET}: trying to get server name and credencials")
-            exit(1)
+def load_configs(file: str) -> dict[str, Any]:
+    try:
+        with open(file) as l:
+            data = yaml.safe_load(l)
+    except FileNotFoundError:
+        print(
+            f"{RED}Error{RESET}: {file} not found. "
+            "Copy config/config.example.yml to config/config.yml and fill it in."
+        )
+        exit(1)
+
+    try:
+        configs: dict[str, Any] = data["smb"]
+    except:
+        print(f"{RED}Error{RESET}: trying to get server name and credencials")
+        exit(1)
 
     return configs
 

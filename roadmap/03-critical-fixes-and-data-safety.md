@@ -46,7 +46,12 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
 - **Commit message:** `docs(readme): fix install and run commands, add legal notice`
 
 ### 03.2 — Stop tracking the real config (D14)
-- [ ] Done
+- [x] Done (2026-11-03: the owner's local `config/config.yml` is kept and now ignored. Checked that the
+  missing-config test fails on the old code (`FileNotFoundError`), and that the hygiene script fails if the file
+  is tracked again. The README's *Upgrading* steps were rehearsed in throwaway clones, both for a user who had
+  edited the file (the pull is refused, then settings survive and `git status` is clean) and for one who hadn't
+  (the pull removes it, then the example is copied). `load_configs` got type hints so the strictly typed test can
+  call it. AGENTS.md's repo-map row now describes the example file.)
 - **What:**
   - Add `config/config.example.yml` with the same keys and empty credentials, and **without** the meaningless
     `version: "3.8"` key.

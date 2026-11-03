@@ -20,7 +20,7 @@ CI (stage 02): lint, types, tests on Python 3.11–3.14, commit-message, secret 
 | Path | What it is |
 |---|---|
 | `check_bios.py` | The whole application today: SMB access, report parsing, hashing, matching, upload, output. |
-| `config/config.yml` | SMB settings (`user`, `passwd`, `server`, `port`). **Tracked by git until step 03.2.** Never commit real credentials. |
+| `config/config.example.yml` | Example SMB settings (`user`, `passwd`, `server`, `port`) with empty credentials. Users copy it to `config/config.yml`, which is **gitignored** (step 03.2); never track or commit the real file. |
 | `bios/` | Input folder for the user's BIOS files. Everything except `bios/.keep` is gitignored. |
 | `pyproject.toml`, `uv.lock`, `.python-version` | Project metadata, runtime and dev dependencies, tool settings (ruff, mypy, pytest, coverage, commitizen), the lockfile, and Python 3.11 for local work. Managed with uv; `exclude-newer` is the 14-day cooldown (DEC-45). Not an installable package until stage 04 (`package = false`). |
 | `requirements.txt` | Runtime dependencies for pip users, **generated** from `uv.lock` (see [Commands](#commands)). Don't edit it by hand; CI fails if it drifts. |
