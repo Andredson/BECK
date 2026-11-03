@@ -1,6 +1,6 @@
 # Stage 03 — Critical fixes & data safety
 
-**Status:** Not started · **Depends on:** 02 · **Branch:** `stage/03-critical-fixes` · **Effort:** M
+**Status:** In progress · **Depends on:** 02 · **Branch:** `stage/03-critical-fixes` · **Effort:** M
 
 ## Goal
 Stop BECK from losing user data, crashing, or uploading files under the wrong name, **without** redesigning it
@@ -25,7 +25,13 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
 ## Steps
 
 ### 03.1 — Fix README commands and add the legal notice (D13, D15)
-- [ ] Done
+- [x] Done (2026-11-03: in a fresh clone, the pip route (venv + `pip install -r requirements.txt`, Python 3.11)
+  and `uv sync` both worked; the run itself wasn't tried, because it needs a Recalbox and still deletes files.
+  Beyond the list below: a **warning** that this version deletes every file in `bios/` (matches after upload,
+  non-matches right away) until 03.10; a short *Configuration* section for `config/config.yml`; the report
+  prerequisite (`missing_bios_report.txt` on the `bios` share); and a Debian/Ubuntu hint, because
+  `python3 -m venv` fails without the `python3-venv` package, which happened on the owner's machine.
+  AGENTS.md's README row was updated to match.)
 - **What:** Minimal README corrections (the full rewrite is 08.1):
   - Install: `pip install -r requirements.txt`, or `uv sync` for uv users.
   - Run: `python check_bios.py` from the repository root (the file has no shebang; `./bios_bios.py` doesn't exist).
