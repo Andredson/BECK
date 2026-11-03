@@ -12,7 +12,7 @@ folders on the Recalbox over SMB.
 
 **Status (2026-11-03):** prototype. The application is a single script, `check_bios.py`, with known defects
 (D1–D16 in [roadmap/00-assessment.md](roadmap/00-assessment.md#defects)). The repository around it has tooling and
-CI (stage 02): lint, types, tests on three operating systems, commit-message, secret and dependency checks. It is being improved stage by stage following
+CI (stage 02): lint, types, tests on Python 3.11–3.14, commit-message, secret and dependency checks. It is being improved stage by stage following
 [roadmap/README.md](roadmap/README.md). The target is an installable CLI `beck` published on PyPI as `beck-bios`.
 
 ## Repository map
@@ -26,7 +26,7 @@ CI (stage 02): lint, types, tests on three operating systems, commit-message, se
 | `requirements.txt` | Runtime dependencies for pip users, **generated** from `uv.lock` (see [Commands](#commands)). Don't edit it by hand; CI fails if it drifts. |
 | `tests/` | pytest suite: an import smoke test that blocks file and network access, the Markdown link checker, and tests for the hygiene guard and the workflow pins. |
 | `scripts/check_repo_hygiene.py` | Fails if git tracks BIOS/ROM-like files, files over 1 MiB, or config files (each allowed exception has a reason). |
-| `.github/workflows/ci.yml` | CI on every PR and push to `main`: `quality`, the `tests` matrix (Linux, Windows, macOS × Python 3.11–3.14) summarized by `tests-passed`, `commits`, `secrets`, `sca`. |
+| `.github/workflows/ci.yml` | CI on every PR and push to `main`: `quality`, the `tests` matrix (Linux × Python 3.11–3.14; Windows and macOS removed, DEC-49) summarized by `tests-passed`, `commits`, `secrets`, `sca`. |
 | `.github/workflows/security.yml` | Weekly (Mondays 06:00 UTC): full-history secret scan and dependency scan. |
 | `.gitleaks.toml`, `.trivyignore` | gitleaks settings (fake `beck-test-*` values allowed only under `tests/`); accepted Trivy findings, each with a link and an expiry date. |
 | `.editorconfig`, `.gitattributes` | Editor settings; LF line endings in the repository. |
@@ -156,8 +156,9 @@ skill below, **read its whole `SKILL.md` before acting** and follow it.
 
 ## Testing
 
-- `uv run pytest` (pytest + pytest-cov). CI runs it on Linux, Windows and macOS with Python 3.11–3.14, and
-  uploads `coverage.xml` as a workflow artifact. Today the suite covers repository tooling and an import smoke
+- `uv run pytest` (pytest + pytest-cov). CI runs it on Linux with Python 3.11–3.14 (not on Windows or macOS,
+  DEC-49), and uploads `coverage.xml` as a workflow artifact. Write tests that don't depend on the platform
+  to catch Windows-only bugs, e.g. assert that a file handle is closed rather than relying on Windows locking. Today the suite covers repository tooling and an import smoke
   test, not the application's behavior.
 - From stage 03: every bug fix ships with a regression test. From stage 05: ≥ 90 % branch coverage on the
   package, plus integration tests against the Samba container (marked `integration`).

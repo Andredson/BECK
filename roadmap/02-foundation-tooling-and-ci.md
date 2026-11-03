@@ -14,7 +14,7 @@ later change with lint, format, type, test, commit-message, secret and dependenc
   safety nets.
 
 ## Decisions applied
-DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, DEC-38, DEC-39, DEC-42, DEC-43, DEC-48.
+DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, DEC-38, DEC-39, DEC-42, DEC-43, DEC-48, DEC-49.
 
 ## Steps
 
@@ -190,6 +190,8 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
     `uv run --python ${{ matrix.python }} pytest --cov --cov-report=xml`. Upload `coverage.xml` as a workflow
     artifact from one cell (ubuntu, 3.11). No third-party coverage service.
   - Each job's `run:` lines must be exactly the commands documented in AGENTS.md (DEC-25).
+  - **Changed on 2026-11-03 (DEC-49):** Windows and macOS were removed from the matrix before the stage was
+    merged; it now runs `ubuntu-latest` × Python 3.11–3.14.
 - **Files:** `.github/workflows/ci.yml`
 - **Done when:** The workflow is green on the stage branch's PR.
 - **Verify:** Locally: run every command listed in the workflow. On GitHub: the PR's checks are green.
@@ -432,7 +434,7 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 
 ## Stage acceptance criteria
 - `uv sync --locked && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest` passes
-  on a fresh clone, on all three operating systems.
+  on a fresh clone, on Linux with Python 3.11–3.14 (originally all three operating systems; changed by DEC-49).
 - CI blocks merges on lint, types, tests, commit format, secrets, dependency vulnerabilities and repo hygiene.
 - No new tool was added beyond the decision log.
 

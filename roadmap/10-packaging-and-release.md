@@ -78,11 +78,11 @@ flowchart LR
 - [ ] Done
 - **What:** Add a `package` job to `ci.yml`:
   - `uv build`, then `uvx twine@<pinned version> check --strict dist/*` (validates metadata and README rendering).
-  - A smoke install of the built wheel on Linux, Windows and macOS:
+  - A smoke install of the built wheel on Linux (DEC-49 removed Windows and macOS from CI):
     `uvx --from ./dist/<wheel> beck --version` and `beck --help`.
   - Add `package` to the required checks (human step).
 - **Files:** `.github/workflows/ci.yml`
-- **Done when:** The job is green on all three operating systems.
+- **Done when:** The job is green.
 - **Verify:** Locally: `uv build && uvx twine check --strict dist/* && uvx --from "$(ls dist/*.whl)" beck --version`
 - **Commit message:** `ci: build, check and smoke-install the wheel on every PR`
 

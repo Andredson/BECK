@@ -53,7 +53,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # Linux only (DEC-49, 2026-11-03). To bring Windows or macOS back, add windows-latest or macos-latest
+        # here (after a new DEC); tests-passed and the branch ruleset need no change.
+        os: [ubuntu-latest]
         python: ["3.11", "3.12", "3.13", "3.14"]
     env:
       UV_PYTHON: ${{ matrix.python }}

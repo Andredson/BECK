@@ -86,7 +86,8 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
 - **Files:** `check_bios.py`, `tests/fakes.py`, `tests/test_smb_session.py`
 - **Done when:** Tests prove that a full run opens exactly one connection and closes it; that reading the report
   creates no file in the working directory (`monkeypatch.chdir(tmp_path)`, then assert the directory is still
-  empty); and that the local file can be deleted right after `upload` on Windows CI. The `return`,
+  empty); and that `upload` closes the local file before returning (the fake records the file object it was
+  given, and the test asserts `closed` is true; CI doesn't run on Windows, DEC-49). The `return`,
   `return-value`, `no-any-return` and `assignment` entries are removed from the mypy legacy override (added in
   02.4), and `uv run mypy` still passes.
 - **Verify:** `uv run pytest tests/test_smb_session.py -q`
