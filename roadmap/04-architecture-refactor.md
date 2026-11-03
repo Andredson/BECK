@@ -264,10 +264,10 @@ flowchart LR
 - [ ] Done
 - **What:** Update AGENTS.md (repo map, architecture link, "the core is pure; adapters do I/O"). Re-score
   [00-assessment](00-assessment.md#re-scoring-history) and mark D3, D4, D11 and D16 fully fixed. Update the
-  [README](README.md#stages) status. Print the push and PR commands for the human:
+  [README](README.md#stages) status. Push the closing commit (DEC-47). If the stage PR doesn't exist yet, print
+  this command for the human (DEC-43):
 
   ```sh
-  git push -u origin stage/04-architecture
   gh pr create --base main --title "Stage 04: architecture refactor" --body "Closes roadmap stage 04."
   ```
 

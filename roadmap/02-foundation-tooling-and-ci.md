@@ -293,11 +293,10 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 - **What:** Replace AGENTS.md's *Commands* section with the real commands (`uv sync`, `uv run ruff check .`,
   `uv run ruff format .`, `uv run mypy`, `uv run pytest`, `uv run python scripts/check_repo_hygiene.py`) and
   the *Repo map* additions. Re-score [00-assessment](00-assessment.md#re-scoring-history): expect testing,
-  CI/CD and dependency management to rise. Update [README](README.md#stages) status. Print the push and PR
-  commands for the human:
+  CI/CD and dependency management to rise. Update [README](README.md#stages) status. Push the closing commit
+  (DEC-47). If the stage PR doesn't exist yet, print this command for the human (DEC-43):
 
   ```sh
-  git push -u origin stage/02-foundation
   gh pr create --base main --title "Stage 02: foundation tooling and CI" --body "Closes roadmap stage 02."
   ```
 

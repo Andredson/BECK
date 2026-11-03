@@ -250,11 +250,11 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
 ### 03.14 — Close the stage
 - [ ] Done
 - **What:** Update AGENTS.md (repo map: `tests/fakes.py`, fixtures; "the script no longer deletes files").
-  Re-score [00-assessment](00-assessment.md#re-scoring-history) and mark D1–D14 fixed (D16 interim). Update
-  the [README](README.md#stages) status. Print the push and PR commands for the human:
+  Re-score [00-assessment](00-assessment.md#re-scoring-history) and mark D1–D14 fixed (D16 interim). Update the
+  [README](README.md#stages) status. Push the closing commit (DEC-47). If the stage PR doesn't exist yet, print
+  this command for the human (DEC-43):
 
   ```sh
-  git push -u origin stage/03-critical-fixes
   gh pr create --base main --title "Stage 03: critical fixes and data safety" --body "Closes roadmap stage 03."
   ```
 

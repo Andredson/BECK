@@ -73,12 +73,13 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
   3. implement only that step;
   4. run its Verify plus the standard checks;
   5. tick the box;
-  6. commit with the step's message and no attribution trailer (DEC-46), then print `git push` as one copy-paste
-     line;
-  7. on the closing step, print the push and PR commands (human-only, DEC-43).
+  6. commit with the step's message and no attribution trailer (DEC-46), then push the current stage branch with
+     a plain `git push` (DEC-47);
+  7. on the closing step, if the stage PR doesn't exist yet, print the `gh pr create` command (human-only, DEC-43).
 
-  Include a short "common mistakes" list: doing two steps at once, adding an unlisted tool, pushing or creating
-  branches/PRs/tags, adding an attribution trailer to commits, touching a real Recalbox.
+  Include a short "common mistakes" list: doing two steps at once, adding an unlisted tool, force-pushing or
+  pushing to `main`, creating branches/PRs/tags, adding an attribution trailer to commits, touching a real
+  Recalbox.
 - **Files:** `.agents/skills/execute-roadmap-step/SKILL.md`, `AGENTS.md` (index row)
 - **Done when:** An agent given only "do the next roadmap step" follows it correctly in a dry exercise.
 - **Verify:** `uv run pytest tests/test_skills.py -q` (after 09.9; until then, a manual review)
@@ -182,11 +183,10 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
 ### 09.11 — Close the stage
 - [ ] Done
 - **What:** Re-score [00-assessment](00-assessment.md#re-scoring-history) (AI-agent readiness should be about 8;
-  the `cut-release` skill comes in 10.8). Update the [README](README.md#stages) status. Print the push and PR
-  commands for the human:
+  the `cut-release` skill comes in 10.8). Update the [README](README.md#stages) status. Push the closing commit
+  (DEC-47). If the stage PR doesn't exist yet, print this command for the human (DEC-43):
 
   ```sh
-  git push -u origin stage/09-agent-skills
   gh pr create --base main --title "Stage 09: Agent Skills and automation" --body "Closes roadmap stage 09."
   ```
 

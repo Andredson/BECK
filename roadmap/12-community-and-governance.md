@@ -118,11 +118,10 @@ DEC-12, DEC-14, DEC-16, DEC-31, DEC-38, DEC-39, DEC-43.
 ### 12.8 — Close the stage
 - [ ] Done
 - **What:** Update AGENTS.md (links to CONTRIBUTING and the AI policy). Re-score
-  [00-assessment](00-assessment.md#re-scoring-history). Update the [README](README.md#stages) status. Print the
-  push and PR commands for the human:
+  [00-assessment](00-assessment.md#re-scoring-history). Update the [README](README.md#stages) status. Push the
+  closing commit (DEC-47). If the stage PR doesn't exist yet, print this command for the human (DEC-43):
 
   ```sh
-  git push -u origin stage/12-community
   gh pr create --base main --title "Stage 12: community and governance" --body "Closes roadmap stage 12."
   ```
 

@@ -185,11 +185,10 @@ flowchart LR
 ### 10.12 — Close the stage
 - [ ] Done
 - **What:** Re-score [00-assessment](00-assessment.md#re-scoring-history); this is the "after roadmap" score
-  (target ≈ 8/10). Update the [README](README.md#stages) status. Print the push and PR commands for any
-  remaining docs changes:
+  (target ≈ 8/10). Update the [README](README.md#stages) status. Push the closing commit (DEC-47). If the stage PR
+  doesn't exist yet, print this command for the human (DEC-43):
 
   ```sh
-  git push -u origin stage/10-release
   gh pr create --base main --title "Stage 10: packaging and release" --body "Closes roadmap stage 10."
   ```
 

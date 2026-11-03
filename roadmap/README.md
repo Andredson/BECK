@@ -52,8 +52,9 @@ under that safety net → then the CLI, configuration, docs, skills, release, an
    stage's first step.
 
 7. When the last step of a stage is done, run the stage's **Closing step**: update AGENTS.md, re-score
-   [00-assessment.md](00-assessment.md), then the human pushes and opens one PR for the stage. The PR is merged
-   with a **merge commit** (DEC-39) after CI is green.
+   [00-assessment.md](00-assessment.md), then the agent pushes the closing commit (DEC-47). If the stage PR doesn't
+   exist yet, the agent prints the `gh pr create` command and the human opens it (DEC-43). The PR is merged with a
+   **merge commit** (DEC-39) after CI is green.
 
 ### Blocked steps
 If a step needs something that isn't available (e.g. a real Recalbox report, a human-only GitHub setting), leave the

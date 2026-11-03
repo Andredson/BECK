@@ -159,13 +159,13 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 ### 07.9 — Close the stage
 - [ ] Done
 - **What:** Update AGENTS.md: the config and credentials rules ("never print, log or commit passwords; use
-  `BECK_SMB_PASSWORD`"), and the security docs links. Remove the `config/config.yml` check from the hygiene
-  script if no longer relevant, or extend it to catch `config.toml` files containing a `password`. Re-score
+  `BECK_SMB_PASSWORD`"), and the security docs links. Remove the `config/config.yml` check from the hygiene script
+  if no longer relevant, or extend it to catch `config.toml` files containing a `password`. Re-score
   [00-assessment](00-assessment.md#re-scoring-history) and mark D9 and D14 fully fixed. Update the
-  [README](README.md#stages) status. Print the push and PR commands for the human:
+  [README](README.md#stages) status. Push the closing commit (DEC-47). If the stage PR doesn't exist yet, print
+  this command for the human (DEC-43):
 
   ```sh
-  git push -u origin stage/07-config-security
   gh pr create --base main --title "Stage 07: configuration and security" --body "Closes roadmap stage 07."
   ```
 
