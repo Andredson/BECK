@@ -216,7 +216,13 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 - **Commit message:** `ci: enforce Conventional Commits on pull requests with commitizen`
 
 ### 02.12 — CI: secret scanning with gitleaks (DEC-35)
-- [ ] Done
+- [x] Done (2026-11-02: gitleaks 8.30.1, the newest release (226 days old). The archive's SHA-256 is pinned in the
+  workflow, and matched the release's checksums file and GitHub's asset digest; a wrong hash stops the install.
+  The allow-list skips a finding only when the file is under `tests/` **and** the value starts with `beck-test-`.
+  Proven in a throwaway local repo: the default rules flag such a fake value; with the allow-list it passes in
+  `tests/` but still fails in `app.py`, and a real-looking value or a random AWS-style key in `tests/` fails
+  (exit 1). The test branch from *Done when* wasn't created, because branches are human-only. BECK's full history
+  is clean too, ahead of 02.14.)
 - **What:** Add a `secrets` job:
   - Download a **pinned gitleaks release** and verify its SHA-256 checksum before running it. Don't use a
     floating action tag: security tools' own actions have been hijacked through re-pointed tags before (for
