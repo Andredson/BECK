@@ -304,10 +304,12 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 - **Commit message:** `docs: add manual monthly maintenance routine`
 
 ### 02.16 — GitHub settings (human-only)
-- [ ] Done
-
-> BLOCKED (2026-11-03): waiting for the owner to apply the settings below; the command was handed over on
-> 2026-11-02. When they're applied, an agent checks them with the read-only *Verify* calls and ticks this step.
+- [x] Done (2026-11-03: applied by the owner with the command below. Checked read-only: only merge commits
+  allowed; ruleset `main` (id 26458015) active on the default branch with no bypass actors, blocking deletion
+  and force pushes, requiring a PR (merge method `merge`, 0 approvals) and the checks `quality`, `tests-passed`,
+  `commits`, `secrets` and `sca` from GitHub Actions (app 15368); workflow permissions read-only, and Actions
+  can't approve PRs (that part was already the default). Not tested: an actual PR with a failing check, which
+  would need a throwaway branch.)
 
 - **What:** The owner applies these in GitHub's web UI (agents can't and must not):
   - *Settings → General → Pull Requests:* allow **merge commits** only; disable squash and rebase merging (DEC-39).
