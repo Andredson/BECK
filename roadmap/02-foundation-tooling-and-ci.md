@@ -1,6 +1,6 @@
 # Stage 02 — Foundation tooling & CI
 
-**Status:** In progress · **Depends on:** 01 · **Branch:** `stage/02-foundation` · **Effort:** M
+**Status:** Done · **Depends on:** 01 · **Branch:** `stage/02-foundation` · **Effort:** M
 
 ## Goal
 Put the project on a modern, reproducible toolchain (uv, ruff, mypy, pytest) and a CI pipeline that gates every
@@ -407,7 +407,13 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 - **Commit message:** none (settings change). Note it in the PR description.
 
 ### 02.17 — Close the stage
-- [ ] Done
+- [x] Done (2026-11-03: AGENTS.md *Commands* now lists the uv commands, the one-line pre-commit check and the
+  optional security checks; repo map, code style, testing and PR sections updated. Re-scored 3 → 4 / 10 (sum 84).
+  Verify: in a fresh clone from GitHub, `uv sync`, `ruff format --check`, `ruff check`, `mypy`, `pytest` (52
+  passed), the hygiene guard, `uv lock --check` and the `requirements.txt` export all passed, and so did the
+  documented commitizen command. The gitleaks and Trivy commands are the ones CI runs, not re-run locally here.
+  PR #2 already exists, so no `gh pr create`; the owner marks it ready, merges it with a merge commit, and runs
+  the *Security* workflow on `main`.)
 - **What:** Replace AGENTS.md's *Commands* section with the real commands (`uv sync`, `uv run ruff check .`,
   `uv run ruff format .`, `uv run mypy`, `uv run pytest`, `uv run python scripts/check_repo_hygiene.py`) and
   the *Repo map* additions. Re-score [00-assessment](00-assessment.md#re-scoring-history): expect testing,
