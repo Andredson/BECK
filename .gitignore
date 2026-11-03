@@ -3,3 +3,22 @@ bios/*
 
 # But do not ignore the .keep file
 !bios/.keep
+
+# uv virtual environment
+.venv/
+
+# Python and tool caches
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Coverage output
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Build output (stage 10)
+dist/
+build/

@@ -78,11 +78,11 @@ flowchart LR
 - [ ] Done
 - **What:** Add a `package` job to `ci.yml`:
   - `uv build`, then `uvx twine@<pinned version> check --strict dist/*` (validates metadata and README rendering).
-  - A smoke install of the built wheel on Linux, Windows and macOS:
+  - A smoke install of the built wheel on Linux (DEC-49 removed Windows and macOS from CI):
     `uvx --from ./dist/<wheel> beck --version` and `beck --help`.
   - Add `package` to the required checks (human step).
 - **Files:** `.github/workflows/ci.yml`
-- **Done when:** The job is green on all three operating systems.
+- **Done when:** The job is green.
 - **Verify:** Locally: `uv build && uvx twine check --strict dist/* && uvx --from "$(ls dist/*.whl)" beck --version`
 - **Commit message:** `ci: build, check and smoke-install the wheel on every PR`
 
@@ -120,8 +120,8 @@ flowchart LR
 - [ ] Done
 - **What:** Complete `docs/releasing.md` with a numbered checklist, and mark who does each step:
   1. *(agent or owner)* Make sure the planned stages are closed and `main` is green.
-  2. *(agent)* Bump the version, regenerate `CHANGELOG.md` and `docs/cli-reference.md`, then **print** the
-     commit commands for `chore(release): X.Y.Z`.
+  2. *(agent)* Bump the version, regenerate `CHANGELOG.md` and `docs/cli-reference.md`, and commit
+     `chore(release): X.Y.Z` (DEC-46).
   3. *(owner)* Push, open the PR, merge with a merge commit.
   4. *(owner)* `git tag -a vX.Y.Z -m "beck-bios X.Y.Z" && git push origin vX.Y.Z`.
   5. *(owner)* Approve the `pypi` environment.
@@ -135,8 +135,8 @@ flowchart LR
 ### 10.8 — Skill: `cut-release`
 - [ ] Done
 - **What:** `.agents/skills/cut-release/SKILL.md` wrapping 10.7 for agents. It does the bump and the
-  regeneration, then **stops and prints** the git and tag commands (DEC-43). It never pushes, tags or approves
-  anything. Add it to the AGENTS.md skills index; `tests/test_skills.py` covers it automatically.
+  regeneration and commits them (DEC-46), then **stops and prints** the push and tag commands (DEC-43). It never
+  pushes, tags or approves anything. Add it to the AGENTS.md skills index; `tests/test_skills.py` covers it automatically.
 - **Files:** `.agents/skills/cut-release/SKILL.md`, `AGENTS.md`
 - **Done when:** The skill validation test passes with the new skill.
 - **Verify:** `uv run pytest tests/test_skills.py -q`
@@ -185,11 +185,10 @@ flowchart LR
 ### 10.12 — Close the stage
 - [ ] Done
 - **What:** Re-score [00-assessment](00-assessment.md#re-scoring-history); this is the "after roadmap" score
-  (target ≈ 8/10). Update the [README](README.md#stages) status. Print the push and PR commands for any
-  remaining docs changes:
+  (target ≈ 8/10). Update the [README](README.md#stages) status. Push the closing commit (DEC-47). If the stage PR
+  doesn't exist yet, print this command for the human (DEC-43):
 
   ```sh
-  git push -u origin stage/10-release
   gh pr create --base main --title "Stage 10: packaging and release" --body "Closes roadmap stage 10."
   ```
 

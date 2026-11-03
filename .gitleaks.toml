@@ -1,0 +1,16 @@
+# gitleaks configuration (DEC-35). CI runs `gitleaks git` with this file; see .github/workflows/ci.yml.
+title = "BECK"
+
+# Keep every built-in rule; this file only adds the narrow allow-list below.
+[extend]
+useDefault = true
+
+# Fake credentials used by tests, e.g. the Samba test container's `beck-test-password` (step 05.4).
+# A finding is skipped only when BOTH conditions hold: the file is under tests/ AND the secret starts with
+# `beck-test-`. Anything else, including a real-looking value in tests/, still fails the scan.
+[[allowlists]]
+description = "Obviously fake test credentials (AGENTS.md: fake values must look fake)"
+condition = "AND"
+paths = ['''^tests/''']
+regexTarget = "secret"
+regexes = ['''^beck-test-[A-Za-z0-9-]+$''']

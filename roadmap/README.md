@@ -13,7 +13,7 @@ executed **one step at a time**, by a human or an AI agent, in the order below. 
 |---|---|---|---|---|---|
 | 00 | [Assessment](00-assessment.md) | — | — | — | Done (baseline 2026-11-02) |
 | 01 | [Agent-ready repository](01-agent-ready-repo.md) | — | `stage/01-agent-ready-repo` | S | Done (2026-11-02) |
-| 02 | [Foundation tooling & CI](02-foundation-tooling-and-ci.md) | 01 | `stage/02-foundation` | M | Not started |
+| 02 | [Foundation tooling & CI](02-foundation-tooling-and-ci.md) | 01 | `stage/02-foundation` | M | Done (2026-11-03) |
 | 03 | [Critical fixes & data safety](03-critical-fixes-and-data-safety.md) | 02 | `stage/03-critical-fixes` | M | Not started |
 | 04 | [Architecture refactor](04-architecture-refactor.md) | 03 | `stage/04-architecture` | L | Not started |
 | 05 | [Testing hardening](05-testing-hardening.md) | 04 | `stage/05-testing` | M | Not started |
@@ -38,18 +38,23 @@ under that safety net → then the CLI, configuration, docs, skills, release, an
 4. Run the step's **Verify** command(s) and make sure they pass. When CI exists (stage 02+), also run the
    standard checks listed in [AGENTS.md](../AGENTS.md).
 5. Tick the box (`- [x] Done`) in the same change, and update the stage's **Status** line.
-6. Commit with the step's **Commit message** (Conventional Commits, DEC-14). Per **DEC-43**, an AI agent never
-   runs `git commit`, `git push`, creates branches, or opens PRs. It prints the exact commands and the human runs them:
+6. Commit with the step's **Commit message** (Conventional Commits, DEC-14). Per **DEC-46**, an AI agent may
+   stage and commit itself, with **no** `Co-Authored-By` or other attribution trailer:
 
    ```sh
-   git switch -c stage/NN-slug           # first step of a stage only
    git add <files touched by the step>
    git commit -m "<commit message from the step>"
    ```
 
+   Then, per **DEC-47**, the agent pushes the current stage branch with a plain `git push`: never `--force`,
+   never to `main`, never tags. Creating branches, tagging, and opening or merging PRs stay human-only (DEC-43).
+   The agent prints those commands as one copy-paste line, e.g. `git switch -c stage/NN-slug` before a
+   stage's first step.
+
 7. When the last step of a stage is done, run the stage's **Closing step**: update AGENTS.md, re-score
-   [00-assessment.md](00-assessment.md), then the human pushes and opens one PR for the stage. The PR is merged
-   with a **merge commit** (DEC-39) after CI is green.
+   [00-assessment.md](00-assessment.md), then the agent pushes the closing commit (DEC-47). If the stage PR doesn't
+   exist yet, the agent prints the `gh pr create` command and the human opens it (DEC-43). The PR is merged with a
+   **merge commit** (DEC-39) after CI is green.
 
 ### Blocked steps
 If a step needs something that isn't available (e.g. a real Recalbox report, a human-only GitHub setting), leave the
@@ -110,6 +115,8 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-22 | Skills live in `.agents/skills/<name>/SKILL.md` (agentskills.io format, spec fields only) and are indexed in AGENTS.md. No vendor folders or symlinks. |
 | DEC-23 | `--json` output carries `schema_version`, is described by a JSON Schema file, and is checked by contract tests; exit codes 0–5 are documented. `jsonschema` is a dev-only dependency. |
 | DEC-43 | Agents never commit, push, create branches, push tags or open PRs. They print the exact `git` / `gh` commands for the human to run. |
+| DEC-46 | **Supersedes the commit part of DEC-43.** Agents may stage (`git add`, `git rm --cached`) and run `git commit` with the step's message, never adding a `Co-Authored-By` or other attribution trailer. Pushing, creating or switching branches, tags, PRs, merges and releases stay human-only; agents hand those over as one copy-paste line. *(2026-11-02, before step 02.8)* |
+| DEC-47 | **Supersedes the push part of DEC-43.** After committing a step, agents may push the **current stage branch** with a plain `git push`: never `--force` / `--force-with-lease`, never directly to `main`, never tags. Creating branches, PRs, merges, tags and releases stay human-only. *(2026-11-02, before step 02.10)* |
 | DEC-44 | The agent support matrix (`docs/agents.md`) covers only agents the owner actually uses (2026-11-02: Claude Code, opencode). Other agents are added when a contributor tests one. *(2026-11-02, step 01.3)* |
 
 ### Tooling
@@ -129,6 +136,8 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-36 | No extra test tools: pytest + pytest-cov + Samba container only (no hypothesis, snapshot libraries, or mutation testing). |
 | DEC-40 | The Samba test server is built from our own minimal Dockerfile (pinned Debian-slim + `samba`, Recalbox-like `smb.conf`). |
 | DEC-42 | Docs link check: a small pytest test that resolves relative links and anchors between repository Markdown files. |
+| DEC-45 | Dependency cooldown: `[tool.uv] exclude-newer = "14 days"`, so uv only resolves releases uploaded at least 14 days ago, for runtime and dev dependencies. Urgent fixes use a per-package `exclude-newer-package` override with a recorded reason. *(2026-11-02, step 02.2)* |
+| DEC-49 | **Supersedes the operating-system part of DEC-08.** CI runs on Linux only (`ubuntu-latest` × Python 3.11–3.14); Windows and macOS are removed from the test matrix, and later CI jobs (such as the stage 10 wheel smoke install) are Linux-only too. DEC-08's Python versions stand. *(2026-11-03, before merging stage 02)* |
 
 ### CI/CD, security, and release
 
@@ -143,6 +152,7 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-37 | Release supply chain: PyPI attestations (from trusted publishing) + an SBOM generated by Trivy, attached to each GitHub Release. |
 | DEC-38 | Conventional Commits are checked in CI with commitizen (`uvx --from commitizen cz check …`). |
 | DEC-41 | Release pre-flight: `uvx twine check dist/*` + TestPyPI rehearsal (release-candidate tags go to TestPyPI). |
+| DEC-48 | Trivy is **kept** after reviewing its March 2026 supply-chain compromise (GHSA-69fq-xp46-6x23): install only a release binary that is at least 14 days old, from an immutable GitHub release, verified against a pinned SHA-256; never use `aquasecurity/trivy-action` or `setup-trivy`. Accepted findings go in `.trivyignore` with a link and an expiry date. *(2026-11-02, step 02.13)* |
 
 ### Process and documentation
 

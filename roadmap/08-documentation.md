@@ -114,10 +114,10 @@ DEC-13, DEC-20, DEC-30, DEC-42, DEC-43.
 - [ ] Done
 - **What:** Update AGENTS.md: docs map, "regenerate the CLI reference and changelog when you change flags or
   release". Re-score [00-assessment](00-assessment.md#re-scoring-history) and mark D13 fully fixed. Update the
-  [README](README.md#stages) status. Print the push and PR commands for the human:
+  [README](README.md#stages) status. Push the closing commit (DEC-47). If the stage PR doesn't exist yet, print
+  this command for the human (DEC-43):
 
   ```sh
-  git push -u origin stage/08-docs
   gh pr create --base main --title "Stage 08: documentation" --body "Closes roadmap stage 08."
   ```
 

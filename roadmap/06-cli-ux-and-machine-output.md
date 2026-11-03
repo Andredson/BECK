@@ -207,10 +207,10 @@ beck config  init | show | path                     # added in stage 07
 - [ ] Done
 - **What:** Update the README usage section briefly (the full rewrite is 08.1). Re-score
   [00-assessment](00-assessment.md#re-scoring-history): UX and AI-readiness should rise. Update the
-  [README](README.md#stages) status. Print the push and PR commands for the human:
+  [README](README.md#stages) status. Push the closing commit (DEC-47). If the stage PR doesn't exist yet, print
+  this command for the human (DEC-43):
 
   ```sh
-  git push -u origin stage/06-cli
   gh pr create --base main --title "Stage 06: CLI, UX and machine-readable output" --body "Closes roadmap stage 06."
   ```
 

@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-11-02
 - **Decisions covered:** DEC-07, DEC-08, DEC-17, DEC-18, DEC-19, DEC-24, DEC-26, DEC-27, DEC-28, DEC-29, DEC-36,
-  DEC-40, DEC-42
+  DEC-40, DEC-42, DEC-45, DEC-49
 
 ## Context
 At baseline the project had no tooling: no lockfile, tests, linters or packaging. The owner asked that every
@@ -18,6 +18,8 @@ dependencies**, even where a tool was recommended.
   is generated from the lockfile until 1.0 (step 02.9).
 
 ## DEC-08 — Python ≥ 3.11
+- **Status:** The operating-system part is superseded by [DEC-49](#dec-49--ci-on-linux-only); the Python
+  versions stand.
 - **Decision:** Support Python 3.11 and newer. The CI matrix is 3.11–3.14 on Linux, Windows and macOS.
 - **Alternatives considered:** *3.12+* (drops some older distributions) and *keep 3.10+*: not chosen; 3.10 reached
   end-of-life in October 2026.
@@ -101,3 +103,38 @@ dependencies**, even where a tool was recommended.
   *no link checking*: not chosen.
 - **Consequences:** External URLs aren't checked. The test (step 02.6) runs in the normal suite and covers the
   roadmap's many cross-links.
+
+## DEC-45 — 14-day dependency cooldown
+- **Date:** 2026-11-02 (step 02.2)
+- **Context:** When the dev dependencies were first added, 6 of the 20 locked packages had been published less
+  than 14 days earlier (types-PyYAML 3 days; mypy 5; pyasn1, pytest and ruff 6; coverage 11). Malicious releases
+  on package indexes are usually detected and yanked within days. With no update bot (DEC-29), a cooldown is a
+  cheap guard that needs no new tool.
+- **Decision:** `exclude-newer = "14 days"` in `[tool.uv]`. Every resolution, local or in CI, ignores
+  distributions uploaded in the last 14 days. uv records the rolling span (`exclude-newer-span = "P14D"`) in
+  `uv.lock`, so `uv lock --check` stays stable. An urgent security fix can bypass the cooldown for one package
+  with `exclude-newer-package`; the reason is recorded in the commit and in the monthly maintenance notes.
+- **Alternatives considered:**
+  - *A 7-day cooldown*: half the delay for fixes, while still catching most quickly-yanked releases. Not chosen.
+  - *No cooldown*, relying on Trivy and the monthly review: not chosen.
+- **Consequences:** Re-locking moved six packages to slightly older releases (e.g. pyasn1 0.6.5 → 0.6.4,
+  mypy 2.4.1 → 2.4.0). Dependency upgrades always lag at least 14 days behind upstream. The same rule should
+  guide manual pins elsewhere (GitHub Action SHAs, gitleaks, Trivy and commitizen versions): pick releases at
+  least 14 days old.
+
+## DEC-49 — CI on Linux only
+- **Date:** 2026-11-03 (before merging stage 02). Supersedes the operating-system part of
+  [DEC-08](#dec-08--python--311).
+- **Context:** The closing commit of stage 02 couldn't be merged. GitHub found no hosted macOS runner for one matrix
+  cell, `tests (macos-latest, py3.11)`, in three attempts of about 15 minutes each, while it was showing notices
+  about macOS arm64 capacity. No step ever ran, and the same cell had passed on the five previous commits. The owner
+  then asked to disable the macOS and Windows checks. No reason was given for dropping Windows.
+- **Decision:** The test matrix runs on `ubuntu-latest` only, for Python 3.11–3.14. CI jobs added later follow the
+  same rule. DEC-08's Python versions are unchanged.
+- **Alternatives considered:** None were offered; this was the owner's instruction. Waiting and re-running the cell,
+  or revisiting the macOS runner choice if the problem recurred, had been mentioned just before.
+- **Consequences:** CI is faster and no longer depends on macOS runner capacity. CI no longer catches bugs that only
+  appear on Windows or macOS, such as D7 (a file still open when it's deleted fails on Windows): step 03.3 tests D7
+  by asserting that the file is closed, and the portability score can't rise on CI evidence alone. The stage 10
+  wheel smoke install runs on Linux only. To bring a platform back, add it to the `os` list in `ci.yml` and record
+  a new DEC; `tests-passed` and the branch ruleset need no change.

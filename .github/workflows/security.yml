@@ -1,0 +1,84 @@
+# Weekly security scan (step 02.14). There's no update bot (DEC-29), so this is the early warning for newly
+# disclosed vulnerabilities in dependencies that haven't changed, and the full-history secret scan.
+# Same commands and pins as the `secrets` and `sca` jobs in ci.yml; tests/test_workflow_pins.py keeps the
+# pins identical. GitHub disables scheduled workflows after 60 days without repository activity; re-enable it
+# under Actions → Security if that happens.
+name: Security
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch:
+  pull_request:
+    paths: [.github/workflows/security.yml] # test changes to this file before they reach main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_VERSION: "0.13.2" # newest uv release at least 14 days old when pinned (2026-11-02)
+  GITLEAKS_VERSION: "8.30.1" # newest gitleaks release at least 14 days old when pinned (2026-11-02)
+  # SHA-256 of gitleaks_8.30.1_linux_x64.tar.gz; matches the release's checksums file and GitHub's asset digest.
+  GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+  TRIVY_VERSION: "0.76.0" # newest Trivy release at least 14 days old when pinned (2026-11-02); immutable release
+  # SHA-256 of trivy_0.76.0_Linux-64bit.tar.gz; matches the release's checksums file and GitHub's asset digest.
+  TRIVY_SHA256: "e24b1c51293c1b15e4ba8d45bbc7891ba053f90278ec2698f3562c993e145fe7"
+
+jobs:
+  secrets-history:
+    name: secrets (full history)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # every commit on every branch fetched, so the whole history is scanned
+      - name: Install gitleaks (pinned release, SHA-256 verified)
+        run: |
+          curl -sSfL --retry 3 -o "$RUNNER_TEMP/gitleaks.tar.gz" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  $RUNNER_TEMP/gitleaks.tar.gz" | sha256sum --check --strict
+          mkdir -p "$RUNNER_TEMP/bin"
+          tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$RUNNER_TEMP/bin" gitleaks
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: Scan the full history for secrets
+        run: gitleaks git --config .gitleaks.toml --redact --no-banner --verbose .
+
+  sca:
+    name: sca (weekly)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: false
+      # The license scan reads license metadata from installed packages; lockfiles don't carry it.
+      - run: uv sync --locked --no-dev
+      # Never Trivy's own actions (GHSA-69fq-xp46-6x23; DEC-48).
+      - name: Install Trivy (pinned release, SHA-256 verified)
+        run: |
+          curl -sSfL --retry 3 -o "$RUNNER_TEMP/trivy.tar.gz" \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  $RUNNER_TEMP/trivy.tar.gz" | sha256sum --check --strict
+          mkdir -p "$RUNNER_TEMP/bin"
+          tar -xzf "$RUNNER_TEMP/trivy.tar.gz" -C "$RUNNER_TEMP/bin" trivy
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: Vulnerabilities (fail on fixable HIGH and CRITICAL)
+        run: >-
+          trivy fs --scanners vuln --include-dev-deps --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1
+          --show-suppressed --no-progress --skip-dirs .venv --skip-files requirements.txt .
+      - name: Licenses of runtime dependencies (report only)
+        if: ${{ !cancelled() }}
+        env:
+          VIRTUAL_ENV: ${{ github.workspace }}/.venv
+        run: >-
+          trivy fs --scanners license --exit-code 0 --no-progress --skip-dirs .venv --skip-files uv.lock .

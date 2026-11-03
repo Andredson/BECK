@@ -133,12 +133,12 @@ DEC-08, DEC-09, DEC-25, DEC-33, DEC-36, DEC-40.
 
 ### 05.9 — Close the stage
 - [ ] Done
-- **What:** Update AGENTS.md: testing section (unit vs integration, how to start the Samba container, the
-  "never real BIOS bytes" rule). Re-score [00-assessment](00-assessment.md#re-scoring-history). Update the
-  [README](README.md#stages) status. Print the push and PR commands for the human:
+- **What:** Update AGENTS.md: testing section (unit vs integration, how to start the Samba container, the "never
+  real BIOS bytes" rule). Re-score [00-assessment](00-assessment.md#re-scoring-history). Update the
+  [README](README.md#stages) status. Push the closing commit (DEC-47). If the stage PR doesn't exist yet, print
+  this command for the human (DEC-43):
 
   ```sh
-  git push -u origin stage/05-testing
   gh pr create --base main --title "Stage 05: testing hardening" --body "Closes roadmap stage 05."
   ```
 

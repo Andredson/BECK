@@ -45,8 +45,8 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
   - Add `config/config.example.yml` with the same keys and empty credentials, and **without** the meaningless
     `version: "3.8"` key.
   - Add `config/config.yml` to `.gitignore`.
-  - Remove `config/config.yml` from the index **while keeping the local file**. That's a git write, so the agent
-    prints `git rm --cached config/config.yml` and the human runs it (DEC-43).
+  - Remove `config/config.yml` from the index **while keeping the local file**: `git rm --cached
+    config/config.yml`, staged as part of this step's commit (DEC-46).
   - `load_configs`: if `config/config.yml` doesn't exist, print "Copy config/config.example.yml to
     config/config.yml and fill it in" and exit 1. Catch `FileNotFoundError` explicitly, not with a bare except.
   - Remove the allow-list entry for `config/config.yml` from `scripts/check_repo_hygiene.py` (added in 02.8).
@@ -68,8 +68,8 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
   class SmbSession:  # context manager: connects once, checks the share once, always closes
       def __init__(self, server: str, port: int, user: str, password: str, share: str) -> None: ...
       def __enter__(self) -> "SmbSession": ...
-      def __exit__(self, *exc: object) -> None: ...      # conn.close()
-      def read_text(self, path: str) -> str: ...          # io.BytesIO, decode("utf-8", errors="replace")
+      def __exit__(self, *exc: object) -> None: ...  # conn.close()
+      def read_text(self, path: str) -> str: ...  # io.BytesIO, decode("utf-8", errors="replace")
       def upload(self, local: Path, remote: str) -> None: ...  # `with open(local, "rb")`
       def list_dirs(self, path: str) -> list[str]: ...
       def make_dir(self, path: str) -> None: ...
@@ -86,7 +86,10 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
 - **Files:** `check_bios.py`, `tests/fakes.py`, `tests/test_smb_session.py`
 - **Done when:** Tests prove that a full run opens exactly one connection and closes it; that reading the report
   creates no file in the working directory (`monkeypatch.chdir(tmp_path)`, then assert the directory is still
-  empty); and that the local file can be deleted right after `upload` on Windows CI.
+  empty); and that `upload` closes the local file before returning (the fake records the file object it was
+  given, and the test asserts `closed` is true; CI doesn't run on Windows, DEC-49). The `return`,
+  `return-value`, `no-any-return` and `assignment` entries are removed from the mypy legacy override (added in
+  02.4), and `uv run mypy` still passes.
 - **Verify:** `uv run pytest tests/test_smb_session.py -q`
 - **Commit message:** `fix(smb): use one closed-on-exit SMB session and read reports in memory`
 
@@ -129,6 +132,7 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
   - The `/recalbox/share/bios/` prefix becomes a named constant (`RECALBOX_BIOS_ROOT`).
 - **Files:** `check_bios.py`, `tests/test_parser.py`
 - **Done when:** `parse_report` matches the `.expected.json` for every fixture, parametrized by fixture file.
+  The `union-attr` entry is removed from the mypy legacy override (added in 02.4), and `uv run mypy` still passes.
 - **Verify:** `uv run pytest tests/test_parser.py -q`
 - **Commit message:** `fix(parser): extract full file names and parse report blocks robustly`
 
@@ -163,7 +167,8 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
     straight from the original local path. **No local rename** any more; renaming was only a way to upload
     under the right name.
   - If several local files share an MD5, use the first (sorted by relative path) and list the others as
-    "duplicate, skipped". This resolves the TODO at line 235.
+    "duplicate, skipped". This resolves the comment in `main()` that reads "Create a validation for
+    duplicated md5sum of files" (line 235 at `d1ad68d`).
   - Count **distinct report entries satisfied**, not loop iterations. The final summary reads
     `entries satisfied / entries missing` and `files analysed`.
 - **Files:** `check_bios.py`, `tests/test_matching.py`
@@ -217,9 +222,11 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
   - Replace bare `except:` with the specific exceptions (`KeyError`/`TypeError` for config, `OSError` for files).
   - Use `sys.exit()` only in `main()`.
   - Fix typos: credentials, doesn't, hashes, items.
-  - Remove every remaining per-file ruff ignore added in 02.3.
+  - Remove every remaining per-file ruff ignore added in 02.3, and every remaining mypy `disable_error_code`
+    entry added in 02.4.
 - **Files:** `check_bios.py`, `pyproject.toml`
-- **Done when:** No per-file ignores remain for `check_bios.py`, and the whole test suite passes.
+- **Done when:** No per-file ruff ignores and no mypy `disable_error_code` entries remain for `check_bios.py`,
+  and the whole test suite passes.
 - **Verify:** `uv run ruff check . && uv run mypy && uv run pytest -q`
 - **Commit message:** `refactor: clean up messages, exceptions and unused code`
 
@@ -244,11 +251,11 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
 ### 03.14 — Close the stage
 - [ ] Done
 - **What:** Update AGENTS.md (repo map: `tests/fakes.py`, fixtures; "the script no longer deletes files").
-  Re-score [00-assessment](00-assessment.md#re-scoring-history) and mark D1–D14 fixed (D16 interim). Update
-  the [README](README.md#stages) status. Print the push and PR commands for the human:
+  Re-score [00-assessment](00-assessment.md#re-scoring-history) and mark D1–D14 fixed (D16 interim). Update the
+  [README](README.md#stages) status. Push the closing commit (DEC-47). If the stage PR doesn't exist yet, print
+  this command for the human (DEC-43):
 
   ```sh
-  git push -u origin stage/03-critical-fixes
   gh pr create --base main --title "Stage 03: critical fixes and data safety" --body "Closes roadmap stage 03."
   ```
 
