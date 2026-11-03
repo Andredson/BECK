@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-02
-- **Decisions covered:** DEC-11, DEC-25, DEC-32, DEC-33, DEC-34, DEC-35, DEC-37, DEC-38, DEC-41
+- **Decisions covered:** DEC-11, DEC-25, DEC-32, DEC-33, DEC-34, DEC-35, DEC-37, DEC-38, DEC-41, DEC-48
 
 ## Context
 At baseline there was no CI, no security tooling and no release process. Two other decisions shape this area:
@@ -76,6 +76,29 @@ asked for tool options per security category (SAST, DAST, SCA, secret scanning) 
 - **Alternatives considered:** *twine check only* and *neither* (rely on PyPI rejecting uploads, though a
   published version can't be overwritten): not chosen.
 - **Consequences:** The first public version goes through an rc rehearsal (step 10.9).
+
+## DEC-48 — Trivy kept after its 2026 supply-chain compromise
+- **Date:** 2026-11-02 (step 02.13). Confirms [DEC-34](#dec-34--sca-trivy) with stricter install rules.
+- **Context:** DEC-34 was recorded without knowing about
+  [GHSA-69fq-xp46-6x23](https://github.com/aquasecurity/trivy/security/advisories/GHSA-69fq-xp46-6x23). On
+  2026-03-19, attackers used stolen credentials to publish a malicious Trivy v0.69.4 through the project's own
+  release pipeline (live about 3 hours), and re-pointed almost every tag of `aquasecurity/trivy-action` and
+  `aquasecurity/setup-trivy` to credential-stealing code. A signature check wouldn't have caught the binary,
+  because Trivy's own pipeline built and signed it. Since 2026-03-03, Trivy uses GitHub's immutable releases, so
+  a published release's files can't be replaced afterwards.
+- **Decision:** Keep Trivy. Install only a release binary that is at least 14 days old (DEC-45), from an
+  immutable release, verified against a SHA-256 pinned in the workflow. Never use Trivy's GitHub Actions.
+  Accepted findings go in `.trivyignore`, each with a comment, a link and an expiry date.
+- **Alternatives considered:**
+  - *pip-audit* (PyPA, Python-only, run with `uvx` at a pinned version): smaller attack surface, but no license
+    report and no SBOM, so DEC-37 would have needed a new decision. Not chosen.
+  - *OSV-Scanner* (Google, Go binary pinned by checksum; reads `uv.lock`): its releases aren't immutable, and it
+    produces no SBOM. Not chosen.
+- **Consequences:** With these rules, BECK wouldn't have been exposed: a release pulled after 3 hours never
+  reaches the cooldown, and no action tag is used. The remaining risk is a pipeline compromise that goes
+  unnoticed for more than 14 days. Trivy's vulnerability database is downloaded at run time and can't be pinned.
+  The first `.trivyignore` entries came from this step: four pyasn1 0.6.4 denial-of-service CVEs whose fix (0.6.5)
+  was still inside the cooldown, accepted by the owner until 2026-11-11.
 
 ## Shared practice: pinning
 All third-party GitHub Actions are pinned to full commit SHAs, and downloaded tools (gitleaks, Trivy) to

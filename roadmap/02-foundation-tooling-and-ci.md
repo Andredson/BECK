@@ -14,7 +14,7 @@ later change with lint, format, type, test, commit-message, secret and dependenc
   safety nets.
 
 ## Decisions applied
-DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, DEC-38, DEC-39, DEC-42, DEC-43.
+DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, DEC-38, DEC-39, DEC-42, DEC-43, DEC-48.
 
 ## Steps
 
@@ -238,7 +238,15 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 - **Commit message:** `ci: scan commits for secrets with gitleaks`
 
 ### 02.13 — CI: dependency scanning with Trivy (DEC-34)
-- [ ] Done
+- [x] Done (2026-11-02: Trivy 0.76.0, the newest release ≥ 14 days old, from an immutable release; its SHA-256 is
+  pinned and matched the checksums file and GitHub's asset digest. The owner reviewed Trivy's March 2026 compromise
+  and kept it with stricter install rules (DEC-48). Trivy reads `uv.lock` directly, so `requirements.txt` is
+  skipped in the vulnerability scan to avoid duplicates; dev dependencies are included. The single command
+  below was split in two: with `--severity HIGH,CRITICAL --exit-code 1`, a "restricted" license such as LGPL
+  would have **failed** the job. The license scan is a separate, report-only command. Lockfiles carry no
+  license data, so it reads `requirements.txt` plus the installed `.venv`. First run found four HIGH CVEs in
+  pyasn1 0.6.4, fixed in 0.6.5, which is still inside the cooldown; the owner chose to ignore them until
+  2026-11-11 in `.trivyignore`. An expired entry was tested and does fail the scan.)
 - **What:** Add an `sca` job:
   - Pinned Trivy release binary with checksum verification (same reasoning as 02.12).
   - `trivy fs --scanners vuln,license --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 .`
@@ -272,7 +280,8 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
   2. Regenerate `requirements.txt` (02.9).
   3. For each pinned GitHub Action, gitleaks, Trivy and commitizen: look up the latest release **that is at least
      14 days old**, verify its checksum or SHA, and update the pin and comment.
-  4. Review the last weekly security run (02.14).
+  4. Review the last weekly security run (02.14), and every `.trivyignore` entry: remove fixed or expired ones
+     (DEC-48).
   5. Review the Python versions in the CI matrix against python.org's end-of-life dates.
   6. Commit with `build(deps): monthly dependency refresh (YYYY-MM)`.
 - **Files:** `docs/maintenance.md`, `AGENTS.md` (link)

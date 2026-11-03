@@ -21,6 +21,9 @@ env:
   GITLEAKS_VERSION: "8.30.1" # newest gitleaks release at least 14 days old when pinned (2026-11-02)
   # SHA-256 of gitleaks_8.30.1_linux_x64.tar.gz; matches the release's checksums file and GitHub's asset digest.
   GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+  TRIVY_VERSION: "0.76.0" # newest Trivy release at least 14 days old when pinned (2026-11-02); immutable release
+  # SHA-256 of trivy_0.76.0_Linux-64bit.tar.gz; matches the release's checksums file and GitHub's asset digest.
+  TRIVY_SHA256: "e24b1c51293c1b15e4ba8d45bbc7891ba053f90278ec2698f3562c993e145fe7"
 
 jobs:
   quality:
@@ -126,3 +129,41 @@ jobs:
         run: >-
           gitleaks git --config .gitleaks.toml --redact --no-banner --verbose
           --log-opts="${BASE_SHA}..${HEAD_SHA}" .
+
+  sca:
+    name: sca
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: false # avoids racing the quality job's cache key
+      # The license scan reads license metadata from installed packages; lockfiles don't carry it.
+      - run: uv sync --locked --no-dev
+      # Release binary checked against a pinned SHA-256. Never Trivy's own actions: trivy-action and setup-trivy
+      # tags were hijacked in March 2026, and a malicious v0.69.4 binary was published (GHSA-69fq-xp46-6x23; DEC-48).
+      - name: Install Trivy (pinned release, SHA-256 verified)
+        run: |
+          curl -sSfL --retry 3 -o "$RUNNER_TEMP/trivy.tar.gz" \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  $RUNNER_TEMP/trivy.tar.gz" | sha256sum --check --strict
+          mkdir -p "$RUNNER_TEMP/bin"
+          tar -xzf "$RUNNER_TEMP/trivy.tar.gz" -C "$RUNNER_TEMP/bin" trivy
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      # uv.lock, dev dependencies included. requirements.txt is skipped: it's generated from uv.lock (02.9), so
+      # it would only repeat the same findings. Accepted findings live in .trivyignore, each with an expiry date.
+      - name: Vulnerabilities (fail on fixable HIGH and CRITICAL)
+        run: >-
+          trivy fs --scanners vuln --include-dev-deps --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1
+          --show-suppressed --no-progress --skip-dirs .venv --skip-files requirements.txt .
+      # Report only: a failing license policy needs an owner decision first (step 02.13).
+      - name: Licenses of runtime dependencies (report only)
+        if: ${{ !cancelled() }}
+        env:
+          VIRTUAL_ENV: ${{ github.workspace }}/.venv
+        run: >-
+          trivy fs --scanners license --exit-code 0 --no-progress --skip-dirs .venv --skip-files uv.lock .
