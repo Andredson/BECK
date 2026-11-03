@@ -261,7 +261,13 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 - **Commit message:** `ci: scan dependencies for vulnerabilities and licenses with Trivy`
 
 ### 02.14 — Weekly security workflow
-- [ ] Done
+- [x] Done (2026-11-02: Mondays 06:00 UTC plus `workflow_dispatch`, with the same commands and pins as the
+  `secrets` and `sca` jobs in `ci.yml`. GitHub only offers *Run workflow* once the file is on `main`, so the
+  workflow also runs on pull requests that change `security.yml`; that run on this PR is the pre-merge check.
+  The manual run from *Done when* moved to 02.17, after the merge. Its jobs are named `secrets (full history)`
+  and `sca (weekly)`, so they can't be mistaken for the required `secrets` and `sca` checks (02.16).
+  `tests/test_workflow_pins.py` fails if the pins in the two workflows drift apart, or if any third-party action
+  isn't pinned to a full commit SHA. Locally, the full-history scan covers all refs (`git log --all`) and is clean.)
 - **What:** `.github/workflows/security.yml` with `schedule` (e.g. Mondays 06:00 UTC) and
   `workflow_dispatch`. It runs a gitleaks **full-history** scan and the Trivy scan on `main`. Because there's
   no update bot (DEC-29), this weekly run is the early warning for newly disclosed vulnerabilities in
@@ -279,7 +285,8 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
      no longer needed.
   2. Regenerate `requirements.txt` (02.9).
   3. For each pinned GitHub Action, gitleaks, Trivy and commitizen: look up the latest release **that is at least
-     14 days old**, verify its checksum or SHA, and update the pin and comment.
+     14 days old**, verify its checksum or SHA, and update the pin and comment in **every** workflow
+     (`tests/test_workflow_pins.py` fails if they differ).
   4. Review the last weekly security run (02.14), and every `.trivyignore` entry: remove fixed or expired ones
      (DEC-48).
   5. Review the Python versions in the CI matrix against python.org's end-of-life dates.
@@ -316,7 +323,8 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
   ```
 
 - **Files:** `AGENTS.md`, `roadmap/00-assessment.md`, `roadmap/README.md`, this file
-- **Done when:** The PR is green and merged with a merge commit.
+- **Done when:** The PR is green and merged with a merge commit. After the merge, a manual *Security* run on
+  `main` is green (GitHub → Actions → *Security* → *Run workflow*; moved here from 02.14).
 - **Verify:** Every command in AGENTS.md's *Commands* section runs successfully from a fresh clone.
 - **Commit message:** `docs(roadmap): close stage 02 and update agent commands`
 
