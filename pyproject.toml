@@ -79,6 +79,11 @@ markers = ["integration: needs the Samba test container (stage 05)"]
 branch = true
 source = ["check_bios"]
 
+# Commit-message rule checked in CI by `cz check` (DEC-38). Commitizen is used only for checking:
+# versions come from `uv version --bump` (DEC-18) and the changelog from git-cliff (DEC-20).
+[tool.commitizen]
+name = "cz_conventional_commits"
+
 [dependency-groups]
 dev = [
     "mypy>=2.4.0",

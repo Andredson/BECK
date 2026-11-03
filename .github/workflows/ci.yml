@@ -17,6 +17,7 @@ concurrency:
 
 env:
   UV_VERSION: "0.13.2" # newest uv release at least 14 days old when pinned (2026-11-02)
+  COMMITIZEN_VERSION: "4.19.2" # newest commitizen release at least 14 days old when pinned (2026-11-02)
 
 jobs:
   quality:
@@ -68,3 +69,28 @@ jobs:
           name: coverage-xml
           path: coverage.xml
           if-no-files-found: error
+
+  commits:
+    name: commits
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # full history, so the PR's base commit is available
+          ref: ${{ github.event.pull_request.head.sha }} # the PR's own commits, not GitHub's merge ref
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: false # nothing worth caching; also avoids racing the quality job's cache key
+      - name: Commit messages follow Conventional Commits
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        # --exclude-newer applies the 14-day cooldown (DEC-45) to commitizen's own dependencies too:
+        # uvx ignores the project's [tool.uv] settings.
+        run: >-
+          uvx --exclude-newer "14 days" --from "commitizen==${COMMITIZEN_VERSION}"
+          cz check --rev-range "${BASE_SHA}..${HEAD_SHA}"

@@ -196,7 +196,12 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 - **Commit message:** `ci: add lint, type-check and cross-platform test workflow`
 
 ### 02.11 — CI: Conventional Commits check (DEC-38)
-- [ ] Done
+- [x] Done (2026-11-02: commitizen pinned to 4.19.2, the newest release ≥ 14 days old (DEC-45). `uvx` ignores the
+  project's `[tool.uv]` settings, so the job passes `--exclude-newer "14 days"` to apply the cooldown to
+  commitizen's dependencies too. Passing case: this PR's commits. Failing case: the same command in a throwaway
+  local repo failed (exit 14) on a `fixed stuff` commit. Correction to the reasoning below: commitizen's default
+  `allowed_prefixes` already skips `Merge …` messages, so checking out the head SHA isn't needed to avoid a
+  failure. It is kept so the job checks exactly the commits the author pushed.)
 - **What:** Add a `commits` job that runs only on `pull_request`:
   - Checkout with `fetch-depth: 0` and `ref: ${{ github.event.pull_request.head.sha }}` (not GitHub's
     synthetic merge ref, whose "Merge …" commit would fail the check).
