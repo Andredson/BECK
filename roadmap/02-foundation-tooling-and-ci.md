@@ -278,7 +278,13 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 - **Commit message:** `ci: add weekly scheduled secret and dependency scans`
 
 ### 02.15 — Manual maintenance routine (DEC-29)
-- [ ] Done
+- [x] Done (2026-11-02: `docs/maintenance.md`, linked from AGENTS.md's repo map. Its lookup and check commands
+  were run as written: lock preview, release ages on GitHub and PyPI, tag-to-SHA (it reproduced all three action
+  pins), the three-way hash check (it reproduced both binary pins), Trivy advisories, Python end-of-life dates,
+  and a per-package cooldown exception in a scratch copy. *Done when* predates DEC-46/47: the agent now
+  commits, and prints only the push and PR line, because DEC-47 covers stage branches and this routine uses
+  `deps/YYYY-MM`. The log's first row records the initial pins, the pyasn1 follow-up, and Python 3.15, which
+  isn't in the CI matrix yet.)
 - **What:** `docs/maintenance.md`, a monthly checklist that replaces an update bot:
   1. `uv lock --upgrade` (it respects the 14-day cooldown, DEC-45), then run all checks from AGENTS.md; read the
      changelogs of upgraded packages. List any active `exclude-newer-package` overrides, and remove those that are

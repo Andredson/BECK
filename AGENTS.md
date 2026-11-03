@@ -24,6 +24,7 @@ folders on the Recalbox over SMB.
 | `requirements.txt` | Runtime dependencies (pysmb, PyYAML). |
 | `roadmap/` | The improvement plan: [index and decision log](roadmap/README.md), [assessment](roadmap/00-assessment.md), one file per stage. |
 | `docs/agents.md` | Which AI agents were tested loading this file, and how to test another one. |
+| `docs/maintenance.md` | [Monthly maintenance routine](docs/maintenance.md): dependency upgrades, pin refreshes, security review (replaces an update bot, DEC-29). Follow it when asked to update dependencies, or when the weekly *Security* run or an expired `.trivyignore` entry fails. |
 | `.github/pull_request_template.md` | PR description template with the roadmap checklist. Fill it in when preparing a PR description for the human. |
 | `docs/adr/` | [Architecture Decision Records](docs/adr/README.md): the reasoning and rejected alternatives behind every DEC. Read the relevant ADR before proposing to change a decision. |
 | `README.md` | User-facing readme. Its install and run commands are **wrong** until step 03.1 (D13); use the [Commands](#commands-current-state) section below instead. |
