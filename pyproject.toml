@@ -30,7 +30,6 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM", "RET", "PTH", "RUF", "S"]
 # Legacy script: temporary ignores. Each one names the step in
 # roadmap/03-critical-fixes-and-data-safety.md that removes it; 03.12 removes whatever is left.
 "check_bios.py" = [
-    "SIM115", # open() without a context manager                     -> 03.3
     "S324",   # MD5 flagged as insecure; fix is usedforsecurity=False -> 03.6
     "SIM201", # `not x == ""` in validate_bios                       -> 03.8
     "PTH104", # os.rename                                            -> 03.11
@@ -57,10 +56,6 @@ disallow_untyped_calls = false
 # Errors inside code that stage 03 rewrites. Each code names the step that removes it;
 # 03.12 deletes whatever is left of this list.
 disable_error_code = [
-    "return",        # smb_connect is annotated `-> str` but returns str/None/list -> 03.3
-    "return-value",  # same                                                     -> 03.3
-    "no-any-return", # same                                                     -> 03.3
-    "assignment",    # variables `f`/`response` reused for different types       -> 03.3
     "union-attr",    # `.group()` on a possibly-None regex match (defect D10)    -> 03.5
 ]
 

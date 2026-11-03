@@ -1,8 +1,10 @@
 import hashlib
+import io
 import os
 import re
 import socket
-import tempfile
+import sys
+from pathlib import Path
 from typing import Any
 
 import yaml
@@ -44,114 +46,112 @@ def load_configs(file: str) -> dict[str, Any]:
     return configs
 
 
-def smb_connect(share: str, folder: str, operation: str, file=None) -> str:
-    configs = load_configs("config/config.yml")
+class BeckError(Exception):
+    """An error with a message for the user. Only main() prints it and exits."""
 
-    response = ""
-    server = configs["server"]
-    port = configs["port"]
-    username = configs["user"]
-    password = configs["passwd"]
-    hostname = socket.gethostbyname(socket.gethostname())
 
-    conn = SMBConnection(username, password, hostname, server, use_ntlm_v2=True)
-
+def client_name() -> str:
+    """The name BECK gives itself on the SMB connection: this computer's host name, or "BECK"."""
     try:
-        conn.connect(server, port)
-    except Exception as e:
-        print(f"{RED}Error connecting to SMB server {server}:{RESET} {e}")
-        exit(1)
+        return socket.gethostname() or "BECK"
+    except OSError:
+        return "BECK"
 
-    try:
-        shares = conn.listShares()
-    except Exception as e:
-        print(f"{RED}Error listing shares of the {server} SMB server:{RESET} {e}")
-        exit(1)
 
-    found = False
+class SmbSession:
+    """One SMB connection to one share for the whole run.
 
-    for s in shares:
-        if s.name == share:
-            found = True
+    It connects once, checks the share once and always closes. pysmb raises many unrelated
+    exception types, so each operation turns any failure into a BeckError.
+    """
 
-    if not found:
-        print(
-            f"The specified share {RED}({share}){RESET} dosent exist in the server {RED}{server}{RESET}."
+    def __init__(self, server: str, port: int, user: str, password: str, share: str) -> None:
+        self.server = server
+        self.port = port
+        self.user = user
+        self.password = password
+        self.share = share
+        self._conn: Any = None
+
+    def __enter__(self) -> "SmbSession":
+        # Port 445 is SMB over plain TCP; port 139 needs a NetBIOS session first (defect D16).
+        conn = SMBConnection(
+            self.user,
+            self.password,
+            client_name(),
+            self.server,
+            use_ntlm_v2=True,
+            is_direct_tcp=self.port == 445,
         )
-        exit(1)
+        try:
+            self._open(conn)
+        except BaseException:
+            conn.close()  # __exit__ doesn't run when __enter__ fails
+            raise
+        self._conn = conn
+        return self
 
-    match operation:
-        case "r":
-            try:
-                f = tempfile.NamedTemporaryFile()
-                conn.retrieveFile(share, f"{folder}{file}", f)
-                f.seek(0)
-                f = f.read()
-                report = f.decode("utf-8")
-                f = open("test.txt", "w")
-                f.write(report)
-                f.close()
-                f = open("test.txt")
-                report = f.read()
-                os.remove("test.txt")
-                response = report
+    def __exit__(self, *exc: object) -> None:
+        self._conn.close()
 
-            except Exception as e:
-                print(f"Error reading {RED}{file}{RESET}: {YELLOW}{e}{RESET}")
-                exit(1)
+    def _open(self, conn: Any) -> None:
+        try:
+            logged_in = conn.connect(self.server, self.port)
+        except Exception as e:
+            raise BeckError(f"Error connecting to SMB server {self.server}: {e}") from e
+        if not logged_in:
+            raise BeckError(
+                f"SMB server {self.server} refused the login: check user and passwd in the config"
+            )
+        try:
+            shares = conn.listShares()
+        except Exception as e:
+            raise BeckError(f"Error listing the shares of SMB server {self.server}: {e}") from e
+        if not any(s.name == self.share for s in shares):
+            raise BeckError(f"The share {self.share} doesn't exist on SMB server {self.server}")
 
-            return response
+    def read_text(self, path: str) -> str:
+        """Read a remote text file into memory; no local or temporary file is written (D6)."""
+        buffer = io.BytesIO()
+        try:
+            self._conn.retrieveFile(self.share, path, buffer)
+        except Exception as e:
+            raise BeckError(f"Error reading {path} from share {self.share}: {e}") from e
+        return buffer.getvalue().decode("utf-8", errors="replace")
 
-        case "w":
-            try:
-                file_content = open(file, "rb")
-                conn.storeFile(share, folder, file_content)
-                os.remove(file)
+    def upload(self, local: Path, remote: str) -> None:
+        """Copy a local file to the share; the local file is closed before this returns (D7)."""
+        try:
+            with local.open("rb") as file:
+                self._conn.storeFile(self.share, remote, file)
+        except Exception as e:
+            raise BeckError(
+                f"Error uploading {local} to {remote} on share {self.share}: {e}"
+            ) from e
 
-            except Exception as e:
-                print(f"Error writing {RED}{file}{RESET}: {YELLOW}{e}{RESET}")
-                exit(1)
+    def list_dirs(self, path: str) -> list[str]:
+        """Names of the folders directly inside a remote folder ("" is the share root)."""
+        try:
+            entries = self._conn.listPath(self.share, path)
+        except Exception as e:
+            raise BeckError(f"Error listing folder {path!r} on share {self.share}: {e}") from e
+        return [e.filename for e in entries if e.isDirectory and e.filename not in (".", "..")]
 
-            return None
-
-        case "cd":
-            try:
-                conn.createDirectory(share, folder)
-
-            except Exception as e:
-                print(f"Error creating directory {RED}{file}{RESET}: {YELLOW}{e}{RESET}")
-                exit(1)
-
-        case "ld":
-            try:
-                folder_names = []
-                response = conn.listPath(share, folder)
-
-                for item in response:
-                    if item.isDirectory and item.filename not in [".", ".."]:
-                        folder_names.append(item.filename)
-
-                response = folder_names
-
-            except Exception as e:
-                print(f"Error creating directory {RED}{file}{RESET}: {YELLOW}{e}{RESET}")
-                exit(1)
-
-            return response
-
-        case _:
-            print(f"Invalid operation for function: {RED}smb_connect{RESET}")
-            exit(1)
+    def make_dir(self, path: str) -> None:
+        try:
+            self._conn.createDirectory(self.share, path)
+        except Exception as e:
+            raise BeckError(f"Error creating folder {path} on share {self.share}: {e}") from e
 
 
-def get_missing_bios():
+def get_missing_bios(session):
     missing_regex = r"(MISSING (O|R)(.*\n[^\n].*)+)"
     path_file_regex = r"(?<=Path: )\/(?:[^\/\s]+\/)+(?=[^\/\s]+)"
     # relative_path_file_regex = r"(?<=Path: \/recalbox\/share\/bios\/)(?:[^\/]+\/)+(?=[^\/]+)"
     file_regex = r"([a-zA-Z0-9_]+\.[a-zA-Z0-9]+)"
     md5_regex = r"([a-fA-F0-9]{32})"
 
-    report = smb_connect("bios", "", "r", "missing_bios_report.txt")
+    report = session.read_text("missing_bios_report.txt")
     itens = re.findall(missing_regex, report)
 
     missing = []
@@ -200,7 +200,7 @@ def get_possible_bios(folder_path):
     return bios
 
 
-def validate_bios(bios, report):
+def validate_bios(bios, report, session):
 
     script_path = f"{os.path.dirname(__file__)}/bios/"
     bios_found = 0
@@ -221,7 +221,7 @@ def validate_bios(bios, report):
                             print(f"Error renaming {RED}{item['name']}{RESET}: {YELLOW}{e}{RESET}")
                             exit(1)
                     if not sums["relativePath"] == "":
-                        directories = smb_connect("bios", "", "ld")
+                        directories = session.list_dirs("")
                         dir_exist = False
                         path = sums["relativePath"][:-1]
                         for dir in directories:
@@ -230,14 +230,15 @@ def validate_bios(bios, report):
                                 break
 
                         if not dir_exist:
-                            smb_connect("bios", sums["relativePath"], "cd")
+                            session.make_dir(sums["relativePath"])
 
-                    smb_connect(
-                        "bios",
-                        f"{sums['relativePath']}{sums['name']}",
-                        "w",
-                        f"{script_path}{sums['name']}",
-                    )
+                    local = Path(f"{script_path}{sums['name']}")
+                    session.upload(local, f"{sums['relativePath']}{sums['name']}")
+                    # Old behavior, kept until step 03.10: delete the local file after upload.
+                    try:
+                        local.unlink()
+                    except OSError as e:
+                        raise BeckError(f"Error deleting {local} after upload: {e}") from e
                     bios_found += 1
                     print(f"{GREEN}FOUND:{RESET} {sums['name']}")
 
@@ -252,12 +253,25 @@ def validate_bios(bios, report):
     return bios_found
 
 
-def main():
+def main() -> None:
+    configs = load_configs("config/config.yml")
 
-    report = get_missing_bios()
-    bios = get_possible_bios("./bios")
-    # Create a validation for duplicated md5sum of files
-    validated_bios = validate_bios(bios, report)
+    try:
+        with SmbSession(
+            server=configs["server"],
+            port=configs["port"],
+            user=configs["user"],
+            password=configs["passwd"],
+            share="bios",
+        ) as session:
+            report = get_missing_bios(session)
+            bios = get_possible_bios("./bios")
+            # Create a validation for duplicated md5sum of files
+            validated_bios = validate_bios(bios, report, session)
+    except BeckError as error:
+        print(f"{RED}Error{RESET}: {error}")
+        sys.exit(1)
+
     print(
         f"Final result of {GREEN}bios found{RESET}/{BLUE}files analysed{RESET}: ({GREEN}{validated_bios}{RESET}/{BLUE}{len(bios)}{RESET})"
     )

@@ -24,7 +24,7 @@ CI (stage 02): lint, types, tests on Python 3.11–3.14, commit-message, secret 
 | `bios/` | Input folder for the user's BIOS files. Everything except `bios/.keep` is gitignored. |
 | `pyproject.toml`, `uv.lock`, `.python-version` | Project metadata, runtime and dev dependencies, tool settings (ruff, mypy, pytest, coverage, commitizen), the lockfile, and Python 3.11 for local work. Managed with uv; `exclude-newer` is the 14-day cooldown (DEC-45). Not an installable package until stage 04 (`package = false`). |
 | `requirements.txt` | Runtime dependencies for pip users, **generated** from `uv.lock` (see [Commands](#commands)). Don't edit it by hand; CI fails if it drifts. |
-| `tests/` | pytest suite: an import smoke test that blocks file and network access, the Markdown link checker, and tests for the hygiene guard and the workflow pins. |
+| `tests/` | pytest suite: tests for `check_bios.py` (config, SMB session), an import smoke test that blocks file and network access, the Markdown link checker, and tests for the hygiene guard and the workflow pins. `tests/fakes.py` is the in-memory SMB server the application tests use. |
 | `scripts/check_repo_hygiene.py` | Fails if git tracks BIOS/ROM-like files, files over 1 MiB, or config files (each allowed exception has a reason). |
 | `.github/workflows/ci.yml` | CI on every PR and push to `main`: `quality`, the `tests` matrix (Linux × Python 3.11–3.14; Windows and macOS removed, DEC-49) summarized by `tests-passed`, `commits`, `secrets`, `sca`. |
 | `.github/workflows/security.yml` | Weekly (Mondays 06:00 UTC): full-history secret scan and dependency scan. |
@@ -158,8 +158,9 @@ skill below, **read its whole `SKILL.md` before acting** and follow it.
 
 - `uv run pytest` (pytest + pytest-cov). CI runs it on Linux with Python 3.11–3.14 (not on Windows or macOS,
   DEC-49), and uploads `coverage.xml` as a workflow artifact. Write tests that don't depend on the platform
-  to catch Windows-only bugs, e.g. assert that a file handle is closed rather than relying on Windows locking. Today the suite covers repository tooling and an import smoke
-  test, not the application's behavior.
+  to catch Windows-only bugs, e.g. assert that a file handle is closed rather than relying on Windows locking.
+- Application tests replace pysmb with the fake from `tests/fakes.py` (`install_fake_smb(monkeypatch)`, which also
+  fails any real socket connection) and work in `tmp_path`, never in the repository folder.
 - From stage 03: every bug fix ships with a regression test. From stage 05: ≥ 90 % branch coverage on the
   package, plus integration tests against the Samba container (marked `integration`).
 - Tests never touch the network (except the local Samba container) and never use real BIOS content.

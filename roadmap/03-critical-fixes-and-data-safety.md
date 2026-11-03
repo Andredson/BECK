@@ -72,7 +72,17 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
   (`!` marks the breaking change for existing users)
 
 ### 03.3 — SMB session seam: one connection, in-memory reads, closed handles (D6, D7, D11, D16)
-- [ ] Done
+- [x] Done (2026-11-03: 17 tests in `tests/test_smb_session.py`. Each fix was checked by breaking it on purpose
+  (file left open, report written to `./test.txt`, session never closed, no direct TCP); a test failed every time.
+  The old code makes 4 connections for one BIOS file, so the full-run test fails on it. Beyond the list below:
+  - `connect()`'s result is checked, so a refused login is a clear error instead of a later failure.
+  - The new methods' error messages are correct ("listing", the folder name, "doesn't"), so part of D12 is done.
+  - The `SIM115` ruff ignore was removed too (mapped to 03.3).
+  - `load_configs` and `main` got type hints, so the strictly typed tests can call them.
+  - The deletion after upload moved from the SMB code into `validate_bios`, unchanged until 03.10. With D7
+    fixed, it now also works on Windows, where the old code stopped with an error after the first upload.
+  - The test fixture runs every session test in `tmp_path`. AGENTS.md's `tests/` row and Testing section now
+    describe the fake.)
 - **What:** Replace the `smb_connect(share, folder, operation, file)` string switch with a small class in
   `check_bios.py`:
   ```python
