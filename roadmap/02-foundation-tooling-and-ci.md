@@ -305,15 +305,103 @@ DEC-07, DEC-08, DEC-14, DEC-25, DEC-27, DEC-28, DEC-29, DEC-32, DEC-34, DEC-35, 
 
 ### 02.16 — GitHub settings (human-only)
 - [ ] Done
+
+> BLOCKED (2026-11-03): waiting for the owner to apply the settings below; the command was handed over on
+> 2026-11-02. When they're applied, an agent checks them with the read-only *Verify* calls and ticks this step.
+
 - **What:** The owner applies these in GitHub's web UI (agents can't and must not):
   - *Settings → General → Pull Requests:* allow **merge commits** only; disable squash and rebase merging (DEC-39).
   - *Settings → Rules → Rulesets* (or *Branches*) for `main`: require a pull request; require the status checks
-    `quality`, `tests` (all matrix cells), `commits`, `secrets` and `sca`; block force pushes and deletion.
+    `quality`, `tests-passed`, `commits`, `secrets` and `sca`; block force pushes and deletion.
+    `tests-passed` replaces the 12 matrix-cell names: it's a CI job that passes only if every cell passed, so
+    matrix changes need no ruleset edit (owner's choice, 2026-11-02; added in commit `93858ed`).
   - *Settings → Actions → General:* workflow permissions **read-only** by default; don't allow Actions to
     create or approve pull requests.
+- **Command for the owner** (the same settings as the bullets above; run from the repository folder): turn off
+  squash and rebase merging, then create the ruleset.
+
+  ```sh
+  gh api --method PATCH repos/Andredson/BECK -F allow_merge_commit=true -F allow_squash_merge=false -F allow_rebase_merge=false --silent
+  gh api --method POST repos/Andredson/BECK/rulesets --input ruleset.json
+  ```
+
+  `ruleset.json` (no bypass actors; 0 approvals because the owner can't approve their own PR; branches needn't be
+  up to date before merging; `integration_id` 15368 is GitHub Actions, so only Actions can satisfy a check):
+
+  ```json
+  {
+    "name": "main",
+    "target": "branch",
+    "enforcement": "active",
+    "bypass_actors": [],
+    "conditions": {
+      "ref_name": {
+        "include": [
+          "~DEFAULT_BRANCH"
+        ],
+        "exclude": []
+      }
+    },
+    "rules": [
+      {
+        "type": "deletion"
+      },
+      {
+        "type": "non_fast_forward"
+      },
+      {
+        "type": "pull_request",
+        "parameters": {
+          "required_approving_review_count": 0,
+          "dismiss_stale_reviews_on_push": false,
+          "require_code_owner_review": false,
+          "require_last_push_approval": false,
+          "required_review_thread_resolution": false,
+          "allowed_merge_methods": [
+            "merge"
+          ]
+        }
+      },
+      {
+        "type": "required_status_checks",
+        "parameters": {
+          "strict_required_status_checks_policy": false,
+          "do_not_enforce_on_create": false,
+          "required_status_checks": [
+            {
+              "context": "quality",
+              "integration_id": 15368
+            },
+            {
+              "context": "tests-passed",
+              "integration_id": 15368
+            },
+            {
+              "context": "commits",
+              "integration_id": 15368
+            },
+            {
+              "context": "secrets",
+              "integration_id": 15368
+            },
+            {
+              "context": "sca",
+              "integration_id": 15368
+            }
+          ]
+        }
+      }
+    ]
+  }
+  ```
+
 - **Files:** none
 - **Done when:** A PR with a failing check can't be merged, and the merge button offers only "Create a merge commit".
-- **Verify:** Human check on the stage 02 PR.
+- **Verify:** Read-only, by an agent or the owner:
+  `gh api repos/Andredson/BECK --jq '{allow_merge_commit, allow_squash_merge, allow_rebase_merge}'` shows only
+  merge commits allowed, and `gh api repos/Andredson/BECK/rules/branches/main --jq '.[].type'` lists `deletion`,
+  `non_fast_forward`, `pull_request` and `required_status_checks`. Then the human looks at the stage 02 PR's
+  merge button.
 - **Commit message:** none (settings change). Note it in the PR description.
 
 ### 02.17 — Close the stage
