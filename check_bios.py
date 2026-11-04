@@ -205,7 +205,7 @@ def get_missing_bios(session: SmbSession) -> list[dict[str, Any]]:
         print(f"{CYAN}No missing bios were found in your RECALBOX!{RESET}")
         exit()
 
-    print(f"There are {MAGENTA}{len(missing)}{RESET} missing bios in your RECALBOX")
+    print(f"There are {MAGENTA}{count_targets(missing)}{RESET} missing bios in your RECALBOX")
     return missing
 
 
@@ -241,57 +241,75 @@ def get_possible_bios(folder_path: str) -> list[dict[str, str]]:
     return sorted(bios, key=lambda item: item["path"])
 
 
-def validate_bios(bios, report, session):
+def remote_target(entry: dict[str, Any]) -> str:
+    """Where a report entry's file goes on the share. Different entries can share one target."""
+    return f"{entry['relativePath']}{entry['name']}"
 
+
+def count_targets(report: list[dict[str, Any]]) -> int:
+    return len({remote_target(entry) for entry in report})
+
+
+def validate_bios(
+    bios: list[dict[str, str]], report: list[dict[str, Any]], session: SmbSession
+) -> int:
+    """Upload each matching local file to its targets; return how many targets were filled.
+
+    A file is uploaded straight from its own path, under each target's name. The first file (sorted
+    by path) wins: identical copies and later files for an already filled target are skipped.
+    """
     script_path = f"{os.path.dirname(__file__)}/bios/"
-    bios_found = 0
+    entries_by_md5: dict[str, list[dict[str, Any]]] = {}
+    for entry in report:
+        for md5 in entry["hashes"]:
+            entries_by_md5.setdefault(md5, []).append(entry)
 
-    for item in bios:
-        found = False
-        for sums in report:
-            for sum in sums["hashes"]:
-                if sum == item["hash"]:
-                    found = True
-                    if item["path"] != sums["name"]:
-                        try:
-                            os.rename(
-                                f"{script_path}{item['path']}",
-                                f"{script_path}{sums['name']}",
-                            )
-                        except Exception as e:
-                            print(f"Error renaming {RED}{item['path']}{RESET}: {YELLOW}{e}{RESET}")
-                            exit(1)
-                    if not sums["relativePath"] == "":
-                        directories = session.list_dirs("")
-                        dir_exist = False
-                        path = sums["relativePath"][:-1]
-                        for dir in directories:
-                            if dir == path:
-                                dir_exist = True
-                                break
+    used_md5s: dict[str, str] = {}
+    filled_targets: dict[str, str] = {}
 
-                        if not dir_exist:
-                            session.make_dir(sums["relativePath"])
+    for item in sorted(bios, key=lambda item: item["path"]):
+        md5 = item["hash"]
 
-                    local = Path(f"{script_path}{sums['name']}")
-                    session.upload(local, f"{sums['relativePath']}{sums['name']}")
-                    # Old behavior, kept until step 03.10: delete the local file after upload.
-                    try:
-                        local.unlink()
-                    except OSError as e:
-                        raise BeckError(f"Error deleting {local} after upload: {e}") from e
-                    bios_found += 1
-                    print(f"{GREEN}FOUND:{RESET} {sums['name']}")
-
-        if not found:
+        if md5 not in entries_by_md5:
             try:
                 os.remove(f"bios/{item['path']}")
                 print(f"File {YELLOW}{item['path']}{RESET} removed.")
             except:
                 print(f"Failed to remove the file: {RED}{item['path']}{RESET}")
                 exit(1)
+            continue
 
-    return bios_found
+        if md5 in used_md5s:
+            print(f"{YELLOW}Duplicate, skipped:{RESET} {item['path']} (same as {used_md5s[md5]})")
+            continue
+        used_md5s[md5] = item["path"]
+
+        local = Path(f"{script_path}{item['path']}")
+        uploaded = False
+        for entry in entries_by_md5[md5]:
+            target = remote_target(entry)
+            if target in filled_targets:
+                continue
+            if entry["relativePath"]:
+                directories = session.list_dirs("")
+                if entry["relativePath"][:-1] not in directories:
+                    session.make_dir(entry["relativePath"])
+            session.upload(local, target)
+            filled_targets[target] = item["path"]
+            uploaded = True
+            print(f"{GREEN}FOUND:{RESET} {entry['name']} -> {target}")
+
+        if not uploaded:
+            print(f"{YELLOW}Already filled, skipped:{RESET} {item['path']}")
+            continue
+
+        # Old behavior, kept until step 03.10: delete the local file after upload.
+        try:
+            local.unlink()
+        except OSError as e:
+            raise BeckError(f"Error deleting {local} after upload: {e}") from e
+
+    return len(filled_targets)
 
 
 def main() -> None:
@@ -307,14 +325,14 @@ def main() -> None:
         ) as session:
             report = get_missing_bios(session)
             bios = get_possible_bios("./bios")
-            # Create a validation for duplicated md5sum of files
             validated_bios = validate_bios(bios, report, session)
     except BeckError as error:
         print(f"{RED}Error{RESET}: {error}")
         sys.exit(1)
 
     print(
-        f"Final result of {GREEN}bios found{RESET}/{BLUE}files analysed{RESET}: ({GREEN}{validated_bios}{RESET}/{BLUE}{len(bios)}{RESET})"
+        f"Final result: {GREEN}{validated_bios}{RESET}/{BLUE}{count_targets(report)}{RESET} "
+        f"missing entries satisfied, {len(bios)} files analysed"
     )
 
     if validated_bios > 0:

@@ -45,7 +45,9 @@ def test_crlf_report_read_over_smb_keeps_every_entry(
     assert len(missing) == 238
     assert missing[0]["name"] == "kick39106.A1200"
     assert missing[0]["hashes"] == ["b7cc148386aa631136f510cd29e42fc3"]
-    assert "238" in capsys.readouterr().out
+    # 238 blocks, but some are the same file under several systems.
+    assert f"{check_bios.count_targets(missing)}" in capsys.readouterr().out
+    assert check_bios.count_targets(missing) == 232
 
 
 @pytest.mark.parametrize(

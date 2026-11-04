@@ -202,7 +202,12 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
 - **Commit message:** `fix(scanner): ignore hidden files and scan sub-folders without exiting early`
 
 ### 03.8 — One local file can satisfy many report entries (D3)
-- [ ] Done
+- [x] Done (2026-11-04: checked on the real report: an MD5 shared by `tos.img` and `st.img` uploads to both, and
+  `gexpress.pce`, listed under 3 systems, uploads once. Checked by breaking each rule on purpose. Beyond the list
+  below: **a target is filled once**, because `tos.img` accepts 65 MD5s and a second different file would overwrite
+  the first; the first file by path wins and the other is reported (remote overwrites are decided in 06.5). Counts
+  are of distinct targets: the real report has 238 blocks and 232 targets. Duplicates and already-filled files are
+  kept, not deleted. Files that were uploaded are still deleted, after all their uploads, until 03.10.)
 - **What:** Rewrite `validate_bios` around an index `md5 -> [report entries]`:
   - A local file whose MD5 matches several entries is uploaded **to each target, under each target's name**,
     straight from the original local path. **No local rename** any more; renaming was only a way to upload
