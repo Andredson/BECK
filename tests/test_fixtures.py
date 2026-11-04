@@ -4,18 +4,15 @@ import re
 
 import pytest
 
-from tests.conftest import REPORTS, load_expected, load_report
-
-NAMES = sorted(str(p.relative_to(REPORTS).with_suffix("")) for p in REPORTS.glob("*/*.txt"))
-REAL = "recalbox-10.1.1/default-install"
+from tests.conftest import REAL_REPORT, REPORT_NAMES, load_expected, load_report
 
 
 def test_there_are_real_and_derived_fixtures() -> None:
-    assert REAL in NAMES
-    assert sum("derived-" in name for name in NAMES) >= 4
+    assert REAL_REPORT in REPORT_NAMES
+    assert sum("derived-" in name for name in REPORT_NAMES) >= 4
 
 
-@pytest.mark.parametrize("name", NAMES)
+@pytest.mark.parametrize("name", REPORT_NAMES)
 def test_expected_file_matches_the_report(name: str) -> None:
     report = load_report(name)
     expected = load_expected(name)
@@ -31,9 +28,9 @@ def test_expected_file_matches_the_report(name: str) -> None:
 
 def test_real_report_keeps_its_crlf_line_endings() -> None:
     # Fails if .gitattributes stops protecting the fixtures from line-ending conversion.
-    report = load_report(REAL)
+    report = load_report(REAL_REPORT)
     assert report.count("\r\n") == 2056
-    assert len(load_expected(REAL)) == 238
+    assert len(load_expected(REAL_REPORT)) == 238
 
 
 def test_lf_fixture_has_no_crlf() -> None:

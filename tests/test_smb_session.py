@@ -22,12 +22,13 @@ smb:
   port: 445
 """
 
-# Synthetic, shaped for today's parser. Real anonymized reports arrive in step 03.4.
+# One block in the format of the real reports (tests/fixtures/reports/), with the test file's MD5.
 REPORT = """\
-MISSING REQUIRED BIOS FOR: Sony Playstation
-  File: scph5501.bin
-  Path: /recalbox/share/bios/ps1/scph5501.bin
-  MD5: {md5}
+  MISSING REQUIRED BIOS: scph5501.bin
+    Path: /recalbox/share/bios/ps1/scph5501.bin
+    For: libretro/pcsx_rearmed
+    Possible MD5 List:
+      {md5}
 """
 
 

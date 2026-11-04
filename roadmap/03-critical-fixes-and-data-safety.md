@@ -144,7 +144,13 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
 - **Commit message:** `test(fixtures): add anonymized Recalbox missing-BIOS reports`
 
 ### 03.5 — Parser: real match strings and full filenames (D2, D10)
-- [ ] Done
+- [x] Done (2026-11-04: `parse_report` matches the expected entries for all six fixtures, and the real report reads
+  as 238 entries over the fake SMB session again, which fixes the 03.3 regression (the old code fails that test).
+  Each rule was checked by breaking it on purpose. Different from the list below: each block runs from its heading to
+  the next heading, so it doesn't depend on blank lines or need `match.group(0)`. Added: a first location outside
+  `/recalbox/share/bios/` raises `ReportParseError`, so BECK never uploads to an absolute path on the share. `hashs`
+  became `hashes`, and the full-run test's report now uses the real format. Still open: nested folders that already
+  exist fail until 03.9, and the report's uppercase hashes are matched as they are until 03.6.)
 - **Blocked by:** 03.4
 - **What:**
   - Split `get_missing_bios` into a **pure** `parse_report(text: str) -> list[dict]` plus a thin wrapper that

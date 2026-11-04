@@ -53,11 +53,6 @@ module = ["check_bios"]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
 disallow_untyped_calls = false
-# Errors inside code that stage 03 rewrites. Each code names the step that removes it;
-# 03.12 deletes whatever is left of this list.
-disable_error_code = [
-    "union-attr",    # `.group()` on a possibly-None regex match (defect D10)    -> 03.5
-]
 
 [[tool.mypy.overrides]]
 # pysmb ships no type hints; it is replaced by smbprotocol in step 04.9.

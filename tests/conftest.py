@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Any
 
 REPORTS = Path(__file__).resolve().parent / "fixtures" / "reports"
+REAL_REPORT = "recalbox-10.1.1/default-install"
+REPORT_NAMES = sorted(str(p.relative_to(REPORTS).with_suffix("")) for p in REPORTS.glob("*/*.txt"))
 
 
 def load_report(name: str) -> str:

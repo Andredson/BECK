@@ -25,6 +25,15 @@ MAGENTA = "\033[35m"
 CYAN = "\033[36m"
 WHITE = "\033[37m"
 
+RECALBOX_BIOS_ROOT = "/recalbox/share/bios/"
+
+# How a missing-BIOS report is laid out; see tests/fixtures/reports/ for real examples.
+BLOCK_HEADING = re.compile(
+    r"^[ \t]*MISSING (?:REQUIRED|OPTIONAL) BIOS\b:?[ \t]*(.*)$", re.MULTILINE
+)
+PATH_LINE = re.compile(r"^[ \t]*Path:[ \t]*(.+)$", re.MULTILINE)
+MD5 = re.compile(r"\b[a-fA-F0-9]{32}\b")
+
 
 def load_configs(file: str) -> dict[str, Any]:
     try:
@@ -48,6 +57,10 @@ def load_configs(file: str) -> dict[str, Any]:
 
 class BeckError(Exception):
     """An error with a message for the user. Only main() prints it and exits."""
+
+
+class ReportParseError(BeckError):
+    """The missing-BIOS report has a block BECK can't read."""
 
 
 def client_name() -> str:
@@ -144,38 +157,55 @@ class SmbSession:
             raise BeckError(f"Error creating folder {path} on share {self.share}: {e}") from e
 
 
-def get_missing_bios(session):
-    missing_regex = r"(MISSING (O|R)(.*\n[^\n].*)+)"
-    path_file_regex = r"(?<=Path: )\/(?:[^\/\s]+\/)+(?=[^\/\s]+)"
-    # relative_path_file_regex = r"(?<=Path: \/recalbox\/share\/bios\/)(?:[^\/]+\/)+(?=[^\/]+)"
-    file_regex = r"([a-zA-Z0-9_]+\.[a-zA-Z0-9]+)"
-    md5_regex = r"([a-fA-F0-9]{32})"
+def parse_report(text: str) -> list[dict[str, Any]]:
+    """Turn a missing-BIOS report into one entry per ``MISSING ... BIOS`` block, in report order.
 
-    report = session.read_text("missing_bios_report.txt")
-    itens = re.findall(missing_regex, report)
-
+    Pure: no I/O. Each entry has ``name``, ``path`` (folder, with a trailing slash),
+    ``relativePath`` (the folder inside the ``bios`` share) and ``hashes``.
+    """
+    text = text.replace("\r\n", "\n")
+    headings = list(BLOCK_HEADING.finditer(text))
     missing = []
 
-    if len(itens) > 0:
-        print(f"There are {MAGENTA}{len(itens)}{RESET} missing bios in your RECALBOX")
-        for item in itens:
-            item = str(item)
-            name = re.search(file_regex, item)
-            path = re.search(path_file_regex, item)
-            relative_path = path.group(0).replace("/recalbox/share/bios/", "")
-            hashs = set(re.findall(md5_regex, item))
-            missing.append(
-                {
-                    "name": name.group(0),
-                    "path": path.group(0),
-                    "relativePath": relative_path,
-                    "hashs": list(hashs),
-                }
-            )
-    else:
+    for heading, following in zip(headings, [*headings[1:], None], strict=False):
+        block = text[heading.end() : following.start() if following else len(text)]
+        first_line = heading.group(0).strip()
+        name = heading.group(1).strip()
+        location = PATH_LINE.search(block)
+        hashes = list(dict.fromkeys(MD5.findall(block)))
+
+        if not name:
+            raise ReportParseError(f"No file name in report block: {first_line}")
+        if location is None:
+            raise ReportParseError(f"No Path line in report block: {first_line}")
+        if not hashes:
+            raise ReportParseError(f"No MD5 value in report block: {first_line}")
+
+        # A Path line can list two locations ("<path> or <path>"): use the first (DEC-50).
+        first_path = location.group(1).split(" or ")[0].strip()
+        if not first_path.startswith(RECALBOX_BIOS_ROOT):
+            raise ReportParseError(f"Path is outside {RECALBOX_BIOS_ROOT}: {first_line}")
+        folder = f"{first_path.rpartition('/')[0]}/"
+        missing.append(
+            {
+                "name": name,
+                "path": folder,
+                "relativePath": folder.removeprefix(RECALBOX_BIOS_ROOT),
+                "hashes": hashes,
+            }
+        )
+
+    return missing
+
+
+def get_missing_bios(session: SmbSession) -> list[dict[str, Any]]:
+    missing = parse_report(session.read_text("missing_bios_report.txt"))
+
+    if not missing:
         print(f"{CYAN}No missing bios were found in your RECALBOX!{RESET}")
         exit()
 
+    print(f"There are {MAGENTA}{len(missing)}{RESET} missing bios in your RECALBOX")
     return missing
 
 
@@ -208,7 +238,7 @@ def validate_bios(bios, report, session):
     for item in bios:
         found = False
         for sums in report:
-            for sum in sums["hashs"]:
+            for sum in sums["hashes"]:
                 if sum == item["hash"]:
                     found = True
                     if item["name"] != sums["name"]:
