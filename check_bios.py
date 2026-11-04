@@ -215,22 +215,30 @@ def file_md5(path: str) -> str:
         return hashlib.file_digest(f, lambda: hashlib.md5(usedforsecurity=False)).hexdigest()
 
 
-def get_possible_bios(folder_path):
-
+def get_possible_bios(folder_path: str) -> list[dict[str, str]]:
+    """Every non-hidden file under a folder, with its path relative to that folder, and its MD5."""
     bios = []
 
-    for root, _, files in os.walk(folder_path):
-        if len(files) > 0:
-            print(
-                f"There are {MAGENTA}{len(files)}{RESET} possible bios to be analysed in your system"
+    for root, dirs, files in os.walk(folder_path):
+        dirs[:] = [name for name in dirs if not name.startswith(".")]  # don't enter hidden folders
+        for filename in files:
+            if filename.startswith("."):
+                continue
+            file_path = Path(root, filename)
+            bios.append(
+                {
+                    "name": filename,
+                    "path": file_path.relative_to(folder_path).as_posix(),
+                    "hash": file_md5(str(file_path)),
+                }
             )
-            for filename in files:
-                file_path = os.path.join(root, filename)
-                bios.append({"name": filename, "hash": file_md5(file_path)})
-        else:
-            print(f"{CYAN}No bios were found to analyse in your system!{RESET}")
-            exit()
-    return bios
+
+    if not bios:
+        print(f"{CYAN}No BIOS files found in {folder_path}{RESET}")
+        exit()
+
+    print(f"There are {MAGENTA}{len(bios)}{RESET} possible bios to be analysed in your system")
+    return sorted(bios, key=lambda item: item["path"])
 
 
 def validate_bios(bios, report, session):
@@ -244,14 +252,14 @@ def validate_bios(bios, report, session):
             for sum in sums["hashes"]:
                 if sum == item["hash"]:
                     found = True
-                    if item["name"] != sums["name"]:
+                    if item["path"] != sums["name"]:
                         try:
                             os.rename(
-                                f"{script_path}{item['name']}",
+                                f"{script_path}{item['path']}",
                                 f"{script_path}{sums['name']}",
                             )
                         except Exception as e:
-                            print(f"Error renaming {RED}{item['name']}{RESET}: {YELLOW}{e}{RESET}")
+                            print(f"Error renaming {RED}{item['path']}{RESET}: {YELLOW}{e}{RESET}")
                             exit(1)
                     if not sums["relativePath"] == "":
                         directories = session.list_dirs("")
@@ -277,10 +285,10 @@ def validate_bios(bios, report, session):
 
         if not found:
             try:
-                os.remove(f"bios/{item['name']}")
-                print(f"File {YELLOW}{item['name']}{RESET} removed.")
+                os.remove(f"bios/{item['path']}")
+                print(f"File {YELLOW}{item['path']}{RESET} removed.")
             except:
-                print(f"Failed to remove the file: {RED}{item['name']}{RESET}")
+                print(f"Failed to remove the file: {RED}{item['path']}{RESET}")
                 exit(1)
 
     return bios_found

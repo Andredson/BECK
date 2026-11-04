@@ -185,7 +185,10 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
 - **Commit message:** `fix(hashing): compare MD5 values case-insensitively and hash in chunks`
 
 ### 03.7 — Local scanner: skip dotfiles, recurse, no early exit (D1, D8)
-- [ ] Done
+- [x] Done (2026-11-04: `validate_bios` now uses each file's relative path, so a BIOS file in a sub-folder is found,
+  renamed and uploaded instead of stopping the run. Results are sorted by path, so runs are repeatable. Checked by
+  breaking each rule on purpose, and on the old code. Until 03.8, a matched file in a sub-folder is still moved to
+  the top of `bios/` before upload, as the rename did before.)
 - **What:** `get_possible_bios(folder)`:
   - Walks recursively and **skips hidden files and folders** (names starting with `.`), so `bios/.keep` is
     never hashed or deleted (D1).
