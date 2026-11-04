@@ -1,9 +1,11 @@
 """Smoke tests: the legacy script imports cleanly and does nothing at import time."""
 
+import ast
 import builtins
 import importlib
 import socket
 import sys
+from pathlib import Path
 from typing import Any, NoReturn
 
 import pytest
@@ -25,3 +27,28 @@ def test_import_has_no_side_effects(monkeypatch: pytest.MonkeyPatch) -> None:
     module = importlib.import_module("check_bios")
 
     assert callable(module.main)
+
+
+def test_only_main_exits_the_program() -> None:
+    tree = ast.parse(Path(importlib.import_module("check_bios").__file__ or "").read_text("utf-8"))
+    exits = []
+    for function in ast.walk(tree):
+        if not isinstance(function, ast.FunctionDef):
+            continue
+        for node in ast.walk(function):
+            if isinstance(node, ast.Call):
+                called = ast.unparse(node.func)
+                if called in {"exit", "quit", "sys.exit"}:
+                    exits.append((function.name, called))
+
+    assert exits == [("main", "sys.exit")]
+
+
+def test_no_bare_except_in_the_script() -> None:
+    tree = ast.parse(Path(importlib.import_module("check_bios").__file__ or "").read_text("utf-8"))
+
+    assert not [
+        node.lineno
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ExceptHandler) and node.type is None
+    ]

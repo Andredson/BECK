@@ -274,7 +274,11 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
 - **Commit message:** `fix(paths): resolve config and bios folders relative to the script`
 
 ### 03.12 — Cleanup: messages, imports, exceptions, typos (D12)
-- [ ] Done
+- [x] Done (2026-11-04: no ruff ignores or mypy `disable_error_code` entries remain for `check_bios.py`, and the code
+  has no bare `except` and exits only in `main()`, which two small AST tests now enforce. `load_configs`,
+  `get_missing_bios` and `get_possible_bios` raise or return instead of exiting. Most of the messages, imports and
+  typos were already fixed in 03.3–03.10. A malformed YAML file or a missing key inside `smb` still gives a traceback;
+  step 07.1 adds full config validation. AGENTS.md no longer mentions the ruff ignores.)
 - **What:**
   - Correct the copy-pasted messages (listing vs creating; print the folder, not `file`).
   - Remove `import json` and the unused color constants.

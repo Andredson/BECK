@@ -8,23 +8,41 @@ import pytest
 import yaml
 
 import check_bios
+from tests.conftest import use_folder
 
 ROOT = Path(__file__).resolve().parent.parent
 EXAMPLE = ROOT / "config" / "config.example.yml"
 
 
-def test_missing_config_tells_the_user_to_copy_the_example(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_missing_config_tells_the_user_to_copy_the_example(tmp_path: Path) -> None:
     missing = tmp_path / "config" / "config.yml"
 
-    with pytest.raises(SystemExit) as exit_info:
+    with pytest.raises(check_bios.BeckError) as error:
         check_bios.load_configs(missing)
 
+    assert f"{missing} not found" in str(error.value)
+    assert "Copy config/config.example.yml to config/config.yml and fill it in" in str(error.value)
+
+
+@pytest.mark.parametrize("content", ["", "other: 1\n", "- a list\n"])
+def test_config_without_an_smb_section_is_a_clear_error(tmp_path: Path, content: str) -> None:
+    file = tmp_path / "config.yml"
+    file.write_text(content, encoding="utf-8")
+
+    with pytest.raises(check_bios.BeckError, match="has no smb section"):
+        check_bios.load_configs(file)
+
+
+def test_main_prints_a_config_error_and_exits_1(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    use_folder(monkeypatch, tmp_path)
+
+    with pytest.raises(SystemExit) as exit_info:
+        check_bios.main()
+
     assert exit_info.value.code == 1
-    output = capsys.readouterr().out
-    assert f"{missing} not found" in output
-    assert "Copy config/config.example.yml to config/config.yml and fill it in" in output
+    assert "Copy config/config.example.yml" in capsys.readouterr().out
 
 
 def test_example_config_has_the_keys_the_script_reads() -> None:

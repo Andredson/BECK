@@ -11,19 +11,11 @@ import yaml
 from smb.SMBConnection import SMBConnection
 
 RESET = "\033[0m"
-BOLD = "\033[1m"
-ITALIC = "\033[3m"
-UNDERLINE = "\033[4m"
-BLINK = "\033[5m"
-
-BLACK = "\033[30m"
 RED = "\033[91m"
 GREEN = "\033[92m"
-YELLOW = "\033[93m"
 BLUE = "\033[94m"
 MAGENTA = "\033[35m"
 CYAN = "\033[36m"
-WHITE = "\033[37m"
 
 # Found from the script's location, so BECK works from any working directory.
 BASE_DIR = Path(__file__).resolve().parent
@@ -42,20 +34,17 @@ MD5 = re.compile(r"\b[a-fA-F0-9]{32}\b")
 
 def load_configs(file: Path) -> dict[str, Any]:
     try:
-        with file.open(encoding="utf-8") as l:
-            data = yaml.safe_load(l)
-    except FileNotFoundError:
-        print(
-            f"{RED}Error{RESET}: {file} not found. "
-            "Copy config/config.example.yml to config/config.yml and fill it in."
-        )
-        exit(1)
+        with file.open(encoding="utf-8") as config_file:
+            data = yaml.safe_load(config_file)
+    except FileNotFoundError as e:
+        raise BeckError(
+            f"{file} not found. Copy config/config.example.yml to config/config.yml and fill it in."
+        ) from e
 
     try:
         configs: dict[str, Any] = data["smb"]
-    except:
-        print(f"{RED}Error{RESET}: trying to get server name and credencials")
-        exit(1)
+    except (KeyError, TypeError) as e:
+        raise BeckError(f"{file} has no smb section with the server name and credentials") from e
 
     return configs
 
@@ -217,7 +206,7 @@ def get_missing_bios(session: SmbSession) -> list[dict[str, Any]]:
 
     if not missing:
         print(f"{CYAN}No missing bios were found in your RECALBOX!{RESET}")
-        exit()
+        return []
 
     print(f"There are {MAGENTA}{count_targets(missing)}{RESET} missing bios in your RECALBOX")
     return missing
@@ -249,7 +238,7 @@ def get_possible_bios(folder_path: Path) -> list[dict[str, str]]:
 
     if not bios:
         print(f"{CYAN}No BIOS files found in {folder_path}{RESET}")
-        exit()
+        return []
 
     print(f"There are {MAGENTA}{len(bios)}{RESET} possible bios to be analysed in your system")
     return sorted(bios, key=lambda item: item["path"])
@@ -318,9 +307,8 @@ def validate_bios(
 
 
 def main() -> None:
-    configs = load_configs(CONFIG_PATH)
-
     try:
+        configs = load_configs(CONFIG_PATH)
         with SmbSession(
             server=configs["server"],
             port=configs["port"],
@@ -329,7 +317,11 @@ def main() -> None:
             share="bios",
         ) as session:
             report = get_missing_bios(session)
+            if not report:
+                return
             bios = get_possible_bios(BIOS_DIR)
+            if not bios:
+                return
             validated_bios = validate_bios(bios, report, session)
     except BeckError as error:
         print(f"{RED}Error{RESET}: {error}")

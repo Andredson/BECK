@@ -124,17 +124,14 @@ def test_bad_blocks_raise_report_parse_error(text: str, message: str) -> None:
     assert str(error.value) == message
 
 
-def test_no_missing_bios_exits_cleanly(
+def test_no_missing_bios_returns_nothing_and_says_so(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     server = install_fake_smb(monkeypatch)
     server.files[("bios", "missing_bios_report.txt")] = b"MISSING BIOS REPORT\r\n"
 
-    with (
-        pytest.raises(SystemExit),
-        check_bios.SmbSession("beck-test-server", 445, "", "", "bios") as session,
-    ):
-        check_bios.get_missing_bios(session)
+    with check_bios.SmbSession("beck-test-server", 445, "", "", "bios") as session:
+        assert check_bios.get_missing_bios(session) == []
 
     assert "No missing bios" in capsys.readouterr().out
     assert server.connections[0].closed

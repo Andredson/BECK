@@ -84,17 +84,14 @@ def test_prints_one_total(tmp_path: Path, capsys: pytest.CaptureFixture[str]) ->
 
 
 @pytest.mark.parametrize("hidden", [True, False])
-def test_exits_only_when_nothing_was_found(
+def test_says_so_only_when_nothing_was_found(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], hidden: bool
 ) -> None:
     (tmp_path / "empty").mkdir()
     if hidden:
         write(tmp_path / ".keep", b"")
 
-    with pytest.raises(SystemExit) as exit_info:
-        check_bios.get_possible_bios(tmp_path)
-
-    assert not exit_info.value.code
+    assert check_bios.get_possible_bios(tmp_path) == []
     assert "No BIOS files found" in capsys.readouterr().out
 
 
@@ -152,3 +149,16 @@ def test_full_run_never_touches_the_keep_file(run_setup: FakeSMBServer, tmp_path
     check_bios.main()
 
     assert (tmp_path / "bios" / ".keep").exists()
+
+
+def test_full_run_with_nothing_to_analyse_stops_cleanly(
+    run_setup: FakeSMBServer, capsys: pytest.CaptureFixture[str]
+) -> None:
+    run_setup.files[("bios", "missing_bios_report.txt")] = report_for(b"anything")
+
+    check_bios.main()
+
+    output = capsys.readouterr().out
+    assert "No BIOS files found" in output
+    assert "Final result" not in output
+    assert run_setup.connections[0].closed

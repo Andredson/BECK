@@ -27,13 +27,6 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM", "RET", "PTH", "RUF", "S"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"] # assert is how pytest works
-# Legacy script: temporary ignores. Each one names the step in
-# roadmap/03-critical-fixes-and-data-safety.md that removes it; 03.12 removes whatever is left.
-"check_bios.py" = [
-    "E501",   # long message lines                                   -> 03.12
-    "E722",   # bare except                                          -> 03.12
-    "E741",   # ambiguous variable name `l`                          -> 03.12
-]
 
 [tool.mypy]
 python_version = "3.11"
