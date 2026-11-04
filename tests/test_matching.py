@@ -71,8 +71,7 @@ def test_two_identical_local_files_give_one_upload_and_a_notice(
     stored = server.connections[0].stored_files
     assert [Path(str(f.name)).name for f in stored] == ["a-first.bin"]
     output = capsys.readouterr().out
-    assert "Duplicate, skipped:" in output
-    assert "b-second.bin (same as a-first.bin)" in output
+    assert "b-second.bin: duplicate of a-first.bin, kept" in output
     assert (bios_dir / "b-second.bin").exists()
 
 
@@ -121,14 +120,12 @@ def test_second_different_file_does_not_overwrite_a_filled_target(
 
     assert count == 1
     assert server.files[("bios", "atarist/tos.img")] == first
-    assert "Already filled, skipped:" in capsys.readouterr().out
+    assert "b.img: target already filled, kept" in capsys.readouterr().out
     assert (bios_dir / "b.img").exists()
 
 
-def test_uploaded_file_is_deleted_only_after_all_its_uploads(
-    server: FakeSMBServer, bios_dir: Path
-) -> None:
-    # Old behavior until step 03.10. The old code deleted it after the first upload (D3).
+def test_one_file_reaches_all_its_targets(server: FakeSMBServer, bios_dir: Path) -> None:
+    # The old code deleted the file after the first upload, so the next one failed (D3).
     data = os.urandom(64)
     (bios_dir / "copy.bin").write_bytes(data)
     md5 = md5_of(data)
@@ -136,7 +133,7 @@ def test_uploaded_file_is_deleted_only_after_all_its_uploads(
     run(bios_dir, [entry("a.bin", md5), entry("b.bin", md5), entry("c.bin", md5)])
 
     assert {("bios", "a.bin"), ("bios", "b.bin"), ("bios", "c.bin")} <= set(server.files)
-    assert not (bios_dir / "copy.bin").exists()
+    assert (bios_dir / "copy.bin").read_bytes() == data
 
 
 def test_folder_is_created_only_once_for_two_targets(server: FakeSMBServer, bios_dir: Path) -> None:
@@ -161,7 +158,6 @@ def test_real_report_shared_md5_and_repeated_target(server: FakeSMBServer, bios_
         assert check_bios.validate_bios([shared], report, session) == 2
         assert {("bios", "atarist/tos.img"), ("bios", "atarist/st.img")} <= set(server.files)
 
-        local.write_bytes(os.urandom(64))
         assert check_bios.validate_bios([repeated], report, session) == 1
         assert ("bios", "pcengine/gexpress.pce") in server.files
 

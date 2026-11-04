@@ -241,7 +241,13 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
 - **Commit message:** `fix(smb): create nested remote BIOS folders one level at a time`
 
 ### 03.10 — Non-destructive by default (DEC-02)
-- [ ] Done
+- [x] Done (2026-11-04: both deletions are gone. The test compares names, sizes, modification times and content
+  before and after a full run with a match, a nested match, a duplicate, a second file for a filled target, a file
+  with no match and `.keep`; delete and rename calls are also blocked during that run. The old code fails it.
+  Different from the list below: the output uses `->`, not `→`, because `→` can crash Python when output is redirected
+  on Windows. Beyond the list: a fourth outcome, `target already filled, kept` (from 03.8); the `PTH104`, `PTH107` and
+  `PTH118` ignores were removed because nothing uses them now; AGENTS.md's README row and command warning were
+  updated.)
 - **What:**
   - Remove **both** deletions: local files after upload, and unmatched local files.
   - At the end, print what happened to each file: `copied → <target>`, `duplicate, kept`, or

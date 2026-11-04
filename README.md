@@ -3,10 +3,9 @@
 A simple script that checks your BIOS files against the list of BIOS files your Recalbox is missing, and sends the
 matching ones over SMB to the right folders on the Recalbox.
 
-> [!WARNING]
-> **Back up your BIOS files first.** This version **deletes every file in the `bios` folder** when it runs: files
-> that match are uploaded to the Recalbox and then deleted, and files that match nothing are deleted too. Keep a
-> copy somewhere else. A non-destructive version is on the way.
+> [!NOTE]
+> BECK no longer deletes anything in your `bios` folder. It copies the matching files to the Recalbox and leaves
+> every local file as it was. Older copies of BECK did delete them, so run `git pull` first if your copy is old.
 
 ## Prerequisites
 
@@ -69,7 +68,9 @@ If you never edited it, `git pull` removes it; create it again as described in [
    python check_bios.py              # with uv: uv run python check_bios.py
    ```
 
-3. When BECK reports BIOS files found, scan the BIOS files again on your Recalbox.
+3. BECK lists what happened to each file: copied to the Recalbox, or kept because it's a duplicate, matches nothing,
+   or its target was already filled.
+4. When BECK reports BIOS files found, scan the BIOS files again on your Recalbox.
 
 ## Structure
 

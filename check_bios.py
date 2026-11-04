@@ -265,7 +265,8 @@ def validate_bios(
     """Upload each matching local file to its targets; return how many targets were filled.
 
     A file is uploaded straight from its own path, under each target's name. The first file (sorted
-    by path) wins: identical copies and later files for an already filled target are skipped.
+    by path) wins: identical copies and later files for an already filled target are skipped. No
+    local file is ever deleted or renamed (DEC-02).
     """
     script_path = f"{os.path.dirname(__file__)}/bios/"
     entries_by_md5: dict[str, list[dict[str, Any]]] = {}
@@ -275,26 +276,22 @@ def validate_bios(
 
     used_md5s: dict[str, str] = {}
     filled_targets: dict[str, str] = {}
+    outcomes: list[str] = []
 
     for item in sorted(bios, key=lambda item: item["path"]):
         md5 = item["hash"]
 
         if md5 not in entries_by_md5:
-            try:
-                os.remove(f"bios/{item['path']}")
-                print(f"File {YELLOW}{item['path']}{RESET} removed.")
-            except:
-                print(f"Failed to remove the file: {RED}{item['path']}{RESET}")
-                exit(1)
+            outcomes.append(f"{item['path']}: no match, kept")
             continue
 
         if md5 in used_md5s:
-            print(f"{YELLOW}Duplicate, skipped:{RESET} {item['path']} (same as {used_md5s[md5]})")
+            outcomes.append(f"{item['path']}: duplicate of {used_md5s[md5]}, kept")
             continue
         used_md5s[md5] = item["path"]
 
         local = Path(f"{script_path}{item['path']}")
-        uploaded = False
+        copied = []
         for entry in entries_by_md5[md5]:
             target = remote_target(entry)
             if target in filled_targets:
@@ -302,18 +299,16 @@ def validate_bios(
             session.ensure_dir(entry["relativePath"])
             session.upload(local, target)
             filled_targets[target] = item["path"]
-            uploaded = True
+            copied.append(target)
             print(f"{GREEN}FOUND:{RESET} {entry['name']} -> {target}")
 
-        if not uploaded:
-            print(f"{YELLOW}Already filled, skipped:{RESET} {item['path']}")
-            continue
+        if copied:
+            outcomes.extend(f"{item['path']}: copied -> {target}" for target in copied)
+        else:
+            outcomes.append(f"{item['path']}: target already filled, kept")
 
-        # Old behavior, kept until step 03.10: delete the local file after upload.
-        try:
-            local.unlink()
-        except OSError as e:
-            raise BeckError(f"Error deleting {local} after upload: {e}") from e
+    for outcome in outcomes:
+        print(outcome)
 
     return len(filled_targets)
 
