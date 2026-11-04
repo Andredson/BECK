@@ -1,0 +1,63 @@
+==============================================================
+MISSING BIOS REPORT
+Platform: x86_64
+Generated on 2026/Nov./04 16:48:14+0100
+==============================================================
+
+SYSTEM: Amiga CD32
+---------------------------------------------
+
+  MISSING OPTIONAL BIOS: kick40060.CD32.ext
+    Path: /recalbox/share/bios/amiga/bios/kick40060.CD32.ext
+    Notes: Extended ROM rev 40.060
+    For: amiberry,libretro/amiberry,libretro/uae,libretro/uae4arm
+    Possible MD5 List:
+      BB72565701B1B6FAECE07D68EA5DA639
+
+SYSTEM: Atari 7800
+---------------------------------------------
+
+  MISSING OPTIONAL BIOS: 7800 BIOS (U).rom
+    Path: /recalbox/share/bios/atari7800/7800 BIOS (U).rom
+    Notes: RUN ONLY US GAMES! Display official Atari logo.
+    For: libretro/prosystem
+    Possible MD5 List:
+      0763F1FFB006DDBE32E52D497EE848AE
+
+SYSTEM: Commodore 64
+---------------------------------------------
+
+  MISSING OPTIONAL BIOS: JiffyDOS_1541-II.bin
+    Path: /recalbox/share/bios/vice/JiffyDOS_1541-II.bin
+    Notes: JiffyDOS support
+    For: libretro/vice_x64,libretro/vice_x64sc,libretro/vice_x128
+    Possible MD5 List:
+      1B1E985EA5325A1F46EB7FD9681707BF
+
+  MISSING OPTIONAL BIOS: scpu-dos-1.4.bin
+    Path: /recalbox/share/bios/vice/SCPU64/scpu-dos-1.4.bin
+    Notes: 1.4 SuperCPU dos from SuperCPU64
+    For: libretro/xscpu64
+    Possible MD5 List:
+      CDA2FCD2E1F0412029383E51DD472095
+
+SYSTEM: Panasonic 3DO
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: panafz1j-norsa.bin
+    Path: /recalbox/share/bios/3do/panafz1j-norsa.bin
+    Notes: Panasonic FZ-1 (J) (RSA check disabled)
+    For: libretro/opera
+    Possible MD5 List:
+      F6C71DE7470D16ABE4F71B1444883DC8
+
+SYSTEM: Sega Saturn
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: mpr-18811-mx.ic1
+    Path: /recalbox/share/bios/saturn/mpr-18811-mx.ic1
+    Notes: Required for The King of Fighters '95 ROM Cartridge
+    For: libretro/mednafen_saturn,libretro/kronos
+    Possible MD5 List:
+      255113BA943C92A54FACD25A10FD780C
+

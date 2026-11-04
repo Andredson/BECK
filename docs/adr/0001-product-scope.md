@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-02
-- **Decisions covered:** DEC-01, DEC-02, DEC-03, DEC-04, DEC-09, DEC-10, DEC-12, DEC-13, DEC-15
+- **Decisions covered:** DEC-01, DEC-02, DEC-03, DEC-04, DEC-09, DEC-10, DEC-12, DEC-13, DEC-15, DEC-50
 
 ## Context
 At the baseline review ([assessment](../../roadmap/00-assessment.md)), BECK was a 243-line script with an overall
@@ -90,3 +90,14 @@ differed from the recommendation.
   - *`recalbox-beck`*: not chosen; it becomes misleading once other frontends are supported (DEC-03).
 - **Consequences:** Step 10.1 checks that the name is free. If it's taken, a new DEC supersedes this one. Step 04.3
   sets `module-name = "beck"`.
+
+## DEC-50 — Two locations in a report entry: use the first
+- **Date:** 2026-11-04 (step 03.4).
+- **Context:** The first real report (Recalbox 10.1.1) has two entries of the form `Path: <path> or <path>`:
+  `tos.img` and one `neogeo.zip`. The second `neogeo.zip` location is outside the `bios` share.
+- **Decision:** Use the first location. In this report, every first location is inside `/recalbox/share/bios/`.
+- **Alternatives considered:**
+  - *Check each location first, then upload only if none has the file*: more thorough, but more work, and better
+    suited to a later stage. Not chosen. The owner gave no further reason.
+- **Consequences:** Step 03.5 keeps only the first location. A file already at the second location could still be
+  uploaded to the first.

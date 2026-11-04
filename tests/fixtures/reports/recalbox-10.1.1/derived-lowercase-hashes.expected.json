@@ -1,0 +1,30 @@
+[
+  {
+    "name": "firmware.bin",
+    "path": "/recalbox/share/bios/nds/",
+    "relativePath": "nds/",
+    "hashes": [
+      "145eaef5bd3037cbc247c213bb3da1b3",
+      "e45033d9b0fa6b0de071292bba7c9d13",
+      "3ad72b2c9a736b24953f2d391da4bfcc"
+    ]
+  },
+  {
+    "name": "dc_boot.bin",
+    "path": "/recalbox/share/bios/dc/",
+    "relativePath": "dc/",
+    "hashes": [
+      "e10c53c2f8b90bab96ead2d368858623",
+      "d552d8b577faa079e580659cd3517f86",
+      "d407fcf70b56acb84b8c77c93b0e5327"
+    ]
+  },
+  {
+    "name": "scph5501.bin",
+    "path": "/recalbox/share/bios/",
+    "relativePath": "",
+    "hashes": [
+      "490f666e1afb15b7362b406ed1cea246"
+    ]
+  }
+]

@@ -1,0 +1,34 @@
+[
+  {
+    "name": "kick39106.A1200",
+    "path": "/recalbox/share/bios/amiga/bios/",
+    "relativePath": "amiga/bios/",
+    "hashes": [
+      "B7CC148386AA631136F510CD29E42FC3"
+    ]
+  },
+  {
+    "name": "o2rom.bin",
+    "path": "/recalbox/share/bios/o2em/",
+    "relativePath": "o2em/",
+    "hashes": [
+      "562D5EBF9E030A40D6FABFC2F33139FD"
+    ]
+  },
+  {
+    "name": "bios.min",
+    "path": "/recalbox/share/bios/pokemini/",
+    "relativePath": "pokemini/",
+    "hashes": [
+      "1E4FB124A3A886865ACB574F388C803D"
+    ]
+  },
+  {
+    "name": "scph5500.bin",
+    "path": "/recalbox/share/bios/",
+    "relativePath": "",
+    "hashes": [
+      "8DD7D5296A650FAC7319BCE665A6A53C"
+    ]
+  }
+]

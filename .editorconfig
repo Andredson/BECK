@@ -22,3 +22,9 @@ indent_size = 2
 # Two trailing spaces are a hard line break in Markdown.
 [*.md]
 trim_trailing_whitespace = false
+
+# Report fixtures are byte-exact copies (see .gitattributes).
+[tests/fixtures/reports/**.txt]
+end_of_line = unset
+insert_final_newline = unset
+trim_trailing_whitespace = unset

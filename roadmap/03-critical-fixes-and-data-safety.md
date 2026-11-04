@@ -82,7 +82,10 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
   - The deletion after upload moved from the SMB code into `validate_bios`, unchanged until 03.10. With D7
     fixed, it now also works on Windows, where the old code stopped with an error after the first upload.
   - The test fixture runs every session test in `tmp_path`. AGENTS.md's `tests/` row and Testing section now
-    describe the fake.)
+    describe the fake.
+  **Correction (2026-11-04):** this step introduced a regression, found with the first real report. Real reports use
+  CRLF. The old `test.txt` round trip happened to convert it to LF; `read_text` doesn't, so the report reads as 1
+  block instead of 238. Step 03.5 fixes it by normalizing line endings, and tests it on the real fixture.)
 - **What:** Replace the `smb_connect(share, folder, operation, file)` string switch with a small class in
   `check_bios.py`:
   ```python
@@ -115,7 +118,12 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
 - **Commit message:** `fix(smb): use one closed-on-exit SMB session and read reports in memory`
 
 ### 03.4 — Real report fixtures harness
-- [ ] Done
+- [x] Done (2026-11-04: the real report is from Recalbox 10.1.1 on x86_64, in a QEMU VM: 238 entries, CRLF line
+  endings. It's stored byte-exact through a `.gitattributes` rule. Nothing needed anonymizing, and the owner kept the
+  date line. Five derived fixtures. The expected files came from a one-off script that shares no code with
+  `check_bios.py`; the tricky entries were checked, and the owner looked them over and confirmed the menu path
+  (main menu → BIOS CHECKING → REPORT). Beyond the list below: `tests/test_fixtures.py`, which fails if the fixtures
+  lose their CRLF; `.gitattributes` and `.editorconfig` rules; DEC-50 for entries with two locations.)
 - **Blocked by:** The owner provides at least one real `missing_bios_report.txt` from their Recalbox (DEC-09).
 - **What:**
   - Layout: `tests/fixtures/reports/recalbox-<version>/<short-name>.txt`, for example
@@ -143,16 +151,16 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
     reads the report through the session.
   - Normalize line endings first (`text.replace("\r\n", "\n")`).
   - Iterate with `re.finditer` and use `match.group(0)`; never call `str()` on a tuple (D10).
-  - Take the **file name from the basename of the `Path:` line** instead of the first word that looks like a
-    file name (D2). This handles `-`, spaces, parentheses and multiple dots. Confirm against the real fixtures
-    that the `Path:` line includes the file name. If it doesn't, derive the name from the report's own name
-    field and note the format in `tests/fixtures/README.md`.
+  - Take the **file name from the `MISSING … BIOS: <name>` line** instead of the first word that looks like a
+    file name (D2). This handles `-`, spaces, parentheses and multiple dots. A `Path:` line can list two locations
+    (`<path> or <path>`), so its basename isn't reliable; use the **first** location for the folder (DEC-50).
   - Add word boundaries to the MD5 regex (`\b[a-fA-F0-9]{32}\b`) so longer hex strings aren't split into fake hashes.
   - A block without a path or hash raises `ReportParseError` with the block's first line, instead of crashing
     with `AttributeError`.
   - The `/recalbox/share/bios/` prefix becomes a named constant (`RECALBOX_BIOS_ROOT`).
 - **Files:** `check_bios.py`, `tests/test_parser.py`
-- **Done when:** `parse_report` matches the `.expected.json` for every fixture, parametrized by fixture file.
+- **Done when:** `parse_report` matches the `.expected.json` for every fixture, parametrized by fixture file. The
+  test compares hashes case-insensitively, so it stays valid after 03.6 lowercases them.
   The `union-attr` entry is removed from the mypy legacy override (added in 02.4), and `uv run mypy` still passes.
 - **Verify:** `uv run pytest tests/test_parser.py -q`
 - **Commit message:** `fix(parser): extract full file names and parse report blocks robustly`
@@ -190,6 +198,8 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
   - If several local files share an MD5, use the first (sorted by relative path) and list the others as
     "duplicate, skipped". This resolves the comment in `main()` that reads "Create a validation for
     duplicated md5sum of files" (line 235 at `d1ad68d`).
+  - Entries with the same target appear in real reports (`gexpress.pce` under three systems): upload to each
+    target **once**.
   - Count **distinct report entries satisfied**, not loop iterations. The final summary reads
     `entries satisfied / entries missing` and `files analysed`.
 - **Files:** `check_bios.py`, `tests/test_matching.py`
