@@ -226,7 +226,10 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
 - **Commit message:** `fix(matching): upload one file to every matching target without renaming it`
 
 ### 03.9 — Recursive remote directory creation (D4)
-- [ ] Done
+- [x] Done (2026-11-04: `validate_bios` uses `ensure_dir`, so a nested target works whether none, some or all of its
+  folders already exist, as on the real Recalbox, where most do. On the old code, those full runs fail when none or
+  all of the folders exist; only the case with just the parent present worked. Checked by
+  breaking each rule on purpose. Tested with the fake server only; 03.13 confirms it on a real device.)
 - **What:** `SmbSession.ensure_dir("a/b/")` creates each missing segment in order (`a`, then `a/b`), checking
   existence by listing the **parent** folder rather than the share root. Entries at the share root (empty
   relative path) need no directory. Directory-listing errors are reported with the right message ("Error

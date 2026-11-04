@@ -156,6 +156,15 @@ class SmbSession:
         except Exception as e:
             raise BeckError(f"Error creating folder {path} on share {self.share}: {e}") from e
 
+    def ensure_dir(self, path: str) -> None:
+        """Create each missing level of a remote folder, in order ("" is the share root)."""
+        parent = ""
+        for name in filter(None, path.split("/")):
+            folder = f"{parent}{name}"
+            if name not in self.list_dirs(parent):
+                self.make_dir(folder)
+            parent = f"{folder}/"
+
 
 def parse_report(text: str) -> list[dict[str, Any]]:
     """Turn a missing-BIOS report into one entry per ``MISSING ... BIOS`` block, in report order.
@@ -290,10 +299,7 @@ def validate_bios(
             target = remote_target(entry)
             if target in filled_targets:
                 continue
-            if entry["relativePath"]:
-                directories = session.list_dirs("")
-                if entry["relativePath"][:-1] not in directories:
-                    session.make_dir(entry["relativePath"])
+            session.ensure_dir(entry["relativePath"])
             session.upload(local, target)
             filled_targets[target] = item["path"]
             uploaded = True

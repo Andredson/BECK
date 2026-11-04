@@ -252,3 +252,95 @@ def test_main_prints_the_error_and_exits_1(
     assert exit_info.value.code == 1
     assert "Error connecting to SMB server beck-test-server" in capsys.readouterr().out
     assert only_connection(server).closed
+
+
+def test_ensure_dir_creates_each_level_once_in_order(server: FakeSMBServer) -> None:
+    with open_session() as session:
+        session.ensure_dir("a/b/c/")
+
+    assert {("bios", "a"), ("bios", "a/b"), ("bios", "a/b/c")} == server.dirs
+    assert only_connection(server).calls.count("createDirectory") == 3
+
+
+def test_ensure_dir_checks_the_parent_of_each_level(server: FakeSMBServer) -> None:
+    # A folder named "b" at the share root must not count as "a/b".
+    server.dirs.update({("bios", "a"), ("bios", "b")})
+
+    with open_session() as session:
+        session.ensure_dir("a/b/")
+
+    assert ("bios", "a/b") in server.dirs
+
+
+def test_ensure_dir_keeps_existing_levels(server: FakeSMBServer) -> None:
+    server.dirs.update({("bios", "amiga")})
+
+    with open_session() as session:
+        session.ensure_dir("amiga/bios/")
+
+    assert only_connection(server).calls.count("createDirectory") == 1
+    assert ("bios", "amiga/bios") in server.dirs
+
+
+def test_ensure_dir_creates_nothing_when_everything_exists(server: FakeSMBServer) -> None:
+    server.dirs.update({("bios", "amiga"), ("bios", "amiga/bios")})
+
+    with open_session() as session:
+        session.ensure_dir("amiga/bios/")
+
+    assert only_connection(server).calls.count("createDirectory") == 0
+
+
+def test_ensure_dir_at_the_share_root_does_nothing(server: FakeSMBServer) -> None:
+    with open_session() as session:
+        session.ensure_dir("")
+
+    calls = only_connection(server).calls
+    assert "createDirectory" not in calls
+    assert "listPath" not in calls
+
+
+def test_ensure_dir_reports_listing_errors_as_listing(server: FakeSMBServer) -> None:
+    server.failures["listPath"] = OperationFailure("access denied", [])
+
+    with (
+        pytest.raises(check_bios.BeckError, match="Error listing folder '' on share bios"),
+        open_session() as session,
+    ):
+        session.ensure_dir("a/")
+
+
+def test_ensure_dir_reports_creation_errors_as_creating(server: FakeSMBServer) -> None:
+    server.failures["createDirectory"] = OperationFailure("access denied", [])
+
+    with (
+        pytest.raises(check_bios.BeckError, match="Error creating folder a on share bios"),
+        open_session() as session,
+    ):
+        session.ensure_dir("a/")
+
+
+@pytest.mark.parametrize("existing", [(), ("amiga",), ("amiga", "amiga/bios")])
+def test_ensure_dir_nested_target_uploads_in_a_full_run(
+    server: FakeSMBServer,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    existing: tuple[str, ...],
+) -> None:
+    server.dirs.update(("bios", folder) for folder in existing)
+    data = os.urandom(64)
+    md5 = hashlib.md5(data, usedforsecurity=False).hexdigest()
+    server.files[("bios", "missing_bios_report.txt")] = (
+        "  MISSING REQUIRED BIOS: kick39106.A1200\n"
+        "    Path: /recalbox/share/bios/amiga/bios/kick39106.A1200\n"
+        f"    Possible MD5 List:\n      {md5}\n"
+    ).encode()
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "config.yml").write_text(CONFIG, encoding="utf-8")
+    (tmp_path / "bios").mkdir()
+    (tmp_path / "bios" / "my-copy.rom").write_bytes(data)
+    monkeypatch.setattr(check_bios, "__file__", str(tmp_path / "check_bios.py"))
+
+    check_bios.main()
+
+    assert server.files[("bios", "amiga/bios/kick39106.A1200")] == data
