@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 
 import check_bios
+from tests.conftest import use_folder
 from tests.fakes import install_fake_smb
 
 BLOCK = """\
@@ -25,7 +26,7 @@ def test_file_md5_is_lowercase_and_correct(tmp_path: Path) -> None:
     data = os.urandom(1024)
     file.write_bytes(data)
 
-    digest = check_bios.file_md5(str(file))
+    digest = check_bios.file_md5(file)
 
     assert digest == hashlib.md5(data, usedforsecurity=False).hexdigest()
     assert digest == digest.lower()
@@ -36,7 +37,7 @@ def test_file_md5_of_a_file_larger_than_one_chunk(tmp_path: Path) -> None:
     data = os.urandom(3 * 1024 * 1024)
     file.write_bytes(data)
 
-    assert check_bios.file_md5(str(file)) == hashlib.md5(data, usedforsecurity=False).hexdigest()
+    assert check_bios.file_md5(file) == hashlib.md5(data, usedforsecurity=False).hexdigest()
 
 
 def test_file_md5_uses_the_chunked_file_digest(
@@ -53,7 +54,7 @@ def test_file_md5_uses_the_chunked_file_digest(
 
     monkeypatch.setattr(hashlib, "file_digest", spy)
 
-    check_bios.file_md5(str(file))
+    check_bios.file_md5(file)
 
     assert len(calls) == 1
 
@@ -80,8 +81,7 @@ def test_full_run_matches_whatever_the_case_in_the_report(
     (tmp_path / "bios").mkdir()
     (tmp_path / "bios" / "my-copy.bin").write_bytes(data)
     monkeypatch.chdir(tmp_path)
-    # Until step 03.11, validate_bios looks for the bios folder next to the script.
-    monkeypatch.setattr(check_bios, "__file__", str(tmp_path / "check_bios.py"))
+    use_folder(monkeypatch, tmp_path)
 
     check_bios.main()
 

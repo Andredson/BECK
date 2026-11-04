@@ -8,7 +8,7 @@ from typing import Any, NoReturn
 import pytest
 
 import check_bios
-from tests.conftest import REAL_REPORT, load_report
+from tests.conftest import REAL_REPORT, load_report, use_folder
 from tests.fakes import FakeSMBServer, install_fake_smb
 
 
@@ -30,8 +30,7 @@ def bios_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     folder = tmp_path / "bios"
     folder.mkdir()
     monkeypatch.chdir(tmp_path)
-    # Until step 03.11, validate_bios looks for the bios folder next to the script.
-    monkeypatch.setattr(check_bios, "__file__", str(tmp_path / "check_bios.py"))
+    use_folder(monkeypatch, tmp_path)
     return folder
 
 
@@ -41,7 +40,7 @@ def server(monkeypatch: pytest.MonkeyPatch) -> FakeSMBServer:
 
 
 def run(bios_dir: Path, report: list[dict[str, Any]]) -> int:
-    bios = check_bios.get_possible_bios(str(bios_dir))
+    bios = check_bios.get_possible_bios(bios_dir)
     with check_bios.SmbSession("beck-test-server", 445, "", "", "bios") as session:
         return check_bios.validate_bios(bios, report, session)
 

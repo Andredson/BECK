@@ -25,6 +25,11 @@ MAGENTA = "\033[35m"
 CYAN = "\033[36m"
 WHITE = "\033[37m"
 
+# Found from the script's location, so BECK works from any working directory.
+BASE_DIR = Path(__file__).resolve().parent
+CONFIG_PATH = BASE_DIR / "config" / "config.yml"
+BIOS_DIR = BASE_DIR / "bios"
+
 RECALBOX_BIOS_ROOT = "/recalbox/share/bios/"
 
 # How a missing-BIOS report is laid out; see tests/fixtures/reports/ for real examples.
@@ -35,9 +40,9 @@ PATH_LINE = re.compile(r"^[ \t]*Path:[ \t]*(.+)$", re.MULTILINE)
 MD5 = re.compile(r"\b[a-fA-F0-9]{32}\b")
 
 
-def load_configs(file: str) -> dict[str, Any]:
+def load_configs(file: Path) -> dict[str, Any]:
     try:
-        with open(file) as l:
+        with file.open(encoding="utf-8") as l:
             data = yaml.safe_load(l)
     except FileNotFoundError:
         print(
@@ -218,13 +223,13 @@ def get_missing_bios(session: SmbSession) -> list[dict[str, Any]]:
     return missing
 
 
-def file_md5(path: str) -> str:
+def file_md5(path: Path) -> str:
     """A file's MD5 in lowercase, read in chunks. MD5 identifies files; it isn't for security."""
-    with open(path, "rb") as f:
+    with path.open("rb") as f:
         return hashlib.file_digest(f, lambda: hashlib.md5(usedforsecurity=False)).hexdigest()
 
 
-def get_possible_bios(folder_path: str) -> list[dict[str, str]]:
+def get_possible_bios(folder_path: Path) -> list[dict[str, str]]:
     """Every non-hidden file under a folder, with its path relative to that folder, and its MD5."""
     bios = []
 
@@ -238,7 +243,7 @@ def get_possible_bios(folder_path: str) -> list[dict[str, str]]:
                 {
                     "name": filename,
                     "path": file_path.relative_to(folder_path).as_posix(),
-                    "hash": file_md5(str(file_path)),
+                    "hash": file_md5(file_path),
                 }
             )
 
@@ -268,7 +273,6 @@ def validate_bios(
     by path) wins: identical copies and later files for an already filled target are skipped. No
     local file is ever deleted or renamed (DEC-02).
     """
-    script_path = f"{os.path.dirname(__file__)}/bios/"
     entries_by_md5: dict[str, list[dict[str, Any]]] = {}
     for entry in report:
         for md5 in entry["hashes"]:
@@ -290,7 +294,7 @@ def validate_bios(
             continue
         used_md5s[md5] = item["path"]
 
-        local = Path(f"{script_path}{item['path']}")
+        local = BIOS_DIR / item["path"]
         copied = []
         for entry in entries_by_md5[md5]:
             target = remote_target(entry)
@@ -314,7 +318,7 @@ def validate_bios(
 
 
 def main() -> None:
-    configs = load_configs("config/config.yml")
+    configs = load_configs(CONFIG_PATH)
 
     try:
         with SmbSession(
@@ -325,7 +329,7 @@ def main() -> None:
             share="bios",
         ) as session:
             report = get_missing_bios(session)
-            bios = get_possible_bios("./bios")
+            bios = get_possible_bios(BIOS_DIR)
             validated_bios = validate_bios(bios, report, session)
     except BeckError as error:
         print(f"{RED}Error{RESET}: {error}")

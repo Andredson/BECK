@@ -9,6 +9,7 @@ from typing import Any, NoReturn
 import pytest
 
 import check_bios
+from tests.conftest import use_folder
 from tests.fakes import FakeSMBServer, install_fake_smb
 
 Snapshot = dict[str, tuple[int, int, bytes]]
@@ -52,8 +53,7 @@ def server(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeSMBServer:
     )
     (tmp_path / "bios").mkdir()
     monkeypatch.chdir(tmp_path)
-    # Until step 03.11, validate_bios looks for the bios folder next to the script.
-    monkeypatch.setattr(check_bios, "__file__", str(tmp_path / "check_bios.py"))
+    use_folder(monkeypatch, tmp_path)
     return fake
 
 

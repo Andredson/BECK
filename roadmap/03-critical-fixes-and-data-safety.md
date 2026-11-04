@@ -260,7 +260,9 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
 - **Commit message:** `fix!: never delete local files; copy matched BIOS files only`
 
 ### 03.11 — Consistent path resolution (D9)
-- [ ] Done
+- [x] Done (2026-11-04: `BASE_DIR`, `CONFIG_PATH` and `BIOS_DIR` replace the mix of working-directory and script paths.
+  A full run works from an unrelated working directory and creates nothing there. Checked by breaking each constant
+  on purpose. The config file is now read as UTF-8, and the tests share a `use_folder` helper in `tests/conftest.py`.)
 - **What:** Define module-level constants once and use them everywhere:
   `BASE_DIR = Path(__file__).resolve().parent`, `CONFIG_PATH = BASE_DIR / "config" / "config.yml"`,
   `BIOS_DIR = BASE_DIR / "bios"`. Use `pathlib` throughout (this also clears the remaining ruff `PTH`

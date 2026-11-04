@@ -19,7 +19,7 @@ def test_missing_config_tells_the_user_to_copy_the_example(
     missing = tmp_path / "config" / "config.yml"
 
     with pytest.raises(SystemExit) as exit_info:
-        check_bios.load_configs(str(missing))
+        check_bios.load_configs(missing)
 
     assert exit_info.value.code == 1
     output = capsys.readouterr().out
@@ -28,14 +28,14 @@ def test_missing_config_tells_the_user_to_copy_the_example(
 
 
 def test_example_config_has_the_keys_the_script_reads() -> None:
-    configs = check_bios.load_configs(str(EXAMPLE))
+    configs = check_bios.load_configs(EXAMPLE)
 
     assert set(configs) == {"user", "passwd", "server", "port"}
     assert configs["port"] == 445
 
 
 def test_example_config_ships_empty_credentials() -> None:
-    configs = check_bios.load_configs(str(EXAMPLE))
+    configs = check_bios.load_configs(EXAMPLE)
 
     assert configs["user"] == ""
     assert configs["passwd"] == ""

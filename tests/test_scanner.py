@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 import check_bios
+from tests.conftest import use_folder
 from tests.fakes import FakeSMBServer, install_fake_smb
 
 
@@ -24,7 +25,7 @@ def test_keep_file_is_ignored(tmp_path: Path) -> None:
     write(tmp_path / ".keep", b"")
     write(tmp_path / "scph5501.bin")
 
-    assert paths(check_bios.get_possible_bios(str(tmp_path))) == ["scph5501.bin"]
+    assert paths(check_bios.get_possible_bios(tmp_path)) == ["scph5501.bin"]
 
 
 def test_hidden_folders_are_not_entered(tmp_path: Path) -> None:
@@ -32,21 +33,21 @@ def test_hidden_folders_are_not_entered(tmp_path: Path) -> None:
     write(tmp_path / "ps1" / ".hidden" / "x.bin")
     write(tmp_path / "ps1" / "visible.bin")
 
-    assert paths(check_bios.get_possible_bios(str(tmp_path))) == ["ps1/visible.bin"]
+    assert paths(check_bios.get_possible_bios(tmp_path)) == ["ps1/visible.bin"]
 
 
 def test_empty_sub_folder_does_not_stop_the_scan(tmp_path: Path) -> None:
     (tmp_path / "aaa-empty").mkdir()
     write(tmp_path / "zzz" / "late.bin")
 
-    assert paths(check_bios.get_possible_bios(str(tmp_path))) == ["zzz/late.bin"]
+    assert paths(check_bios.get_possible_bios(tmp_path)) == ["zzz/late.bin"]
 
 
 def test_nested_file_has_its_name_path_and_hash(tmp_path: Path) -> None:
     data = os.urandom(64)
     write(tmp_path / "a" / "b" / "file.bin", data)
 
-    assert check_bios.get_possible_bios(str(tmp_path)) == [
+    assert check_bios.get_possible_bios(tmp_path) == [
         {
             "name": "file.bin",
             "path": "a/b/file.bin",
@@ -61,22 +62,21 @@ def test_relative_folder_argument_gives_the_same_paths(
     write(tmp_path / "bios" / "ps1" / "file.bin")
     monkeypatch.chdir(tmp_path)
 
-    # main() passes "./bios".
-    assert paths(check_bios.get_possible_bios("./bios")) == ["ps1/file.bin"]
+    assert paths(check_bios.get_possible_bios(Path("./bios"))) == ["ps1/file.bin"]
 
 
 def test_results_are_sorted_by_path(tmp_path: Path) -> None:
     for name in ("z.bin", "a/m.bin", "b.bin"):
         write(tmp_path / name)
 
-    assert paths(check_bios.get_possible_bios(str(tmp_path))) == ["a/m.bin", "b.bin", "z.bin"]
+    assert paths(check_bios.get_possible_bios(tmp_path)) == ["a/m.bin", "b.bin", "z.bin"]
 
 
 def test_prints_one_total(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     for name in ("a.bin", "sub/b.bin", "sub/deeper/c.bin"):
         write(tmp_path / name)
 
-    check_bios.get_possible_bios(str(tmp_path))
+    check_bios.get_possible_bios(tmp_path)
 
     output = capsys.readouterr().out
     assert output.count("possible bios") == 1
@@ -92,7 +92,7 @@ def test_exits_only_when_nothing_was_found(
         write(tmp_path / ".keep", b"")
 
     with pytest.raises(SystemExit) as exit_info:
-        check_bios.get_possible_bios(str(tmp_path))
+        check_bios.get_possible_bios(tmp_path)
 
     assert not exit_info.value.code
     assert "No BIOS files found" in capsys.readouterr().out
@@ -107,8 +107,7 @@ def run_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeSMBServer:
     )
     write(tmp_path / "bios" / ".keep", b"")
     monkeypatch.chdir(tmp_path)
-    # Until step 03.11, validate_bios looks for the bios folder next to the script.
-    monkeypatch.setattr(check_bios, "__file__", str(tmp_path / "check_bios.py"))
+    use_folder(monkeypatch, tmp_path)
     return server
 
 

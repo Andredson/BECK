@@ -4,6 +4,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
+import check_bios
+
 REPORTS = Path(__file__).resolve().parent / "fixtures" / "reports"
 REAL_REPORT = "recalbox-10.1.1/default-install"
 REPORT_NAMES = sorted(str(p.relative_to(REPORTS).with_suffix("")) for p in REPORTS.glob("*/*.txt"))
@@ -21,3 +25,9 @@ def load_expected(name: str) -> list[dict[str, Any]]:
         (REPORTS / f"{name}.expected.json").read_text(encoding="utf-8")
     )
     return expected
+
+
+def use_folder(monkeypatch: pytest.MonkeyPatch, folder: Path) -> None:
+    """Make check_bios use ``folder/config/config.yml`` and ``folder/bios``, not the repo's."""
+    monkeypatch.setattr(check_bios, "CONFIG_PATH", folder / "config" / "config.yml")
+    monkeypatch.setattr(check_bios, "BIOS_DIR", folder / "bios")

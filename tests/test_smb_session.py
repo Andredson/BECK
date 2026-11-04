@@ -12,6 +12,7 @@ import pytest
 from smb.smb_structs import OperationFailure
 
 import check_bios
+from tests.conftest import use_folder
 from tests.fakes import FakeSMBConnection, FakeSMBServer, install_fake_smb
 
 CONFIG = """\
@@ -65,8 +66,7 @@ def test_full_run_opens_one_connection_and_closes_it(
     (tmp_path / "bios").mkdir()
     (tmp_path / "bios" / "my-ps1-bios.bin").write_bytes(data)
     monkeypatch.chdir(tmp_path)
-    # Until step 03.11, validate_bios looks for the bios folder next to the script.
-    monkeypatch.setattr(check_bios, "__file__", str(tmp_path / "check_bios.py"))
+    use_folder(monkeypatch, tmp_path)
 
     check_bios.main()
 
@@ -245,6 +245,7 @@ def test_main_prints_the_error_and_exits_1(
     (tmp_path / "config").mkdir()
     (tmp_path / "config" / "config.yml").write_text(CONFIG, encoding="utf-8")
     monkeypatch.chdir(tmp_path)
+    use_folder(monkeypatch, tmp_path)
 
     with pytest.raises(SystemExit) as exit_info:
         check_bios.main()
@@ -339,7 +340,7 @@ def test_ensure_dir_nested_target_uploads_in_a_full_run(
     (tmp_path / "config" / "config.yml").write_text(CONFIG, encoding="utf-8")
     (tmp_path / "bios").mkdir()
     (tmp_path / "bios" / "my-copy.rom").write_bytes(data)
-    monkeypatch.setattr(check_bios, "__file__", str(tmp_path / "check_bios.py"))
+    use_folder(monkeypatch, tmp_path)
 
     check_bios.main()
 
