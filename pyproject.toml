@@ -30,7 +30,6 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM", "RET", "PTH", "RUF", "S"]
 # Legacy script: temporary ignores. Each one names the step in
 # roadmap/03-critical-fixes-and-data-safety.md that removes it; 03.12 removes whatever is left.
 "check_bios.py" = [
-    "S324",   # MD5 flagged as insecure; fix is usedforsecurity=False -> 03.6
     "SIM201", # `not x == ""` in validate_bios                       -> 03.8
     "PTH104", # os.rename                                            -> 03.11
     "PTH107", # os.remove                                            -> 03.11

@@ -172,7 +172,10 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
 - **Commit message:** `fix(parser): extract full file names and parse report blocks robustly`
 
 ### 03.6 — Normalize MD5 case (D5)
-- [ ] Done
+- [x] Done (2026-11-04: `parse_report` and the new `file_md5` both return lowercase, and a full run with a fake
+  server uploads the file whether the report's hash is uppercase, lowercase or mixed. Checked by breaking each side
+  on purpose. Files are hashed through `file_digest`, so a large file doesn't have to fit in memory. The `S324`
+  ignore is gone.)
 - **What:** Store and compare every MD5 in **lowercase**, both from the report and from local files. Hash files
   in chunks with `hashlib.file_digest(f, lambda: hashlib.md5(usedforsecurity=False))` (Python 3.11+). This
   also satisfies ruff's `S324`, because MD5 is used to identify files, not for security.

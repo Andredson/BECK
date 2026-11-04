@@ -21,7 +21,7 @@ def block(
 
 
 def with_lowercase_hashes(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    # Step 03.6 lowercases every MD5, so these tests compare without regard to case.
+    # The expected files keep the report's case; parse_report always returns lowercase (D5).
     return [{**e, "hashes": [h.lower() for h in e["hashes"]]} for e in entries]
 
 
@@ -29,7 +29,7 @@ def with_lowercase_hashes(entries: list[dict[str, Any]]) -> list[dict[str, Any]]
 def test_parser_matches_the_expected_entries(name: str) -> None:
     parsed = check_bios.parse_report(load_report(name))
 
-    assert with_lowercase_hashes(parsed) == with_lowercase_hashes(load_expected(name))
+    assert parsed == with_lowercase_hashes(load_expected(name))
 
 
 def test_crlf_report_read_over_smb_keeps_every_entry(
@@ -44,7 +44,7 @@ def test_crlf_report_read_over_smb_keeps_every_entry(
 
     assert len(missing) == 238
     assert missing[0]["name"] == "kick39106.A1200"
-    assert missing[0]["hashes"] == ["B7CC148386AA631136F510CD29E42FC3"]
+    assert missing[0]["hashes"] == ["b7cc148386aa631136f510cd29e42fc3"]
     assert "238" in capsys.readouterr().out
 
 
@@ -84,13 +84,13 @@ def test_nested_folder() -> None:
 def test_repeated_hashes_are_removed_in_first_seen_order() -> None:
     text = block(hashes=f"      {OTHER_HASH}\n      {HASH}\n      {OTHER_HASH}\n")
 
-    assert check_bios.parse_report(text)[0]["hashes"] == [OTHER_HASH, HASH]
+    assert check_bios.parse_report(text)[0]["hashes"] == [OTHER_HASH.lower(), HASH.lower()]
 
 
 def test_longer_hex_strings_are_not_split_into_fake_hashes() -> None:
     text = block(hashes=f"      {HASH}\n      {OTHER_HASH}FF\n")
 
-    assert check_bios.parse_report(text)[0]["hashes"] == [HASH]
+    assert check_bios.parse_report(text)[0]["hashes"] == [HASH.lower()]
 
 
 def test_blocks_do_not_need_a_blank_line_between_them() -> None:

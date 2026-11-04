@@ -161,7 +161,7 @@ def parse_report(text: str) -> list[dict[str, Any]]:
     """Turn a missing-BIOS report into one entry per ``MISSING ... BIOS`` block, in report order.
 
     Pure: no I/O. Each entry has ``name``, ``path`` (folder, with a trailing slash),
-    ``relativePath`` (the folder inside the ``bios`` share) and ``hashes``.
+    ``relativePath`` (the folder inside the ``bios`` share) and ``hashes`` (lowercase).
     """
     text = text.replace("\r\n", "\n")
     headings = list(BLOCK_HEADING.finditer(text))
@@ -172,7 +172,7 @@ def parse_report(text: str) -> list[dict[str, Any]]:
         first_line = heading.group(0).strip()
         name = heading.group(1).strip()
         location = PATH_LINE.search(block)
-        hashes = list(dict.fromkeys(MD5.findall(block)))
+        hashes = list(dict.fromkeys(md5.lower() for md5 in MD5.findall(block)))
 
         if not name:
             raise ReportParseError(f"No file name in report block: {first_line}")
@@ -209,6 +209,12 @@ def get_missing_bios(session: SmbSession) -> list[dict[str, Any]]:
     return missing
 
 
+def file_md5(path: str) -> str:
+    """A file's MD5 in lowercase, read in chunks. MD5 identifies files; it isn't for security."""
+    with open(path, "rb") as f:
+        return hashlib.file_digest(f, lambda: hashlib.md5(usedforsecurity=False)).hexdigest()
+
+
 def get_possible_bios(folder_path):
 
     bios = []
@@ -220,10 +226,7 @@ def get_possible_bios(folder_path):
             )
             for filename in files:
                 file_path = os.path.join(root, filename)
-                with open(file_path, "rb") as f:
-                    file_data = f.read()
-                    file_md5 = hashlib.md5(file_data).hexdigest()
-                    bios.append({"name": filename, "hash": file_md5.upper()})
+                bios.append({"name": filename, "hash": file_md5(file_path)})
         else:
             print(f"{CYAN}No bios were found to analyse in your system!{RESET}")
             exit()
