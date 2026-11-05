@@ -1,8 +1,8 @@
 """In-memory stand-in for pysmb's SMBConnection, so that no test touches a network or a Recalbox.
 
-Install it with ``install_fake_smb(monkeypatch)``. Every ``SMBConnection(...)`` that check_bios
-creates is then a ``FakeSMBConnection`` bound to one ``FakeSMBServer``, which holds the shares,
-files and folders, and remembers every connection made to it.
+Install it with ``install_fake_smb(monkeypatch)``. Every ``SMBConnection(...)`` that check_bios or
+beck.transports.smb creates is then a ``FakeSMBConnection`` bound to one ``FakeSMBServer``, which
+holds the shares, files and folders, and remembers every connection made to it.
 """
 
 from dataclasses import dataclass
@@ -11,6 +11,7 @@ from typing import IO, Any
 import pytest
 from smb.smb_structs import OperationFailure
 
+import beck.transports.smb
 import check_bios
 
 
@@ -27,6 +28,7 @@ class FakeEntry:
 
     filename: str
     isDirectory: bool  # pysmb's spelling
+    file_size: int = 0
 
 
 def _norm(path: str) -> str:
@@ -83,6 +85,7 @@ class FakeSMBConnection:
         self.connected = False
         self.closed = False
         self.stored_files: list[IO[bytes]] = []
+        self.timeouts: list[float] = []
 
     def _call(self, name: str, *, needs_connection: bool = True) -> None:
         self.calls.append(name)
@@ -91,7 +94,10 @@ class FakeSMBConnection:
         if needs_connection and (not self.connected or self.closed):
             raise AssertionError(f"{name}() called on a connection that isn't open")
 
-    def connect(self, ip: str, port: int = 139, sock_family: Any = None, timeout: int = 60) -> bool:
+    def connect(
+        self, ip: str, port: int = 139, sock_family: Any = None, timeout: float = 60
+    ) -> bool:
+        self.timeouts.append(timeout)
         self._call("connect", needs_connection=False)
         self.connected = True
         return self.server.login_succeeds
@@ -100,13 +106,15 @@ class FakeSMBConnection:
         self.calls.append("close")
         self.closed = True
 
-    def listShares(self, timeout: int = 30) -> list[FakeShare]:
+    def listShares(self, timeout: float = 30) -> list[FakeShare]:
+        self.timeouts.append(timeout)
         self._call("listShares")
         return [FakeShare(name) for name in self.server.shares]
 
     def retrieveFile(
-        self, service_name: str, path: str, file_obj: IO[bytes], timeout: int = 30
+        self, service_name: str, path: str, file_obj: IO[bytes], timeout: float = 30
     ) -> None:
+        self.timeouts.append(timeout)
         self._call("retrieveFile")
         content = self.server.files.get((service_name, _norm(path)))
         if content is None:
@@ -114,17 +122,21 @@ class FakeSMBConnection:
         file_obj.write(content)
 
     def storeFile(
-        self, service_name: str, path: str, file_obj: IO[bytes], timeout: int = 30
-    ) -> None:
+        self, service_name: str, path: str, file_obj: IO[bytes], timeout: float = 30
+    ) -> int:
+        self.timeouts.append(timeout)
         self._call("storeFile")
         self.stored_files.append(file_obj)
         if not self.server.exists(service_name, _parent(_norm(path))):
             raise OperationFailure(
                 f"Failed to store {path} on {service_name}: no parent folder", []
             )
-        self.server.files[(service_name, _norm(path))] = file_obj.read()
+        content = file_obj.read()
+        self.server.files[(service_name, _norm(path))] = content
+        return len(content)
 
-    def createDirectory(self, service_name: str, path: str, timeout: int = 30) -> None:
+    def createDirectory(self, service_name: str, path: str, timeout: float = 30) -> None:
+        self.timeouts.append(timeout)
         self._call("createDirectory")
         folder = _norm(path)
         if self.server.exists(service_name, folder) or not self.server.exists(
@@ -133,7 +145,19 @@ class FakeSMBConnection:
             raise OperationFailure(f"Failed to create directory {path} on {service_name}", [])
         self.server.dirs.add((service_name, folder))
 
+    def getAttributes(self, service_name: str, path: str, timeout: float = 30) -> FakeEntry:
+        self.timeouts.append(timeout)
+        self._call("getAttributes")
+        name = _norm(path)
+        if (service_name, name) in self.server.files:
+            content = self.server.files[(service_name, name)]
+            return FakeEntry(name.rpartition("/")[2], False, len(content))
+        if (service_name, name) in self.server.dirs:
+            return FakeEntry(name.rpartition("/")[2], True)
+        raise OperationFailure(f"Failed to get attributes for {path} on {service_name}", [])
+
     def listPath(self, service_name: str, path: str, *args: Any, **kwargs: Any) -> list[FakeEntry]:
+        self.timeouts.append(kwargs.get("timeout", 30))
         self._call("listPath")
         folder = _norm(path)
         if not self.server.exists(service_name, folder):
@@ -151,9 +175,10 @@ class FakeSMBConnection:
 def install_fake_smb(
     monkeypatch: pytest.MonkeyPatch, server: FakeSMBServer | None = None
 ) -> FakeSMBServer:
-    """Make check_bios use a fake SMB server, and make any real socket connection fail the test."""
+    """Make BECK use a fake SMB server, and make any real socket connection fail the test."""
     server = server or FakeSMBServer()
     monkeypatch.setattr(check_bios, "SMBConnection", server.new_connection)
+    monkeypatch.setattr(beck.transports.smb, "SMBConnection", server.new_connection)
 
     def no_network(*_args: Any, **_kwargs: Any) -> None:
         raise AssertionError("a test tried to open a real network connection")

@@ -205,7 +205,13 @@ flowchart LR
 - **Commit message:** `feat(transports): add transport interface and local folder transport`
 
 ### 04.9 — SMB transport on pysmb (D4, D11, D16)
-- [ ] Done
+- [x] Done (2026-11-04: `exists` walks the listings, because `pysmb` raises the same exception for "not found" and "access
+  denied", and a failed listing stays an error. Error messages use `OperationFailure.message`, because `str()` adds a long
+  SMB dump. The default timeout is 30 seconds, including the connection, where `pysmb`'s own default is 60. Checked by
+  breaking each rule on purpose, which found two gaps in the tests. Also run **read-only** against the Recalbox 10.1.1 VM
+  as a guest, in NetBIOS mode: reading, `size`, `exists`, and the errors for a missing file, a missing share and a closed
+  port. Not run on a real server: `makedirs` and `upload` with the new `timeout` argument, and `storeFile`'s return value
+  (stage 05). Nothing uses this until 04.13.)
 - **What:** `transports/smb.py`: `SmbTransport(host, port, share, user, password, timeout)` on `pysmb` (DEC-53),
   carrying over stage 03's `SmbSession`. One `SMBConnection` opens in `__enter__`, with `is_direct_tcp` when the port is
   445 (final D16), and closes in `__exit__` (final D11). Nested folders are created one level at a time, as in
@@ -269,6 +275,7 @@ flowchart LR
     (an installed tool has no meaningful script folder).
   - The root `check_bios.py` becomes a 5-line shim. It prints a deprecation notice ("use `beck`") and calls
     `main(base_dir=<its own folder>)`, so old usage keeps working.
+  - Decode the report as stage 03 does: `decode("utf-8", errors="replace")`, because `read_bytes` returns raw bytes.
   - Port every stage 03 test to drive `cli.main` with `LocalTransport`, or a patched SMB transport where needed.
 - **Files:** `src/beck/cli.py`, `check_bios.py`, `tests/**`
 - **Done when:** All stage 03 regression tests pass through the new code path.
