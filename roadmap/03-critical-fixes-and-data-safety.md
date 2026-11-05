@@ -103,7 +103,7 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
   - D11: `main()` opens **one** session and passes it down. The client name is `socket.gethostname()`, falling
     back to `"BECK"` on `OSError`; never `gethostbyname(...)`.
   - D16 (interim): pass `is_direct_tcp=True` when `port == 445`. Verified on a real device in 03.13; the final
-    fix is the smbprotocol transport in 04.9.
+    fix is the smbprotocol transport in 04.9 (`pysmb` since DEC-53).
   - Errors raise a `BeckError(message)`; only `main()` prints and exits. Remove `exit()` from the class.
   - `tests/fakes.py`: `FakeSMBConnection` storing files and directories in a dict; it records calls and
     connection count. Tests monkeypatch `check_bios.SMBConnection`.

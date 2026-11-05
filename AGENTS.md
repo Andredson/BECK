@@ -10,8 +10,8 @@ BECK (BIOS checker for Recalbox) matches a user's BIOS files against the MD5 has
 report that Recalbox generates, then copies the matching files, under the expected names, into the right
 folders on the Recalbox over SMB.
 
-**Status (2026-11-04):** prototype. The application is a single script, `check_bios.py`. Stage 03 fixed its known
-defects ([D1–D15, with D16 interim](roadmap/00-assessment.md#defects)), and it no longer deletes or renames local
+**Status (2026-11-04):** prototype. The application is the `beck` package in `src/beck/`, being refactored in stage 04.
+Stage 03 fixed the known defects ([D1–D15, with D16 interim](roadmap/00-assessment.md#defects)), and it no longer deletes or renames local
 files. The repository around it has tooling and
 CI (stage 02): lint, types, tests on Python 3.11–3.14, commit-message, secret and dependency checks. It is being improved stage by stage following
 [roadmap/README.md](roadmap/README.md). The target is an installable CLI `beck` published on PyPI as `beck-bios`.
@@ -20,13 +20,13 @@ CI (stage 02): lint, types, tests on Python 3.11–3.14, commit-message, secret 
 
 | Path | What it is |
 |---|---|
-| `check_bios.py` | The whole application today: SMB access, report parsing, hashing, matching, upload, output. |
-| `src/beck/` | The package stage 04 is building ([design](docs/ARCHITECTURE.md)). For now, `beck` and `python -m beck` only hand over to `check_bios.py`, which is in a clone but not in the wheel. |
+| `check_bios.py` | A deprecated shim: it prints a notice and runs `beck.cli.main` with its own folder, importing from `src/` so that the pip route works. |
+| `src/beck/` | The application ([design](docs/ARCHITECTURE.md)): `cli`, `models`, `hashing`, `matcher`, `executor`, `errors`, and `frontends/`, `transports/`, `output/`. `beck` finds `config/` and `bios/` in the current folder. |
 | `config/config.example.yml` | Example SMB settings (`user`, `passwd`, `server`, `port`) with empty credentials. Users copy it to `config/config.yml`, which is **gitignored** (step 03.2); never track or commit the real file. |
 | `bios/` | Input folder for the user's BIOS files. Everything except `bios/.keep` is gitignored. |
 | `pyproject.toml`, `uv.lock`, `.python-version` | Project metadata, runtime and dev dependencies, tool settings (ruff, mypy, pytest, coverage, commitizen), the lockfile, and Python 3.11 for local work. Managed with uv; `exclude-newer` is the 14-day cooldown (DEC-45). The distribution is `beck-bios`, built with `uv_build` (DEC-18), and it installs the `beck` command. |
 | `requirements.txt` | Runtime dependencies for pip users, **generated** from `uv.lock` (see [Commands](#commands)). Don't edit it by hand; CI fails if it drifts. |
-| `tests/` | pytest suite: tests for each part of `check_bios.py` (config, SMB session, parser, hashing, scanner, matching, paths, non-destructive behavior), an import smoke test that blocks file and network access, the Markdown link checker, and tests for the hygiene guard and the workflow pins. `tests/fakes.py` is the in-memory SMB server the application tests use. `tests/fixtures/reports/` holds real and derived Recalbox reports, with provenance in `tests/fixtures/README.md`; the real report keeps its CRLF line endings byte-exact. |
+| `tests/` | pytest suite: `tests/unit/` has a test file per module, full runs through `cli.main` (`test_cli.py`), and the architecture rules checked on the source (`test_architecture.py`). `tests/` has the package and shim tests, the Markdown link checker, and tests for the hygiene guard and the workflow pins. `tests/fakes.py` is the in-memory SMB server the application tests use. `tests/fixtures/reports/` holds real and derived Recalbox reports, with provenance in `tests/fixtures/README.md`; the real report keeps its CRLF line endings byte-exact. |
 | `scripts/check_repo_hygiene.py` | Fails if git tracks BIOS/ROM-like files, files over 1 MiB, or config files (each allowed exception has a reason). |
 | `.github/workflows/ci.yml` | CI on every PR and push to `main`: `quality`, the `tests` matrix (Linux × Python 3.11–3.14; Windows and macOS removed, DEC-49) summarized by `tests-passed`, `commits`, `secrets`, `sca`. |
 | `.github/workflows/security.yml` | Weekly (Mondays 06:00 UTC): full-history secret scan and dependency scan. |
@@ -147,7 +147,7 @@ skill below, **read its whole `SKILL.md` before acting** and follow it.
 
 ## Code style
 
-- Today: one script. Keep changes minimal and focused on the current step.
+- Keep changes minimal and focused on the current step.
 - Enforced by CI: `ruff format` and `ruff check` (including the `S` security rules), and `mypy` strict for new
   code. Also expected: type hints everywhere, `pathlib` for paths, no bare `except:`, and `sys.exit` only at the CLI
   boundary. `check_bios.py` has a relaxed mypy override until step 04.14, and no ruff ignores. Don't add new ones.

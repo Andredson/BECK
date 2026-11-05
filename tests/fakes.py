@@ -1,6 +1,6 @@
 """In-memory stand-in for pysmb's SMBConnection, so that no test touches a network or a Recalbox.
 
-Install it with ``install_fake_smb(monkeypatch)``. Every ``SMBConnection(...)`` that check_bios or
+Install it with ``install_fake_smb(monkeypatch)``. Every ``SMBConnection(...)`` that
 beck.transports.smb creates is then a ``FakeSMBConnection`` bound to one ``FakeSMBServer``, which
 holds the shares, files and folders, and remembers every connection made to it.
 """
@@ -12,19 +12,18 @@ import pytest
 from smb.smb_structs import OperationFailure
 
 import beck.transports.smb
-import check_bios
 
 
 @dataclass(frozen=True)
 class FakeShare:
-    """The part of pysmb's SharedDevice that check_bios reads."""
+    """The part of pysmb's SharedDevice that BECK reads."""
 
     name: str
 
 
 @dataclass(frozen=True)
 class FakeEntry:
-    """The part of pysmb's SharedFile that check_bios reads."""
+    """The part of pysmb's SharedFile that BECK reads."""
 
     filename: str
     isDirectory: bool  # pysmb's spelling
@@ -61,7 +60,7 @@ class FakeSMBServer:
 
 
 class FakeSMBConnection:
-    """Behaves like pysmb's SMBConnection (same method names) for the calls check_bios makes."""
+    """Behaves like pysmb's SMBConnection (same method names) for the calls BECK makes."""
 
     def __init__(
         self,
@@ -177,7 +176,6 @@ def install_fake_smb(
 ) -> FakeSMBServer:
     """Make BECK use a fake SMB server, and make any real socket connection fail the test."""
     server = server or FakeSMBServer()
-    monkeypatch.setattr(check_bios, "SMBConnection", server.new_connection)
     monkeypatch.setattr(beck.transports.smb, "SMBConnection", server.new_connection)
 
     def no_network(*_args: Any, **_kwargs: Any) -> None:

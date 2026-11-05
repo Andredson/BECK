@@ -282,7 +282,21 @@ flowchart LR
 - **Commit message:** `feat(output): add console renderer with NO_COLOR support and logging`
 
 ### 04.13 — Thin CLI with behavior parity
-- [ ] Done
+- [x] Done (2026-11-04: all 85 tests from the old files were audited against their new homes, and one was dropped on
+  purpose, because the wheel now holds the whole application. Compared with the stage 03 script on the owner's files and the
+  real report, with the fake server: the same 394 lines as a set, and identical files on the server.
+  - **Run on the Recalbox 10.1.1 VM, with the owner's OK to write:** the `beck` command, the wheel on its own, and
+    `python check_bios.py` from a clean copy with only `requirements.txt` installed, in NetBIOS mode. `makedirs` with spaces
+    and parentheses, 3 MiB uploads, overwriting, and `storeFile`'s byte count all work.
+  - **Direct TCP:** a run with `port: 445` chose direct TCP by itself and uploaded, with real SMB against the VM's Samba.
+    Only the TCP port number was redirected to the VM's forward, because this machine can't bind port 445. This closes
+    check 8 of step 03.13 on the VM; real hardware is still open (DEC-52). The VM's file list was restored and verified
+    identical.
+  - **Differences from stage 03:** exit codes are now 2, 3 and 4 instead of always 1. A failed upload no longer stops the
+    run, and exits 3. A missing report has its own message. Malformed YAML or a missing setting is now a clear error, which
+    closes the traceback noted in 03.12. A bug prints a traceback to stderr and exits 1. `FOUND` lines print at the end.
+    `beck` uses the current folder; `check_bios.py` uses its own.
+  - **Overlap with 04.14:** a shim this small meant deleting the legacy functions here.)
 - **What:**
   - `cli.main(argv: list[str] | None = None, *, base_dir: Path | None = None) -> int` wires it all together:
     load the legacy config, open the transport, read and parse the report, scan, plan, execute, render. It maps
@@ -300,10 +314,10 @@ flowchart LR
 
 ### 04.14 — Remove legacy code; strict typing everywhere
 - [ ] Done
-- **What:** Delete the legacy functions (only the shim stays in `check_bios.py`). Remove the mypy relaxed
+- **What:** The legacy functions went in 04.13, so only the settings are left. Remove the mypy relaxed
   override and the `pythonpath = ["."]` pytest setting. Point mypy `files` at `src` and `tests`. Coverage
   `source = ["beck"]`. `pysmb` stays (DEC-53), so its import override stays, and no dependency changes.
-- **Files:** `check_bios.py`, `pyproject.toml`
+- **Files:** `pyproject.toml`
 - **Done when:** `mypy --strict` passes on all of `src/` with no overrides except third-party stubs.
 - **Verify:** `uv run mypy && uv run pytest --cov`
 - **Commit message:** `refactor!: remove legacy script internals`

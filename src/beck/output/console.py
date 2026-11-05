@@ -24,8 +24,7 @@ def configure_logging(level: int = logging.WARNING) -> logging.Logger:
     """Send BECK's diagnostics to stderr, so that stdout only has the human output."""
     logger = logging.getLogger(LOGGER_NAME)
     logger.setLevel(level)
-    if not logger.handlers:
-        logger.addHandler(logging.StreamHandler(sys.stderr))
+    logger.handlers[:] = [logging.StreamHandler(sys.stderr)]  # replaced, so lines never repeat
     return logger
 
 
