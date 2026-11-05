@@ -156,6 +156,19 @@ def test_uploads_to_one_target_are_ordered_by_source() -> None:
     assert Plan(uploads=(late, early)).uploads == (early, late)
 
 
+def test_local_paths_sort_as_text_like_stage_03() -> None:
+    slash, dash = local("a/x.bin"), local("a-b/x.bin")
+
+    plan = Plan(
+        duplicates=(Duplicate(file=slash, of=dash), Duplicate(file=dash, of=slash)),
+        unmatched=(slash, dash),
+        already_filled=(slash, dash),
+    )
+
+    assert plan.unmatched == plan.already_filled == (dash, slash)
+    assert plan.duplicates[0].file == dash
+
+
 def test_run_result_defaults_to_a_real_run_with_nothing_done() -> None:
     result = RunResult(plan=Plan())
 

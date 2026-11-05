@@ -156,7 +156,10 @@ flowchart LR
 - **Commit message:** `feat(core): add typed domain models`
 
 ### 04.6 — Hashing and local scanning module
-- [ ] Done
+- [x] Done (2026-11-04: the code was copied, because `check_bios.py` must keep working until 04.13. Its printed messages
+  aren't ported: `scan` prints nothing, and the messages move to the output layer in 04.12. Local paths sort as text, as in
+  stage 03, because `PurePosixPath` puts `a/x` before `a-b/x` and "first by path" decides which file wins; `Plan` from
+  04.5 was changed to match, and 04.10 must sort the same way. Checked by breaking each rule on purpose.)
 - **What:** Move the stage 03 scanner and hashing into `hashing.py`: `md5_file(path) -> str` and
   `scan(folder) -> list[LocalFile]` (recursive, hidden files skipped, deterministic order). Port the stage 03
   tests unchanged in intent.
@@ -210,7 +213,7 @@ flowchart LR
 ### 04.10 — Pure matcher
 - [ ] Done
 - **What:** `matcher.plan(missing: Sequence[MissingBios], local: Sequence[LocalFile]) -> Plan`, a pure
-  function with no I/O. It carries over the 03.8 and 03.12a behavior: one file can satisfy many entries; each
+  function with no I/O. "First by path" compares paths as text (see 04.6). It carries over the 03.8 and 03.12a behavior: one file can satisfy many entries; each
   target is filled once; a file named like a target gets that target first; duplicate local files are listed;
   each entry counts once. It also lists the remote `directories` that uploads need, the files whose targets
   were `already_filled`, and the entries that are `still_missing`.

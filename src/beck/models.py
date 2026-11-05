@@ -84,7 +84,10 @@ class Duplicate:
 
 @dataclass(frozen=True, slots=True)
 class Plan:
-    """What a run will do. Every field is sorted, so the same input always gives the same plan."""
+    """What a run will do. Every field is sorted, so the same input always gives the same plan.
+
+    Local paths sort as text, like the stage 03 script, not folder by folder.
+    """
 
     uploads: tuple[PlannedUpload, ...] = ()
     directories: tuple[PurePosixPath, ...] = ()
@@ -95,11 +98,11 @@ class Plan:
 
     def __post_init__(self) -> None:
         fields: dict[str, list[Any]] = {
-            "uploads": sorted(self.uploads, key=lambda u: (u.target, u.source.relative)),
+            "uploads": sorted(self.uploads, key=lambda u: (u.target, u.source.relative.as_posix())),
             "directories": sorted(self.directories),
-            "duplicates": sorted(self.duplicates, key=lambda d: d.file.relative),
-            "unmatched": sorted(self.unmatched, key=lambda f: f.relative),
-            "already_filled": sorted(self.already_filled, key=lambda f: f.relative),
+            "duplicates": sorted(self.duplicates, key=lambda d: d.file.relative.as_posix()),
+            "unmatched": sorted(self.unmatched, key=lambda f: f.relative.as_posix()),
+            "already_filled": sorted(self.already_filled, key=lambda f: f.relative.as_posix()),
             "still_missing": sorted(self.still_missing, key=lambda e: e.target),
         }
         for name, value in fields.items():
