@@ -951,11 +951,14 @@ def test_report_from_a_file_uses_no_network_and_no_config(
     ]
 
 
+@pytest.mark.parametrize("optional_first", [True, False], ids=["optional-first", "required-first"])
 def test_report_lists_a_repeated_target_once_and_required_wins(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    optional_first: bool, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     optional = block("x.pce", "0" * 32).replace("REQUIRED", "OPTIONAL")
-    file = local_report(tmp_path, optional + block("x.pce", "1" * 32))
+    required = block("x.pce", "1" * 32)
+    text = optional + required if optional_first else required + optional
+    file = local_report(tmp_path, text)
 
     assert cli.main(["report", "--report-file", file], base_dir=tmp_path) == 0
 
