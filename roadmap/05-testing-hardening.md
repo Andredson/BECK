@@ -82,9 +82,10 @@ DEC-08, DEC-09, DEC-25, DEC-33, DEC-36, DEC-40.
   - The title is only required when no block is found, so a changed title with known blocks still parses.
   - An empty file is now an error, exit 4, because Recalbox always writes the header.
 
-  The block format comes from Recalbox's source, and the 10.1.1 binary has the same text, but **no real report with an
-  `INCORRECT` block has been seen yet**. `derived-incorrect` is built from real blocks in that format. Checked by breaking each
-  rule on purpose.)
+  The block format comes from Recalbox's source. It was **confirmed on the Recalbox 10.1.1 VM**: with random bytes at two targets,
+  it wrote both `INCORRECT` heading forms, and the real `beck` kept both files and exited 0. That report is now the
+  `incorrect-files` fixture, which replaces a fixture built by hand. The VM was restored. Checked by breaking each rule on
+  purpose.)
 - **What:** Today, a report with no recognized block gives "No missing bios were found", even if its format changed in a new
   Recalbox version, which would mislead the user with no error (found in 05.2). `RecalboxAdapter.parse_report` raises
   `ReportParseError` when the text has content but doesn't look like a report: no `MISSING BIOS REPORT` title, or a line with

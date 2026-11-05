@@ -9,7 +9,7 @@ from tests.conftest import REAL_REPORT, REPORT_NAMES, load_expected, load_report
 
 def test_there_are_real_and_derived_fixtures() -> None:
     assert REAL_REPORT in REPORT_NAMES
-    assert sum("derived-" in name for name in REPORT_NAMES) >= 5
+    assert sum("derived-" in name for name in REPORT_NAMES) >= 4
 
 
 @pytest.mark.parametrize("name", REPORT_NAMES)

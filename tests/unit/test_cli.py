@@ -292,6 +292,27 @@ def test_an_incorrect_file_is_reported_kept_and_exits_normally(
     assert "Final result" not in output
 
 
+def test_a_real_report_with_incorrect_files(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # The same outcome as a real run against the Recalbox 10.1.1 VM that wrote this report.
+    report(server, load_report("recalbox-10.1.1/incorrect-files"))
+    write(app / "bios" / "junk.bin")
+
+    assert run(app) == 0
+
+    lines = capsys.readouterr().out.splitlines()
+    assert lines == [
+        "INCORRECT: scummvm/MT32_CONTROL.ROM is on the device with a wrong MD5, and was kept",
+        "INCORRECT: xbox/mcpx_1.0.bin is on the device with a wrong MD5, and was kept",
+        "There are 78 missing bios in your RECALBOX",
+        "There are 1 possible bios to be analysed in your system",
+        "junk.bin: no match, kept",
+        "Final result: 0/78 missing entries satisfied, 1 files analysed",
+    ]
+    assert server.connections[0].calls.count("storeFile") == 0
+
+
 def test_incorrect_files_are_reported_beside_normal_uploads(
     server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

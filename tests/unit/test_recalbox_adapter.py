@@ -338,13 +338,27 @@ def incorrect_block(name: str = "b.bin", valid: str = OTHER_HASH) -> str:
     )
 
 
-def test_the_incorrect_fixture_marks_only_its_incorrect_block() -> None:
-    parsed = adapter.parse_report(load_report("recalbox-10.1.1/derived-incorrect"))
+def test_a_real_report_marks_only_its_incorrect_blocks() -> None:
+    # Written by Recalbox 10.1.1 after random bytes were placed at two targets on a VM.
+    parsed = adapter.parse_report(load_report("recalbox-10.1.1/incorrect-files"))
 
-    assert [entry.incorrect for entry in parsed] == [False, True, False]
-    assert parsed[1].current_md5 == "d0c70c0ffeec0ffeec0ffeec0ffee000"
-    assert parsed[1].current_md5 not in parsed[0].md5s | parsed[1].md5s | parsed[2].md5s
-    assert parsed[0].current_md5 is parsed[2].current_md5 is None
+    assert len(parsed) == 81
+    incorrect = {entry.name: entry for entry in parsed if entry.incorrect}
+    assert set(incorrect) == {"mcpx_1.0.bin", "MT32_CONTROL.ROM"}
+
+    required = incorrect["mcpx_1.0.bin"]
+    assert required.required is True
+    assert required.system == "Microsoft Xbox"
+    assert required.current_md5 == "d7aa7a14d24dbf344fa702685f5e14f5"
+    assert required.md5s == {"d49c52a4102f6df7bcf8d0617ac475ed"}
+
+    optional = incorrect["MT32_CONTROL.ROM"]
+    assert optional.required is False
+    assert optional.target == PurePosixPath("scummvm/MT32_CONTROL.ROM")
+    assert optional.current_md5 == "cd8c839aa6b47dc4ab2c3f96766366fa"
+
+    all_candidates = {md5 for entry in parsed for md5 in entry.md5s}
+    assert not {required.current_md5, optional.current_md5} & all_candidates
 
 
 def test_an_incorrect_block_is_its_own_entry() -> None:

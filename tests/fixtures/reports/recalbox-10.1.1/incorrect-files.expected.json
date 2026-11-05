@@ -1,0 +1,726 @@
+[
+  {
+    "name": "MinivMacBootv2.dsk",
+    "path": "/recalbox/share/bios/macintosh/",
+    "relativePath": "macintosh/",
+    "hashes": [
+      "16DDB8838D48BE26E471A2F2BB85A961",
+      "E66DC7952C8B9673868AD2FABA3C0D20"
+    ]
+  },
+  {
+    "name": "JiffyDOS_C64.bin",
+    "path": "/recalbox/share/bios/vice/",
+    "relativePath": "vice/",
+    "hashes": [
+      "BE09394F0576CF81FA8BACF634DAF9A2"
+    ]
+  },
+  {
+    "name": "JiffyDOS_C128.bin",
+    "path": "/recalbox/share/bios/vice/",
+    "relativePath": "vice/",
+    "hashes": [
+      "CBBD1BBCB5E4FD8046B6030AB71FC021"
+    ]
+  },
+  {
+    "name": "JiffyDOS_1541-II.bin",
+    "path": "/recalbox/share/bios/vice/",
+    "relativePath": "vice/",
+    "hashes": [
+      "1B1E985EA5325A1F46EB7FD9681707BF"
+    ]
+  },
+  {
+    "name": "JiffyDOS_1571_repl310654.bin",
+    "path": "/recalbox/share/bios/vice/",
+    "relativePath": "vice/",
+    "hashes": [
+      "41C6CC528E9515FFD0ED9B180F8467C0"
+    ]
+  },
+  {
+    "name": "JiffyDOS_1581.bin",
+    "path": "/recalbox/share/bios/vice/",
+    "relativePath": "vice/",
+    "hashes": [
+      "20B6885C6DC2D42C38754A365B043D71"
+    ]
+  },
+  {
+    "name": "scpu-dos-1.4.bin",
+    "path": "/recalbox/share/bios/vice/SCPU64/",
+    "relativePath": "vice/SCPU64/",
+    "hashes": [
+      "CDA2FCD2E1F0412029383E51DD472095"
+    ]
+  },
+  {
+    "name": "scpu-dos-2.04.bin",
+    "path": "/recalbox/share/bios/vice/SCPU64/",
+    "relativePath": "vice/SCPU64/",
+    "hashes": [
+      "B2869F8678B8B274227F35AAD26BA509"
+    ]
+  },
+  {
+    "name": "ddos10.rom",
+    "path": "/recalbox/share/bios/dragon/",
+    "relativePath": "dragon/",
+    "hashes": [
+      "1C965DA49B6C5459B8353630AA1482E7"
+    ]
+  },
+  {
+    "name": "ddos11c.rom",
+    "path": "/recalbox/share/bios/dragon/",
+    "relativePath": "dragon/",
+    "hashes": [
+      "D8429AF1A12F7438A4BF88A5B934CB3A"
+    ]
+  },
+  {
+    "name": "ddos12a.rom",
+    "path": "/recalbox/share/bios/dragon/",
+    "relativePath": "dragon/",
+    "hashes": [
+      "55E2535DBBED7F1A26B5F263D7C72C63"
+    ]
+  },
+  {
+    "name": "ddos40.rom",
+    "path": "/recalbox/share/bios/dragon/",
+    "relativePath": "dragon/",
+    "hashes": [
+      "9DDC388632CD3C376B164BA5CFC64329"
+    ]
+  },
+  {
+    "name": "ddos42.rom",
+    "path": "/recalbox/share/bios/dragon/",
+    "relativePath": "dragon/",
+    "hashes": [
+      "C956A854CBC4B9D1E69C000F78368668"
+    ]
+  },
+  {
+    "name": "deltados.rom",
+    "path": "/recalbox/share/bios/dragon/",
+    "relativePath": "dragon/",
+    "hashes": [
+      "024EAC3DB20F1B5CF98C30A0E4743201"
+    ]
+  },
+  {
+    "name": "dplus48.rom",
+    "path": "/recalbox/share/bios/dragon/",
+    "relativePath": "dragon/",
+    "hashes": [
+      "EE6F24D893A52B8EFEA9F787855456B5"
+    ]
+  },
+  {
+    "name": "dplus49b.rom",
+    "path": "/recalbox/share/bios/dragon/",
+    "relativePath": "dragon/",
+    "hashes": [
+      "56F1B97314E4CA82491C465BB887059E"
+    ]
+  },
+  {
+    "name": "dplus50.rom",
+    "path": "/recalbox/share/bios/dragon/",
+    "relativePath": "dragon/",
+    "hashes": [
+      "35DE5D28DA507EBB213A26E04241D940"
+    ]
+  },
+  {
+    "name": "sdose6.rom",
+    "path": "/recalbox/share/bios/dragon/",
+    "relativePath": "dragon/",
+    "hashes": [
+      "9D85E6B7133F915C021156F4B9CDB512"
+    ]
+  },
+  {
+    "name": "sdose8.rom",
+    "path": "/recalbox/share/bios/dragon/",
+    "relativePath": "dragon/",
+    "hashes": [
+      "167F409B7A4B992FAABB784B061AB4C6"
+    ]
+  },
+  {
+    "name": "Complex_4627.bin",
+    "path": "/recalbox/share/bios/xbox/",
+    "relativePath": "xbox/",
+    "hashes": [
+      "39CEE882148A87F93CB440B99DDE3CEB"
+    ]
+  },
+  {
+    "name": "mcpx_1.0.bin",
+    "path": "/recalbox/share/bios/xbox/",
+    "relativePath": "xbox/",
+    "hashes": [
+      "D49C52A4102F6DF7BCF8D0617AC475ED"
+    ]
+  },
+  {
+    "name": "syscard1.pce",
+    "path": "/recalbox/share/bios/pcenginecd/",
+    "relativePath": "pcenginecd/",
+    "hashes": [
+      "9F770275393B8627CF9D24E5C56D2AB9"
+    ]
+  },
+  {
+    "name": "syscard2.pce",
+    "path": "/recalbox/share/bios/pcenginecd/",
+    "relativePath": "pcenginecd/",
+    "hashes": [
+      "424F1D6BF93259BF255AFA7D1DC9F721"
+    ]
+  },
+  {
+    "name": "syscard2u.pce",
+    "path": "/recalbox/share/bios/pcenginecd/",
+    "relativePath": "pcenginecd/",
+    "hashes": [
+      "94279F315E8B52904F65AB3108542AFE"
+    ]
+  },
+  {
+    "name": "syscard3u.pce",
+    "path": "/recalbox/share/bios/pcenginecd/",
+    "relativePath": "pcenginecd/",
+    "hashes": [
+      "0754F903B52E3B3342202BDAFB13EFA5"
+    ]
+  },
+  {
+    "name": "palmos41-en-m515.rom",
+    "path": "/recalbox/share/bios/palm/",
+    "relativePath": "palm/",
+    "hashes": [
+      "83CB1D1C76E568B916DC2E7C0BF669F6"
+    ]
+  },
+  {
+    "name": "bootloader-dbvz.rom",
+    "path": "/recalbox/share/bios/palm/",
+    "relativePath": "palm/",
+    "hashes": [
+      "9DA101CD2317830649A31F8FA46DEBEC"
+    ]
+  },
+  {
+    "name": "cdimono1.zip",
+    "path": "/recalbox/share/bios/cdi/",
+    "relativePath": "cdi/",
+    "hashes": [
+      "CE590C4787460161359F2B680136CB60",
+      "BBE6636AC11D3744F0710E8E820187E7",
+      "1A7C3C98C46555FF5FC93EE3FEAE4B47"
+    ]
+  },
+  {
+    "name": "cdibios.zip",
+    "path": "/recalbox/share/bios/cdi/",
+    "relativePath": "cdi/",
+    "hashes": [
+      "9FD6B277CD877D51426427A33D1D19BB"
+    ]
+  },
+  {
+    "name": "cdimono2.zip",
+    "path": "/recalbox/share/bios/cdi/",
+    "relativePath": "cdi/",
+    "hashes": [
+      "2AC8CD5BB23287E022CA17D616949255"
+    ]
+  },
+  {
+    "name": "neogeo.zip",
+    "path": "/recalbox/share/bios/",
+    "relativePath": "",
+    "hashes": [
+      "E023D0A4B5249FDFF2A4620C28963944",
+      "8CBDFF53661F41DDBE486A98915E1EC9",
+      "42E359E394F0BE1D61B94DDCA0EFBE6C",
+      "C1E0A738D266926F604186AA9D63E4DB",
+      "D12BBA59121229FF13702878B415CB7C",
+      "2B4FFDF24D5D4F24C4B116C50C4BAFC3",
+      "005B843B6E70B939C2CCA41887CBC371",
+      "4B9432A4571D03CC8BAE9D24D8D6EB40",
+      "4CD64313E26537C04CDB561B8F84B0E4",
+      "50BBFD6BF297038B085E29265C65723A",
+      "76EE7390CCD537CDDEA1018025CA29A8",
+      "84D6C35AAD790A77BA3CFC1B319E1061",
+      "912C0A56BAFE0FBA39D0C668B139B250",
+      "94748719C0EF31E7375B0C357D82FC89",
+      "AB25B9E25052A6064901A7A221037EB6",
+      "AE9E5825CDE82C58E39DFD48534F7060",
+      "B18F83FEEF474B8A1306EF199CD810A2",
+      "B4519DF27A352C2A6E42E06D31330D91",
+      "BF00272E7150B31156A8995D60BF185D",
+      "CA66FD463EF7DCAB492A6DE8CE5F45EB",
+      "F4A125538DFD7A8044E025FC5188FB88",
+      "A3B2C9A69C28AD0BD4EA07877B744BBE",
+      "00DAD01ABDBF8EA9E79AD2FE11BDB182"
+    ]
+  },
+  {
+    "name": "aes.zip",
+    "path": "/recalbox/share/bios/geolith/",
+    "relativePath": "geolith/",
+    "hashes": [
+      "AD9585C72130C56F04AE26AAE87C289D",
+      "7A4DCD56B3924215AAC7F903FF907339"
+    ]
+  },
+  {
+    "name": "neogeo.zip",
+    "path": "/recalbox/share/bios/",
+    "relativePath": "",
+    "hashes": [
+      "E023D0A4B5249FDFF2A4620C28963944",
+      "8CBDFF53661F41DDBE486A98915E1EC9",
+      "42E359E394F0BE1D61B94DDCA0EFBE6C",
+      "C1E0A738D266926F604186AA9D63E4DB",
+      "D12BBA59121229FF13702878B415CB7C",
+      "2B4FFDF24D5D4F24C4B116C50C4BAFC3",
+      "005B843B6E70B939C2CCA41887CBC371",
+      "4B9432A4571D03CC8BAE9D24D8D6EB40",
+      "4CD64313E26537C04CDB561B8F84B0E4",
+      "50BBFD6BF297038B085E29265C65723A",
+      "76EE7390CCD537CDDEA1018025CA29A8",
+      "84D6C35AAD790A77BA3CFC1B319E1061",
+      "912C0A56BAFE0FBA39D0C668B139B250",
+      "94748719C0EF31E7375B0C357D82FC89",
+      "AB25B9E25052A6064901A7A221037EB6",
+      "AE9E5825CDE82C58E39DFD48534F7060",
+      "B18F83FEEF474B8A1306EF199CD810A2",
+      "B4519DF27A352C2A6E42E06D31330D91",
+      "BF00272E7150B31156A8995D60BF185D",
+      "CA66FD463EF7DCAB492A6DE8CE5F45EB",
+      "F4A125538DFD7A8044E025FC5188FB88",
+      "A3B2C9A69C28AD0BD4EA07877B744BBE",
+      "00DAD01ABDBF8EA9E79AD2FE11BDB182"
+    ]
+  },
+  {
+    "name": "neocdz.zip",
+    "path": "/recalbox/share/bios/",
+    "relativePath": "",
+    "hashes": [
+      "F39572AF7584CB5B3F70AE8CC848ABA2",
+      "389DBEB0CB857C130414747462CF9D71",
+      "C85B8132799F1B2AD3754A97947809D2",
+      "B9AB07A79997FC044CA164FC72CD5680"
+    ]
+  },
+  {
+    "name": "ng-lo.rom",
+    "path": "/recalbox/share/bios/neocd/",
+    "relativePath": "neocd/",
+    "hashes": [
+      "E255264D85D5765013B1B2FA8109DD53"
+    ]
+  },
+  {
+    "name": "neocd.zip",
+    "path": "/recalbox/share/bios/geolith/",
+    "relativePath": "geolith/",
+    "hashes": [
+      "3711783A59EF875C31076512E3F9F0E5"
+    ]
+  },
+  {
+    "name": "epr-20091.ic8",
+    "path": "/recalbox/share/bios/stv/",
+    "relativePath": "stv/",
+    "hashes": [
+      "34175C7AD31ACBE44F2BACCC7EA065C7"
+    ]
+  },
+  {
+    "name": "epr-17952a.ic8",
+    "path": "/recalbox/share/bios/stv/",
+    "relativePath": "stv/",
+    "hashes": [
+      "249B67334CFAE53810C1D1E3B93957A3"
+    ]
+  },
+  {
+    "name": "epr-17954a.ic8",
+    "path": "/recalbox/share/bios/stv/",
+    "relativePath": "stv/",
+    "hashes": [
+      "BA2CB634C15E59D7EA5552729306F2EF"
+    ]
+  },
+  {
+    "name": "stvbios.zip",
+    "path": "/recalbox/share/bios/stv/",
+    "relativePath": "stv/",
+    "hashes": [
+      "2B99D9DCECDE22DB4371580B6BB33F32",
+      "53A094AD3A188F86DE4E64624FE9B3CA",
+      "17116D2AEA72454096B3F80AB714BFBA",
+      "4CB34733B741ADA074F11E3ABCDC56D8",
+      "6B6D422A6C392EAEC178B64B92987E99",
+      "88B9DA6CDA268BA1D9E37DD82D038801",
+      "8C34608CC140E1BFBF9C945A12FED0E8",
+      "B876D86E244D00B336980B4E26E94132"
+    ]
+  },
+  {
+    "name": "awbios.zip",
+    "path": "/recalbox/share/bios/dc/",
+    "relativePath": "dc/",
+    "hashes": [
+      "A420C0E56135C2E7E87399C887D7EF4A",
+      "ABB0A508C83E689FC5E9230C623DABD0",
+      "042A0ADECF2D616CCFB915A5CD71FDE5",
+      "27FB8181FD9A0DF18C7F6F941E9D60AB",
+      "74F5E994ECFF655F18F0F9F998C9B1D9"
+    ]
+  },
+  {
+    "name": "MT32_CONTROL.ROM",
+    "path": "/recalbox/share/bios/scummvm/",
+    "relativePath": "scummvm/",
+    "hashes": [
+      "5626206284B22C2734F3E9EFEFCD2675"
+    ]
+  },
+  {
+    "name": "MT32_PCM.ROM",
+    "path": "/recalbox/share/bios/scummvm/",
+    "relativePath": "scummvm/",
+    "hashes": [
+      "89E42E386E82E0CACB4A2704A03706CA"
+    ]
+  },
+  {
+    "name": "naomi.zip",
+    "path": "/recalbox/share/bios/dc/",
+    "relativePath": "dc/",
+    "hashes": [
+      "7300A99A4FC856D1A3C36B4485789897",
+      "40AE83A9552DF0F340D5EEEADC5436EA",
+      "7ED453BDA92B25156536FF055B8685B6",
+      "A48E7A735B9036BE8F150018155370AD",
+      "E1DCB105789296B93BF58E37B7F38FC6",
+      "3C6B0FB04AB3EAE5DC6A99F63507DBD4"
+    ]
+  },
+  {
+    "name": "airlbios.zip",
+    "path": "/recalbox/share/bios/dc/",
+    "relativePath": "dc/",
+    "hashes": [
+      "06DD41B614A6D6D079EC1EE73E2BF87D",
+      "5B7DE05FB2DEA6FB0408149C9BADA27C",
+      "987E08B1786A93653281CA8A5B21DC7F"
+    ]
+  },
+  {
+    "name": "hod2bios.zip",
+    "path": "/recalbox/share/bios/dc/",
+    "relativePath": "dc/",
+    "hashes": [
+      "09B92AD1240FBA7954985BDEE59D1741",
+      "2C08C42CC8C6EB3A4E07BFF07DB5102F",
+      "9E1F4846028B18B5EF8A6BD8EFD6C67D",
+      "FBDF7E1CEF86D3FFD23754C0A303A4AF",
+      "729A623576CB9D8F7FD7C4E44ECE3066"
+    ]
+  },
+  {
+    "name": "naomi2.zip",
+    "path": "/recalbox/share/bios/dc/",
+    "relativePath": "dc/",
+    "hashes": [
+      "34F9C1ACDAF53D6A50DD8DE052E506CA"
+    ]
+  },
+  {
+    "name": "naomigd.zip",
+    "path": "/recalbox/share/bios/dc/",
+    "relativePath": "dc/",
+    "hashes": [
+      "288CDE03A112E7726FA8093E05D46853",
+      "416B5914ACB3D0B4A190A1D358C8710D",
+      "BD9F19B4BE0692E92E272D0EB82402F7",
+      "BE57D3744E71A3396FB8DC59830E880A"
+    ]
+  },
+  {
+    "name": "IPLROM.X1T",
+    "path": "/recalbox/share/bios/xmil/",
+    "relativePath": "xmil/",
+    "hashes": [
+      "56C28ADCF1F3A2F87CF3D57C378013F5"
+    ]
+  },
+  {
+    "name": "ps2-0230a-20080220.bin",
+    "path": "/recalbox/share/bios/ps2/",
+    "relativePath": "ps2/",
+    "hashes": [
+      "21038400DC633070A78AD53090C53017"
+    ]
+  },
+  {
+    "name": "ps2-0230e-20080220.bin",
+    "path": "/recalbox/share/bios/ps2/",
+    "relativePath": "ps2/",
+    "hashes": [
+      "DC69F0643A3030AAA4797501B483D6C4"
+    ]
+  },
+  {
+    "name": "ps2-0230h-20080220.bin",
+    "path": "/recalbox/share/bios/ps2/",
+    "relativePath": "ps2/",
+    "hashes": [
+      "30D56E79D89FBDDF10938FA67FE3F34E"
+    ]
+  },
+  {
+    "name": "ps2-0230j-20080220.bin",
+    "path": "/recalbox/share/bios/ps2/",
+    "relativePath": "ps2/",
+    "hashes": [
+      "80AC46FA7E77B8AB4366E86948E54F83"
+    ]
+  },
+  {
+    "name": "bas10.rom",
+    "path": "/recalbox/share/bios/trs80coco/",
+    "relativePath": "trs80coco/",
+    "hashes": [
+      "A74F3D95B395DAD7CDCA19D560EEEA74"
+    ]
+  },
+  {
+    "name": "bas11.rom",
+    "path": "/recalbox/share/bios/trs80coco/",
+    "relativePath": "trs80coco/",
+    "hashes": [
+      "C73FB4BFF9621C5AB17F6220B20DB82F"
+    ]
+  },
+  {
+    "name": "bas12.rom",
+    "path": "/recalbox/share/bios/trs80coco/",
+    "relativePath": "trs80coco/",
+    "hashes": [
+      "C933316C7D939532A13648850C1C2AA6"
+    ]
+  },
+  {
+    "name": "bas13.rom",
+    "path": "/recalbox/share/bios/trs80coco/",
+    "relativePath": "trs80coco/",
+    "hashes": [
+      "C2FC43556EB6B7B25BDF5955BD9DF825"
+    ]
+  },
+  {
+    "name": "extbas10.rom",
+    "path": "/recalbox/share/bios/trs80coco/",
+    "relativePath": "trs80coco/",
+    "hashes": [
+      "FDA72F415AFE99B36F953BB9BC1253DA"
+    ]
+  },
+  {
+    "name": "extbas11.rom",
+    "path": "/recalbox/share/bios/trs80coco/",
+    "relativePath": "trs80coco/",
+    "hashes": [
+      "21070AA0496142B886C562BF76D7C113"
+    ]
+  },
+  {
+    "name": "mx1600bas.rom",
+    "path": "/recalbox/share/bios/trs80coco/",
+    "relativePath": "trs80coco/",
+    "hashes": [
+      "88D1504E93366F498105A846CDBF7FB7"
+    ]
+  },
+  {
+    "name": "disk10.rom",
+    "path": "/recalbox/share/bios/trs80coco/",
+    "relativePath": "trs80coco/",
+    "hashes": [
+      "A64B3EF9EFCC066B18D35B134068D1CC"
+    ]
+  },
+  {
+    "name": "disk11.rom",
+    "path": "/recalbox/share/bios/trs80coco/",
+    "relativePath": "trs80coco/",
+    "hashes": [
+      "8CAB28F4B7311B8DF63C07BB3B59BFD5"
+    ]
+  },
+  {
+    "name": "hdbdw3bck.rom",
+    "path": "/recalbox/share/bios/trs80coco/",
+    "relativePath": "trs80coco/",
+    "hashes": [
+      "EF750D93D24D7BC87A8ECD6E5A15A845"
+    ]
+  },
+  {
+    "name": "mc10.rom",
+    "path": "/recalbox/share/bios/trs80coco/",
+    "relativePath": "trs80coco/",
+    "hashes": [
+      "F29E94FF36577FFB6A787959E45BFE85"
+    ]
+  },
+  {
+    "name": "coco3.rom",
+    "path": "/recalbox/share/bios/trs80coco/",
+    "relativePath": "trs80coco/",
+    "hashes": [
+      "7233C6C429F3CE1C7392F28A933E0B6F"
+    ]
+  },
+  {
+    "name": "coco3p.rom",
+    "path": "/recalbox/share/bios/trs80coco/",
+    "relativePath": "trs80coco/",
+    "hashes": [
+      "4AE57E5A8E7494E5485446FEFEDB580B"
+    ]
+  },
+  {
+    "name": "alice32.rom",
+    "path": "/recalbox/share/bios/trs80coco/",
+    "relativePath": "trs80coco/",
+    "hashes": [
+      "79EA46603D716578D5F2B52EB4C33CA2"
+    ]
+  },
+  {
+    "name": "alice4k.rom",
+    "path": "/recalbox/share/bios/trs80coco/",
+    "relativePath": "trs80coco/",
+    "hashes": [
+      "78AF465C2F31CF4E05DEC1EFDA77DA01"
+    ]
+  },
+  {
+    "name": "basic11b.rom",
+    "path": "/recalbox/share/bios/oricutron/",
+    "relativePath": "oricutron/",
+    "hashes": [
+      "A330779C42AD7D0C4AC6EF9E92788EC6"
+    ]
+  },
+  {
+    "name": "basic10.rom",
+    "path": "/recalbox/share/bios/oricutron/",
+    "relativePath": "oricutron/",
+    "hashes": [
+      "EBE418EC8A6C85D5AC32956C9A96C179"
+    ]
+  },
+  {
+    "name": "bd500.rom",
+    "path": "/recalbox/share/bios/oricutron/",
+    "relativePath": "oricutron/",
+    "hashes": [
+      "2B6498FD29A0ADBF1C529762C02C33AB"
+    ]
+  },
+  {
+    "name": "jasmin.rom",
+    "path": "/recalbox/share/bios/oricutron/",
+    "relativePath": "oricutron/",
+    "hashes": [
+      "5136F764A7DBD1352519351FBB53A9F3"
+    ]
+  },
+  {
+    "name": "microdis.rom",
+    "path": "/recalbox/share/bios/oricutron/",
+    "relativePath": "oricutron/",
+    "hashes": [
+      "DF864344D2A2091C3F952BD1C5CE1707"
+    ]
+  },
+  {
+    "name": "pravetzt.rom",
+    "path": "/recalbox/share/bios/oricutron/",
+    "relativePath": "oricutron/",
+    "hashes": [
+      "8712A22E7E078DE3343667D9FC1F2390"
+    ]
+  },
+  {
+    "name": "8dos2.rom",
+    "path": "/recalbox/share/bios/oricutron/",
+    "relativePath": "oricutron/",
+    "hashes": [
+      "5F3CD5A4307FED7A9DFE8FAA4C044273"
+    ]
+  },
+  {
+    "name": "teleass.rom",
+    "path": "/recalbox/share/bios/oricutron/",
+    "relativePath": "oricutron/",
+    "hashes": [
+      "2324C9CC227C1327A72A667C97ED2990"
+    ]
+  },
+  {
+    "name": "hyperbas.rom",
+    "path": "/recalbox/share/bios/oricutron/",
+    "relativePath": "oricutron/",
+    "hashes": [
+      "364BF095E0DC4222D75354D50B8CDDFC"
+    ]
+  },
+  {
+    "name": "telmon24.rom",
+    "path": "/recalbox/share/bios/oricutron/",
+    "relativePath": "oricutron/",
+    "hashes": [
+      "9A432244D9EE4A49E8DDCDE64AF94E05"
+    ]
+  },
+  {
+    "name": "TI-994A.ctg",
+    "path": "/recalbox/share/bios/ti994a/",
+    "relativePath": "ti994a/",
+    "hashes": [
+      "412ECBF991EDCB68EDD0E76C2CAA4A59"
+    ]
+  },
+  {
+    "name": "spchrom.bin",
+    "path": "/recalbox/share/bios/ti994a/",
+    "relativePath": "ti994a/",
+    "hashes": [
+      "7ADCAF64272248F7A7161CFC02FD5B3F"
+    ]
+  },
+  {
+    "name": "ti-disk.ctg",
+    "path": "/recalbox/share/bios/ti994a/",
+    "relativePath": "ti994a/",
+    "hashes": [
+      "04714F43347CEFB2A051A77116344B3F"
+    ]
+  }
+]
