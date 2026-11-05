@@ -293,6 +293,21 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
 - **Verify:** `uv run ruff check . && uv run mypy && uv run pytest -q`
 - **Commit message:** `refactor: clean up messages, exceptions and unused code`
 
+### 03.12a — A file named like the target goes first
+- [x] Done (2026-11-04: added at the owner's request after the VM run in 03.13, where `falcon.img` sorted first and
+  filled `atarist/tos.img`, so the user's real `tos.img` was skipped. Recalbox's report didn't reveal it, because
+  `falcon.img`'s MD5 is on that entry's list. Replaying the owner's files against the real report with the fake server
+  fills the same 152 targets, and four now hold the file with the right name: `atarist/tos.img`, `dc/dc_boot.bin`,
+  `dc/dc_flash.bin` and `Mupen64plus/IPL.n64`. Checked by breaking each rule on purpose.)
+- **What:** Each target goes first to a local file with the target's exact name, if that file's MD5 is on the target's
+  list. Remaining targets go to the first file by path, as before. Among identical copies, the one named like a target
+  is the one uploaded.
+- **Files:** `check_bios.py`, `tests/test_matching.py`
+- **Done when:** Tests cover a differently named file sorting first, an identical copy sorting first, a file that
+  also fits another file's target, and a name that matches but whose MD5 isn't on that target's list.
+- **Verify:** `uv run pytest tests/test_matching.py -q`
+- **Commit message:** `fix(matching): give each target to the file already named like it`
+
 ### 03.13 — End-to-end check on a real Recalbox (human-run)
 - [ ] Done
 - **What:** The agent writes a checklist into the PR description; **the owner runs it** (agents never touch a

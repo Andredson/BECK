@@ -253,57 +253,73 @@ def count_targets(report: list[dict[str, Any]]) -> int:
     return len({remote_target(entry) for entry in report})
 
 
+def plan_uploads(
+    bios: list[dict[str, str]], entries_by_md5: dict[str, list[dict[str, Any]]]
+) -> tuple[dict[str, dict[str, str]], dict[str, tuple[dict[str, str], dict[str, Any]]]]:
+    """Choose which file uploads for each MD5, and which file fills each target.
+
+    Different files can match one target, because a report entry can list many MD5s. A file already
+    named like a target gets that target first: otherwise ``falcon.img``, which sorts earlier, would
+    take the place of the user's real ``tos.img``. Remaining targets go to the first file by path.
+
+    Returns the file chosen per MD5, and the ``(file, entry)`` chosen per target.
+    """
+
+    def named_like_a_target(item: dict[str, str]) -> bool:
+        return any(entry["name"] == item["name"] for entry in entries_by_md5[item["hash"]])
+
+    matching = [item for item in bios if item["hash"] in entries_by_md5]
+    chosen: dict[str, dict[str, str]] = {}
+    for item in sorted(matching, key=lambda item: (not named_like_a_target(item), item["path"])):
+        chosen.setdefault(item["hash"], item)
+
+    in_path_order = sorted(chosen.values(), key=lambda item: item["path"])
+    targets: dict[str, tuple[dict[str, str], dict[str, Any]]] = {}
+    for own_name_only in (True, False):
+        for item in in_path_order:
+            for entry in entries_by_md5[item["hash"]]:
+                if entry["name"] == item["name"] or not own_name_only:
+                    targets.setdefault(remote_target(entry), (item, entry))
+
+    return chosen, targets
+
+
 def validate_bios(
     bios: list[dict[str, str]], report: list[dict[str, Any]], session: SmbSession
 ) -> int:
     """Upload each matching local file to its targets; return how many targets were filled.
 
-    A file is uploaded straight from its own path, under each target's name. The first file (sorted
-    by path) wins: identical copies and later files for an already filled target are skipped. No
-    local file is ever deleted or renamed (DEC-02).
+    A file is uploaded straight from its own path, under each target's name. Identical copies and
+    files for an already filled target are skipped (see plan_uploads). No local file is ever deleted
+    or renamed (DEC-02).
     """
     entries_by_md5: dict[str, list[dict[str, Any]]] = {}
     for entry in report:
         for md5 in entry["hashes"]:
             entries_by_md5.setdefault(md5, []).append(entry)
 
-    used_md5s: dict[str, str] = {}
-    filled_targets: dict[str, str] = {}
-    outcomes: list[str] = []
+    chosen, targets = plan_uploads(bios, entries_by_md5)
+    copied: dict[str, list[str]] = {}
+
+    for target, (item, entry) in targets.items():
+        session.ensure_dir(entry["relativePath"])
+        session.upload(BIOS_DIR / item["path"], target)
+        copied.setdefault(item["path"], []).append(target)
+        print(f"{GREEN}FOUND:{RESET} {entry['name']} -> {target}")
 
     for item in sorted(bios, key=lambda item: item["path"]):
-        md5 = item["hash"]
-
-        if md5 not in entries_by_md5:
-            outcomes.append(f"{item['path']}: no match, kept")
-            continue
-
-        if md5 in used_md5s:
-            outcomes.append(f"{item['path']}: duplicate of {used_md5s[md5]}, kept")
-            continue
-        used_md5s[md5] = item["path"]
-
-        local = BIOS_DIR / item["path"]
-        copied = []
-        for entry in entries_by_md5[md5]:
-            target = remote_target(entry)
-            if target in filled_targets:
-                continue
-            session.ensure_dir(entry["relativePath"])
-            session.upload(local, target)
-            filled_targets[target] = item["path"]
-            copied.append(target)
-            print(f"{GREEN}FOUND:{RESET} {entry['name']} -> {target}")
-
-        if copied:
-            outcomes.extend(f"{item['path']}: copied -> {target}" for target in copied)
+        path = item["path"]
+        if item["hash"] not in entries_by_md5:
+            print(f"{path}: no match, kept")
+        elif chosen[item["hash"]] is not item:
+            print(f"{path}: duplicate of {chosen[item['hash']]['path']}, kept")
+        elif path in copied:
+            for target in copied[path]:
+                print(f"{path}: copied -> {target}")
         else:
-            outcomes.append(f"{item['path']}: target already filled, kept")
+            print(f"{path}: target already filled, kept")
 
-    for outcome in outcomes:
-        print(outcome)
-
-    return len(filled_targets)
+    return len(targets)
 
 
 def main() -> None:

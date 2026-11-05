@@ -123,6 +123,84 @@ def test_second_different_file_does_not_overwrite_a_filled_target(
     assert (bios_dir / "b.img").exists()
 
 
+def test_file_named_like_the_target_beats_an_earlier_file(
+    server: FakeSMBServer, bios_dir: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # On the real report, falcon.img sorted first and took the place of the user's real tos.img.
+    other, real = os.urandom(64), os.urandom(64)
+    (bios_dir / "falcon.img").write_bytes(other)
+    (bios_dir / "tos.img").write_bytes(real)
+
+    count = run(bios_dir, [entry("tos.img", md5_of(other), md5_of(real), folder="atarist/")])
+
+    assert count == 1
+    assert server.files[("bios", "atarist/tos.img")] == real
+    assert len(server.connections[0].stored_files) == 1
+    output = capsys.readouterr().out
+    assert "falcon.img: target already filled, kept" in output
+    assert "tos.img: copied -> atarist/tos.img" in output
+
+
+def test_identical_copy_named_like_the_target_is_the_one_uploaded(
+    server: FakeSMBServer, bios_dir: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    data = os.urandom(64)
+    (bios_dir / "a-copy.img").write_bytes(data)
+    (bios_dir / "tos.img").write_bytes(data)
+
+    run(bios_dir, [entry("tos.img", md5_of(data))])
+
+    stored = server.connections[0].stored_files
+    assert [Path(str(f.name)).name for f in stored] == ["tos.img"]
+    assert "a-copy.img: duplicate of tos.img, kept" in capsys.readouterr().out
+
+
+def test_a_file_does_not_take_a_target_from_the_file_named_like_it(
+    server: FakeSMBServer, bios_dir: Path
+) -> None:
+    # a.img also fits target b.img, and comes first, but the local b.img must fill that target.
+    first, second = os.urandom(64), os.urandom(64)
+    (bios_dir / "a.img").write_bytes(first)
+    (bios_dir / "b.img").write_bytes(second)
+    report = [entry("a.img", md5_of(first)), entry("b.img", md5_of(first), md5_of(second))]
+
+    count = run(bios_dir, report)
+
+    assert count == 2
+    assert server.files[("bios", "a.img")] == first
+    assert server.files[("bios", "b.img")] == second
+
+
+def test_file_named_like_a_target_still_fills_its_other_targets(
+    server: FakeSMBServer, bios_dir: Path
+) -> None:
+    data = os.urandom(64)
+    (bios_dir / "tos.img").write_bytes(data)
+    md5 = md5_of(data)
+
+    count = run(bios_dir, [entry("st.img", md5), entry("tos.img", md5)])
+
+    assert count == 2
+    assert server.files[("bios", "st.img")] == data
+    assert server.files[("bios", "tos.img")] == data
+
+
+def test_the_name_only_counts_when_the_md5_fits_that_target(
+    server: FakeSMBServer, bios_dir: Path
+) -> None:
+    # A local tos.img whose MD5 isn't on the tos.img entry gets no priority for that target.
+    fits, named = os.urandom(64), os.urandom(64)
+    (bios_dir / "falcon.img").write_bytes(fits)
+    (bios_dir / "tos.img").write_bytes(named)
+    report = [entry("tos.img", md5_of(fits)), entry("st.img", md5_of(named))]
+
+    count = run(bios_dir, report)
+
+    assert count == 2
+    assert server.files[("bios", "tos.img")] == fits
+    assert server.files[("bios", "st.img")] == named
+
+
 def test_one_file_reaches_all_its_targets(server: FakeSMBServer, bios_dir: Path) -> None:
     # The old code deleted the file after the first upload, so the next one failed (D3).
     data = os.urandom(64)
