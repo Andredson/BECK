@@ -1,6 +1,6 @@
 # Stage 04 — Architecture refactor
 
-**Status:** In progress · **Depends on:** 03 · **Branch:** `stage/04-architecture` · **Effort:** L
+**Status:** Done (2026-11-04) · **Depends on:** 03 · **Branch:** `stage/04-architecture` · **Effort:** L
 
 ## Goal
 Turn the single script into a small, typed, testable package, `beck`. It has a **pure core** (parse → match →
@@ -328,7 +328,10 @@ flowchart LR
 - **Commit message:** `refactor!: remove legacy script internals`
 
 ### 04.15 — Close the stage
-- [ ] Done
+- [x] Done (2026-11-04: the acceptance criteria below hold, and `tests/unit/test_architecture.py` enforces the module rules.
+  `uv run beck` behaves like stage 03 **except** for the differences listed in 04.13. The stage scores 6/10, up from 5. The
+  stage 03 row's sum was corrected from 103 to 104, with its score unchanged. Draft PR #4 already exists, so the owner marks it
+  ready and merges it with a merge commit.)
 - **What:** Update AGENTS.md (repo map, architecture link, "the core is pure; adapters do I/O"). Re-score
   [00-assessment](00-assessment.md#re-scoring-history) and mark D3, D4, D11 and D16 fully fixed. Update the
   [README](README.md#stages) status. Push the closing commit (DEC-47). If the stage PR doesn't exist yet, print

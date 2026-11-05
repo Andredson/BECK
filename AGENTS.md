@@ -10,9 +10,9 @@ BECK (BIOS checker for Recalbox) matches a user's BIOS files against the MD5 has
 report that Recalbox generates, then copies the matching files, under the expected names, into the right
 folders on the Recalbox over SMB.
 
-**Status (2026-11-04):** prototype. The application is the `beck` package in `src/beck/`, being refactored in stage 04.
-Stage 03 fixed the known defects ([D1–D15, with D16 interim](roadmap/00-assessment.md#defects)), and it no longer deletes or renames local
-files. The repository around it has tooling and
+**Status (2026-11-04):** prototype, not published yet. The application is the `beck` package in `src/beck/`, with a pure
+core and adapters around it ([design](docs/ARCHITECTURE.md)). Its [known defects are fixed](roadmap/00-assessment.md#defects),
+and it never deletes or renames local files. The repository around it has tooling and
 CI (stage 02): lint, types, tests on Python 3.11–3.14, commit-message, secret and dependency checks. It is being improved stage by stage following
 [roadmap/README.md](roadmap/README.md). The target is an installable CLI `beck` published on PyPI as `beck-bios`.
 
@@ -34,7 +34,8 @@ CI (stage 02): lint, types, tests on Python 3.11–3.14, commit-message, secret 
 | `.editorconfig`, `.gitattributes` | Editor settings; LF line endings in the repository. |
 | `roadmap/` | The improvement plan: [index and decision log](roadmap/README.md), [assessment](roadmap/00-assessment.md), one file per stage. |
 | `docs/agents.md` | Which AI agents were tested loading this file, and how to test another one. |
-| `docs/ARCHITECTURE.md` | [The design stage 04 is building](docs/ARCHITECTURE.md): core and adapters, data flow, and the rules to keep. |
+| `docs/ARCHITECTURE.md` | [The design](docs/ARCHITECTURE.md): the core is pure and adapters do the I/O. Data flow, and the rules to keep, which `tests/unit/test_architecture.py` enforces. Read it before changing `src/beck/`. |
+| `docs/spikes/` | Results of technical experiments, such as [`smbprotocol` vs `pysmb`](docs/spikes/smbprotocol.md). |
 | `docs/maintenance.md` | [Monthly maintenance routine](docs/maintenance.md): dependency upgrades, pin refreshes, security review (replaces an update bot, DEC-29). Follow it when asked to update dependencies, or when the weekly *Security* run or an expired `.trivyignore` entry fails. |
 | `.github/pull_request_template.md` | PR description template with the roadmap checklist. Fill it in when preparing a PR description for the human. |
 | `docs/adr/` | [Architecture Decision Records](docs/adr/README.md): the reasoning and rejected alternatives behind every DEC. Read the relevant ADR before proposing to change a decision. |
@@ -53,6 +54,7 @@ uv run ruff check .                           # lint, including the S security r
 uv run mypy                                   # type-check: strict everywhere
 uv run pytest                                 # tests; they never touch the network or a device
 uv run python scripts/check_repo_hygiene.py   # no BIOS files, large files or tracked config files
+uv build                                      # build the wheel and sdist into dist/ (ignored by git)
 ```
 
 Before committing, this must pass; it's what the `quality` and `tests` CI jobs run:
@@ -151,7 +153,7 @@ skill below, **read its whole `SKILL.md` before acting** and follow it.
 - Enforced by CI: `ruff format` and `ruff check` (including the `S` security rules), and `mypy` strict for new
   code. Also expected: type hints everywhere, `pathlib` for paths, no bare `except:`, and `sys.exit` only at the CLI
   boundary. There are no ruff or mypy exemptions for BECK's own code, only the mypy import override for `pysmb`. Don't add new ones.
-- From stage 04: pure core (`models`, `hashing`, `matcher`) with I/O only in adapters (`frontends/`,
+- Pure core (`models`, `hashing`, `matcher`) with device and network I/O only in adapters (`frontends/`,
   `transports/`, `output/`). See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design and its rules.
 - MD5 is used to **identify** files, not for security: `hashlib.md5(..., usedforsecurity=False)`.
 
@@ -162,7 +164,7 @@ skill below, **read its whole `SKILL.md` before acting** and follow it.
   to catch Windows-only bugs, e.g. assert that a file handle is closed rather than relying on Windows locking.
 - Application tests replace pysmb with the fake from `tests/fakes.py` (`install_fake_smb(monkeypatch)`, which also
   fails any real socket connection) and work in `tmp_path`, never in the repository folder.
-- From stage 03: every bug fix ships with a regression test. From stage 05: ≥ 90 % branch coverage on the
+- Every bug fix ships with a regression test. From stage 05: ≥ 90 % branch coverage on the
   package, plus integration tests against the Samba container (marked `integration`).
 - Tests never touch the network (except the local Samba container) and never use real BIOS content.
 
