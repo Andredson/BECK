@@ -1,6 +1,6 @@
 # Stage 03 — Critical fixes & data safety
 
-**Status:** In progress · **Depends on:** 02 · **Branch:** `stage/03-critical-fixes` · **Effort:** M
+**Status:** Done (2026-11-04) · **Depends on:** 02 · **Branch:** `stage/03-critical-fixes` · **Effort:** M
 
 ## Goal
 Stop BECK from losing user data, crashing, or uploading files under the wrong name, **without** redesigning it
@@ -340,7 +340,9 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
 - **Commit message:** none
 
 ### 03.14 — Close the stage
-- [ ] Done
+- [x] Done (2026-11-04: 161 tests pass, and `check_bios.py` has 99 % coverage. The stage scores 5/10, up from 4, and
+  D1–D15 are fixed, with D16 interim. Draft PR #3 already exists, so the owner marks it ready and merges it with a merge
+  commit.)
 - **What:** Update AGENTS.md (repo map: `tests/fakes.py`, fixtures; "the script no longer deletes files").
   Re-score [00-assessment](00-assessment.md#re-scoring-history) and mark D1–D14 fixed (D16 interim). Update the
   [README](README.md#stages) status. Push the closing commit (DEC-47). If the stage PR doesn't exist yet, print
