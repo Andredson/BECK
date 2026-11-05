@@ -93,7 +93,12 @@ flowchart LR
 - **Commit message:** `docs(architecture): describe core and adapter design`
 
 ### 04.3 — Package skeleton (src layout, uv_build, entry points)
-- [ ] Done
+- [x] Done (2026-11-04: `uv_build>=0.13.2,<0.14`. The lower bound is CI's uv version, so CI and local uv use their
+  built-in backend and download nothing; 0.13.4 is the newest release past the 14-day cooldown (DEC-45). The upper bound
+  is what uv recommends, so a build run by another tool, such as `pip install .`, could fetch a newer `0.13.x` without
+  the cooldown. Beyond the list below: `uv export` needs `--no-emit-project` now, or `requirements.txt` gains `-e .` and
+  CI's drift check fails, so CI, AGENTS.md and `docs/maintenance.md` were updated; `tests/test_package.py`. `check_bios.py`
+  isn't in the wheel, so until 04.13 an installed copy prints a clear message and exits 1.)
 - **What:**
   ```toml
   [build-system]

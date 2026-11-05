@@ -54,7 +54,7 @@ uv sync --locked
 ## 2. requirements.txt
 
 ```sh
-uv export --no-dev --no-hashes -o requirements.txt
+uv export --no-dev --no-hashes --no-emit-project -o requirements.txt
 ```
 
 CI fails if this file doesn't match `uv.lock` ([step 02.9](../roadmap/02-foundation-tooling-and-ci.md#029--keep-requirementstxt-generated)).

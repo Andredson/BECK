@@ -44,7 +44,7 @@ jobs:
       - run: uv run mypy
       - run: uv run python scripts/check_repo_hygiene.py
       - name: requirements.txt matches uv.lock
-        run: uv export --no-dev --no-hashes -o requirements.txt && git diff --exit-code -- requirements.txt
+        run: uv export --no-dev --no-hashes --no-emit-project -o requirements.txt && git diff --exit-code -- requirements.txt
 
   tests:
     name: tests (${{ matrix.os }}, py${{ matrix.python }})

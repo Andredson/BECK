@@ -10,9 +10,18 @@ dependencies = [
     "PyYAML>=6.0.2,<7",
 ]
 
+[project.scripts]
+beck = "beck.cli:main"
+
+[build-system]
+# The lower bound is CI's uv version, so uv uses its built-in backend and downloads nothing.
+requires = ["uv_build>=0.13.2,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "beck" # the distribution is beck-bios, the import name is beck
+
 [tool.uv]
-# Not an installable package yet: the src/beck package arrives in stage 04 (step 04.3).
-package = false
 # Supply-chain cooldown (DEC-45): only resolve releases uploaded at least 14 days ago.
 # For an urgent security fix, override per package with `exclude-newer-package` and record why.
 exclude-newer = "14 days"
@@ -31,7 +40,7 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM", "RET", "PTH", "RUF", "S"]
 [tool.mypy]
 python_version = "3.11"
 strict = true
-files = ["check_bios.py", "tests", "scripts"]
+files = ["src", "check_bios.py", "tests", "scripts"]
 
 [[tool.mypy.overrides]]
 # Legacy script: untyped functions allowed until stage 04 (step 04.14 removes this override).
@@ -53,7 +62,7 @@ markers = ["integration: needs the Samba test container (stage 05)"]
 
 [tool.coverage.run]
 branch = true
-source = ["check_bios"]
+source = ["beck", "check_bios"]
 
 # Commit-message rule checked in CI by `cz check` (DEC-38). Commitizen is used only for checking:
 # versions come from `uv version --bump` (DEC-18) and the changelog from git-cliff (DEC-20).

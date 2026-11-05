@@ -21,9 +21,10 @@ CI (stage 02): lint, types, tests on Python 3.11–3.14, commit-message, secret 
 | Path | What it is |
 |---|---|
 | `check_bios.py` | The whole application today: SMB access, report parsing, hashing, matching, upload, output. |
+| `src/beck/` | The package stage 04 is building ([design](docs/ARCHITECTURE.md)). For now, `beck` and `python -m beck` only hand over to `check_bios.py`, which is in a clone but not in the wheel. |
 | `config/config.example.yml` | Example SMB settings (`user`, `passwd`, `server`, `port`) with empty credentials. Users copy it to `config/config.yml`, which is **gitignored** (step 03.2); never track or commit the real file. |
 | `bios/` | Input folder for the user's BIOS files. Everything except `bios/.keep` is gitignored. |
-| `pyproject.toml`, `uv.lock`, `.python-version` | Project metadata, runtime and dev dependencies, tool settings (ruff, mypy, pytest, coverage, commitizen), the lockfile, and Python 3.11 for local work. Managed with uv; `exclude-newer` is the 14-day cooldown (DEC-45). Not an installable package until stage 04 (`package = false`). |
+| `pyproject.toml`, `uv.lock`, `.python-version` | Project metadata, runtime and dev dependencies, tool settings (ruff, mypy, pytest, coverage, commitizen), the lockfile, and Python 3.11 for local work. Managed with uv; `exclude-newer` is the 14-day cooldown (DEC-45). The distribution is `beck-bios`, built with `uv_build` (DEC-18), and it installs the `beck` command. |
 | `requirements.txt` | Runtime dependencies for pip users, **generated** from `uv.lock` (see [Commands](#commands)). Don't edit it by hand; CI fails if it drifts. |
 | `tests/` | pytest suite: tests for each part of `check_bios.py` (config, SMB session, parser, hashing, scanner, matching, paths, non-destructive behavior), an import smoke test that blocks file and network access, the Markdown link checker, and tests for the hygiene guard and the workflow pins. `tests/fakes.py` is the in-memory SMB server the application tests use. `tests/fixtures/reports/` holds real and derived Recalbox reports, with provenance in `tests/fixtures/README.md`; the real report keeps its CRLF line endings byte-exact. |
 | `scripts/check_repo_hygiene.py` | Fails if git tracks BIOS/ROM-like files, files over 1 MiB, or config files (each allowed exception has a reason). |
@@ -60,7 +61,7 @@ Before committing, this must pass; it's what the `quality` and `tests` CI jobs r
 uv lock --check && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest && uv run python scripts/check_repo_hygiene.py
 ```
 
-- **After any change to dependencies**, regenerate the pip file: `uv export --no-dev --no-hashes -o requirements.txt`.
+- **After any change to dependencies**, regenerate the pip file: `uv export --no-dev --no-hashes --no-emit-project -o requirements.txt`.
   Adding a dependency needs a DEC first (see [Hard rules](#hard-rules)); `uv add` and `uv lock` respect the cooldown.
 - **The other CI checks**, if you have the tools installed (the pinned versions are in the `env:` block of
   `.github/workflows/ci.yml`; `X` below is `COMMITIZEN_VERSION`):
@@ -73,7 +74,7 @@ uv lock --check && uv run ruff check . && uv run ruff format --check . && uv run
   ```
 
 - **Updating dependencies or pins** follows [docs/maintenance.md](docs/maintenance.md).
-- `uv run python check_bios.py` connects to a **real Recalbox** over SMB and uploads files to it. Don't run it unless the human explicitly asks you to in this session.
+- `uv run python check_bios.py` and `uv run beck` connect to a **real Recalbox** over SMB and upload files to it. Don't run them unless the human explicitly asks you to in this session.
 
 ## Working on the roadmap (protocol)
 
