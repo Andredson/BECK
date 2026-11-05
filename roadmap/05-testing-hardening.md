@@ -70,6 +70,21 @@ DEC-08, DEC-09, DEC-25, DEC-33, DEC-36, DEC-40.
 - **Verify:** `uv run pytest tests/unit -q`
 - **Commit message:** `test(core): cover matcher and executor edge cases`
 
+### 05.3a — A report BECK can't recognize isn't "nothing missing"
+- [ ] Done
+- **What:** Today, a report with no recognized block gives "No missing bios were found", even if its format changed in a new
+  Recalbox version, which would mislead the user with no error (found in 05.2). `RecalboxAdapter.parse_report` raises
+  `ReportParseError` when the text has content but doesn't look like a report: no `MISSING BIOS REPORT` title, or a line with
+  `MISSING` that isn't a recognized heading, or a `SYSTEM:` line with no block under it. A truly empty file also needs a
+  clear outcome, because it isn't a report that says nothing is missing. First check what Recalbox writes when nothing is
+  missing, on the VM if possible, so that this real case stays a success. If it can't be produced, record that the title
+  check is an assumption.
+- **Files:** `src/beck/frontends/recalbox.py`, `tests/unit/test_recalbox_adapter.py`, `tests/unit/test_cli.py`
+- **Done when:** Tests cover a changed heading, a changed title, a system with no blocks, an empty file and a real header with
+  nothing missing, and all fixtures still parse.
+- **Verify:** `uv run pytest tests/unit/test_recalbox_adapter.py tests/unit/test_cli.py -q`
+- **Commit message:** `fix(parser): report an unrecognized report instead of nothing missing`
+
 ### 05.4 — Samba test server image (DEC-40)
 - [ ] Done
 - **What:** `tests/integration/samba/Dockerfile`: our own minimal image with **no third-party Samba image**.
