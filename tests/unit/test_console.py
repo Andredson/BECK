@@ -10,9 +10,10 @@ from typing import Any
 
 import pytest
 
-from beck.models import Duplicate, ItemError, LocalFile, MissingBios, Plan, PlannedUpload, RunResult
+from beck.models import Duplicate, ItemError, LocalFile, Plan, PlannedUpload, RunResult
 from beck.output import console
 from beck.output.console import ConsoleRenderer, configure_logging, enable_windows_ansi, wants_color
+from tests.factories import make_local_file, make_missing
 
 A, B, C, D = "a" * 32, "b" * 32, "c" * 32, "d" * 32
 
@@ -22,19 +23,8 @@ class Terminal(io.StringIO):
         return True
 
 
-def entry(target: str, *md5s: str) -> MissingBios:
-    path = PurePosixPath(target)
-    return MissingBios(name=path.name, target=path, md5s=frozenset(md5s))
-
-
-def local(relative: str, md5: str = A) -> LocalFile:
-    return LocalFile(
-        path=Path("/bios", relative), relative=PurePosixPath(relative), md5=md5, size=1
-    )
-
-
 def upload(file: LocalFile, target: str) -> PlannedUpload:
-    return PlannedUpload(file, PurePosixPath(target), entry(target, file.md5))
+    return PlannedUpload(file, PurePosixPath(target), make_missing(target, file.md5))
 
 
 def rendered(result: RunResult, *, color: bool = False) -> list[str]:
@@ -179,14 +169,19 @@ def test_messages_match_stage_03(call: Any, plain: str, painted: str) -> None:
 
 
 def test_a_normal_run_reads_like_stage_03() -> None:
-    copy, dup, full, junk = local("copy.bin"), local("dup.bin"), local("full.bin", B), local("x", C)
+    copy, dup, full, junk = (
+        make_local_file("copy.bin", A),
+        make_local_file("dup.bin", A),
+        make_local_file("full.bin", B),
+        make_local_file("x", C),
+    )
     first, second = upload(copy, "a.bin"), upload(copy, "ps1/b.bin")
     plan = Plan(
         uploads=(first, second),
         duplicates=(Duplicate(file=dup, of=copy),),
         unmatched=(junk,),
         already_filled=(full,),
-        still_missing=(entry("gone.bin", D),),
+        still_missing=(make_missing("gone.bin", D),),
     )
 
     lines = rendered(RunResult(plan=plan, completed=(first, second)))
@@ -205,7 +200,7 @@ def test_a_normal_run_reads_like_stage_03() -> None:
 
 
 def test_colors_match_stage_03() -> None:
-    first = upload(local("copy.bin"), "a.bin")
+    first = upload(make_local_file("copy.bin", A), "a.bin")
 
     lines = rendered(RunResult(plan=Plan(uploads=(first,)), completed=(first,)), color=True)
 
@@ -219,7 +214,7 @@ def test_colors_match_stage_03() -> None:
 
 
 def test_file_lines_are_sorted_by_path_as_text() -> None:
-    slash, dash = local("a/x.bin", A), local("a-b/x.bin", B)
+    slash, dash = make_local_file("a/x.bin", A), make_local_file("a-b/x.bin", B)
 
     lines = rendered(RunResult(plan=Plan(unmatched=(slash, dash))))
 
@@ -227,7 +222,11 @@ def test_file_lines_are_sorted_by_path_as_text() -> None:
 
 
 def test_nothing_uploaded_has_no_scan_message() -> None:
-    lines = rendered(RunResult(plan=Plan(unmatched=(local("x"),), still_missing=(entry("a", B),))))
+    lines = rendered(
+        RunResult(
+            plan=Plan(unmatched=(make_local_file("x", C),), still_missing=(make_missing("a", B),))
+        )
+    )
 
     assert lines == [
         "x: no match, kept",
@@ -236,7 +235,7 @@ def test_nothing_uploaded_has_no_scan_message() -> None:
 
 
 def test_entries_for_one_target_count_once_in_the_summary() -> None:
-    gone = (entry("x.pce", A), entry("x.pce", B), entry("y.pce", C))
+    gone = (make_missing("x.pce", A), make_missing("x.pce", B), make_missing("y.pce", C))
 
     assert rendered(RunResult(plan=Plan(still_missing=gone)))[-1] == (
         "Final result: 0/2 missing entries satisfied, 0 files analysed"
@@ -244,7 +243,7 @@ def test_entries_for_one_target_count_once_in_the_summary() -> None:
 
 
 def test_a_file_sent_to_two_targets_counts_once_in_the_summary() -> None:
-    copy = local("copy.bin")
+    copy = make_local_file("copy.bin", A)
     first, second = upload(copy, "a.bin"), upload(copy, "b.bin")
     plan = Plan(uploads=(first, second))
 
@@ -254,9 +253,9 @@ def test_a_file_sent_to_two_targets_counts_once_in_the_summary() -> None:
 
 
 def test_failed_and_skipped_uploads_are_shown() -> None:
-    done = upload(local("a.bin", A), "a.bin")
-    failed = upload(local("b.bin", B), "b.bin")
-    skipped = upload(local("c.bin", C), "blocked/c.bin")
+    done = upload(make_local_file("a.bin", A), "a.bin")
+    failed = upload(make_local_file("b.bin", B), "b.bin")
+    skipped = upload(make_local_file("c.bin", C), "blocked/c.bin")
     plan = Plan(uploads=(done, failed, skipped))
     result = RunResult(
         plan=plan,
@@ -281,8 +280,8 @@ def test_failed_and_skipped_uploads_are_shown() -> None:
 
 
 def test_a_dry_run_says_what_would_happen() -> None:
-    planned = upload(local("copy.bin"), "a.bin")
-    plan = Plan(uploads=(planned,), still_missing=(entry("b.bin", B),))
+    planned = upload(make_local_file("copy.bin", A), "a.bin")
+    plan = Plan(uploads=(planned,), still_missing=(make_missing("b.bin", B),))
 
     assert rendered(RunResult(plan=plan, skipped=(planned,), dry_run=True)) == [
         "copy.bin: would copy -> a.bin",
@@ -291,7 +290,7 @@ def test_a_dry_run_says_what_would_happen() -> None:
 
 
 def test_names_without_color_have_no_escape_codes() -> None:
-    first = upload(local("copy.bin"), "a.bin")
+    first = upload(make_local_file("copy.bin", A), "a.bin")
 
     assert "\033" not in "".join(
         rendered(RunResult(plan=Plan(uploads=(first,)), completed=(first,)))

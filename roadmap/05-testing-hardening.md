@@ -1,6 +1,6 @@
 # Stage 05 — Testing hardening
 
-**Status:** Not started · **Depends on:** 04 · **Branch:** `stage/05-testing` · **Effort:** M
+**Status:** In progress · **Depends on:** 04 · **Branch:** `stage/05-testing` · **Effort:** M
 
 ## Goal
 Make the test suite trustworthy enough that any agent or contributor can change BECK and know right away
@@ -20,7 +20,14 @@ DEC-08, DEC-09, DEC-25, DEC-33, DEC-36, DEC-40.
 ## Steps
 
 ### 05.1 — Test layout and shared factories
-- [ ] Done
+- [x] Done (2026-11-05: `make_report_text` was checked against the real report: its first block matches word for word except
+  the `For` line, which BECK ignores, and all 238 real entries survive rendering and parsing. Used by the matcher, executor
+  and console tests; the CLI tests use `md5_of` and `snapshot` so far. Different from the list below:
+  - `make_missing(target, *md5s, required=True, system=None)` has no separate `name`, because the model requires the name to
+    be the target's last part.
+  - Added `make_local_file` for tests with no disk access, plus `md5_of` and `snapshot`, which were copied between files.
+  - Repo-wide test files stay in `tests/`, because later steps cite `tests/test_docs_links.py` and add more there. Module tests
+    moved to `tests/unit/` in stage 04.)
 - **What:**
   - Layout: `tests/unit/`, `tests/integration/`, `tests/fixtures/`, `tests/conftest.py`.
   - Factories in `tests/factories.py`: `make_bios_file(dir, relative, content=None) -> LocalFile`, which writes

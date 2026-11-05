@@ -3,7 +3,6 @@
 D1-D14 regression tests that need a whole run live here; the rest are next to each module.
 """
 
-import hashlib
 import os
 import shutil
 import tempfile
@@ -17,9 +16,8 @@ from smb.smb_structs import OperationFailure
 from beck import cli
 from beck.errors import ConfigError
 from tests.conftest import REAL_REPORT, load_report
+from tests.factories import md5_of, snapshot
 from tests.fakes import FakeSMBServer, install_fake_smb
-
-Snapshot = dict[str, tuple[int, int, bytes]]
 
 GUEST = 'smb: {user: "", passwd: "", server: "beck-test-server", port: 445}\n'
 ACCOUNT = """\
@@ -29,10 +27,6 @@ smb:
   server: "beck-test-server"
   port: 445
 """
-
-
-def md5_of(data: bytes) -> str:
-    return hashlib.md5(data, usedforsecurity=False).hexdigest()
 
 
 def block(name: str, *md5s: str, folder: str = "") -> str:
@@ -49,18 +43,6 @@ def write(path: Path, data: bytes | None = None) -> bytes:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(content)
     return content
-
-
-def snapshot(folder: Path) -> Snapshot:
-    return {
-        path.relative_to(folder).as_posix(): (
-            path.stat().st_size,
-            path.stat().st_mtime_ns,
-            path.read_bytes(),
-        )
-        for path in sorted(folder.rglob("*"))
-        if path.is_file()
-    }
 
 
 def forbidden(*_args: Any, **_kwargs: Any) -> NoReturn:
