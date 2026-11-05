@@ -61,8 +61,8 @@ flowchart LR
 - [x] Done (2026-11-04: run on a Recalbox 10.1.1 VM, not a real device (DEC-52), and by the agent, at the owner's
   request. [Results](../docs/spikes/smbprotocol.md): password login and every file operation passed, but guest login
   failed with the library's defaults and needs three settings. The owner chose to **keep `pysmb`** (DEC-53), so
-  DEC-26 doesn't stand and this step's commit message differs from the one below. Steps 04.9, 07.7, 07's acceptance
-  criteria, 10's SBOM step and this stage's acceptance criteria were updated.)
+  DEC-26 doesn't stand and this step's commit message differs from the one below. Steps 04.9, 04.14, 07.7, 07's
+  acceptance criteria, 10's SBOM step and this stage's acceptance criteria were updated.)
 - **What:** Before rewriting the transport, prove that `smbprotocol`'s `smbclient` API works against the owner's
   Recalbox. The agent writes `docs/spikes/smbprotocol.md` containing a short script (not committed as code).
   The **owner runs it** and records the results:
@@ -197,11 +197,12 @@ flowchart LR
 ### 04.10 — Pure matcher
 - [ ] Done
 - **What:** `matcher.plan(missing: Sequence[MissingBios], local: Sequence[LocalFile]) -> Plan`, a pure
-  function with no I/O. It carries over the 03.8 behavior: one file can satisfy many entries; duplicate local
-  files are listed; each entry counts once. It also lists the remote `directories` that uploads need, and the
+  function with no I/O. It carries over the 03.8 and 03.12a behavior: one file can satisfy many entries; each
+  target is filled once; a file named like a target gets that target first; duplicate local files are listed;
+  each entry counts once. It also lists the remote `directories` that uploads need, and the
   entries that are `still_missing`.
 - **Files:** `src/beck/matcher.py`, `tests/unit/test_matcher.py`
-- **Done when:** The ported 03.8 tests pass, plus: the plan is deterministic regardless of input order; the
+- **Done when:** The ported 03.8 and 03.12a tests pass, plus: the plan is deterministic regardless of input order; the
   plan never references a local path outside the scanned folder.
 - **Verify:** `uv run pytest tests/unit/test_matcher.py -q`
 - **Commit message:** `refactor(core): extract a pure matcher that builds an upload plan`
@@ -250,16 +251,15 @@ flowchart LR
 - **Verify:** `uv run pytest -q`
 - **Commit message:** `refactor(cli): route all behavior through the beck package`
 
-### 04.14 — Remove legacy code and pysmb; strict typing everywhere
+### 04.14 — Remove legacy code; strict typing everywhere
 - [ ] Done
 - **What:** Delete the legacy functions (only the shim stays in `check_bios.py`). Remove the mypy relaxed
-  override and the `pythonpath = ["."]` pytest setting. Point mypy `files` at `src` and `tests`. Regenerate
-  `requirements.txt`. Coverage `source = ["beck"]`.
-- **Files:** `check_bios.py`, `pyproject.toml`, `uv.lock`, `requirements.txt`
-- **Done when:** `mypy --strict` passes on all of `src/` with no overrides except third-party stubs, and pysmb is
-  gone from the lockfile.
-- **Verify:** `uv run mypy && uv run pytest --cov && ! grep -qi pysmb uv.lock`
-- **Commit message:** `refactor!: remove legacy script internals and pysmb`
+  override and the `pythonpath = ["."]` pytest setting. Point mypy `files` at `src` and `tests`. Coverage
+  `source = ["beck"]`. `pysmb` stays (DEC-53), so its import override stays, and no dependency changes.
+- **Files:** `check_bios.py`, `pyproject.toml`
+- **Done when:** `mypy --strict` passes on all of `src/` with no overrides except third-party stubs.
+- **Verify:** `uv run mypy && uv run pytest --cov`
+- **Commit message:** `refactor!: remove legacy script internals`
 
 ### 04.15 — Close the stage
 - [ ] Done
