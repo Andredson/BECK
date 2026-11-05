@@ -135,7 +135,11 @@ flowchart LR
 - **Commit message:** `feat(core): add error hierarchy with stable exit codes`
 
 ### 04.5 — Domain models
-- [ ] Done
+- [x] Done (2026-11-04: each model is frozen and slotted, and breaking an invariant raises `ValueError`, because it means a
+  bug in BECK; adapters reject bad input with a `BeckError` first. Checked by breaking each rule on purpose. Beyond the
+  list below, for parity with stage 03's output: `Plan.already_filled`, for `target already filled, kept`; a `Duplicate`
+  model, for `duplicate of <file>`; `ItemError` for `RunResult.errors`. Also: a target must end in the entry's name, and
+  an upload's source must have an MD5 on its entry's list.)
 - **What:** Frozen, slotted dataclasses in `models.py`:
   - `MissingBios(name, target: PurePosixPath, md5s: frozenset[str], required: bool | None, system: str | None)`
     — `required` comes from the report's `MISSING R…` / `MISSING O…` marker when present.
@@ -208,8 +212,8 @@ flowchart LR
 - **What:** `matcher.plan(missing: Sequence[MissingBios], local: Sequence[LocalFile]) -> Plan`, a pure
   function with no I/O. It carries over the 03.8 and 03.12a behavior: one file can satisfy many entries; each
   target is filled once; a file named like a target gets that target first; duplicate local files are listed;
-  each entry counts once. It also lists the remote `directories` that uploads need, and the
-  entries that are `still_missing`.
+  each entry counts once. It also lists the remote `directories` that uploads need, the files whose targets
+  were `already_filled`, and the entries that are `still_missing`.
 - **Files:** `src/beck/matcher.py`, `tests/unit/test_matcher.py`
 - **Done when:** The ported 03.8 and 03.12a tests pass, plus: the plan is deterministic regardless of input order; the
   plan never references a local path outside the scanned folder.
