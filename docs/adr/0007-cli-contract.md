@@ -1,0 +1,48 @@
+# ADR-0007 — The CLI contract
+
+- **Status:** Accepted
+- **Date:** 2026-11-05
+- **Decisions covered:** none of its own. It describes the public contract that follows from DEC-02, DEC-05, DEC-17, DEC-23 and
+  DEC-54 (rows in the [decision log](../../roadmap/README.md#decision-log)).
+
+## Context
+BECK is meant to be driven by people, scripts and AI agents. The last two can't read human output reliably, so what they depend on has
+to be stable: the exit codes and the JSON output. [docs/cli.md](../cli.md) is the user reference, and this ADR records why.
+
+## Decision
+
+### Exit codes are a contract
+Codes 0 to 5 have fixed meanings, listed in [docs/cli.md](../cli.md#exit-codes), and each `BeckError` subclass has a fixed code. A
+script can branch on the code without parsing anything. Changing a code's meaning is a breaking change.
+
+Exit 0 means that the run completed, not that nothing is missing. A device can legitimately still miss files the user doesn't own, so
+failing on that is opt-in, with `--fail-if-missing`.
+
+### JSON is one document on stdout
+With `--json`, stdout has exactly one JSON document, including for errors that stop a run, and everything else goes to stderr. A
+consumer can parse stdout without checking anything first.
+
+### The compatibility promise
+Within `schema_version` 1, fields are only added. Renaming, removing or changing the meaning of a field means `schema_version` 2.
+Consumers must ignore unknown fields. Contract tests enforce this (step 06.8), and agents must ask the owner before changing an
+existing field.
+
+### Deleting is always explicit
+Nothing is deleted without `--move` or `--clean-unmatched`, and off a terminal not without `--yes` too. `--json` never prompts, so that
+a consumer can't hang on a question or confirm one by accident.
+
+## Alternatives considered
+These were offered to the owner, and are recorded in [ADR-0002](0002-ai-agent-support.md#dec-23--versioned-json-output-and-stable-exit-codes)
+and [ADR-0001](0001-product-scope.md#dec-02--non-destructive-by-default):
+
+- *JSON documented only by example*: consumers could break silently when fields change. Not chosen.
+- *Exit codes only*: agents would have to parse human-readable text. Not chosen.
+- *Keeping move-and-delete, with a prompt*: it keeps a risky default. Not chosen.
+
+The one-document-on-stdout rule and the `--json` no-prompt rule came from the roadmap plan, and weren't offered as a separate choice.
+
+## Consequences
+- **Easier:** scripts and agents can drive BECK with no integration code (DEC-05).
+- **Harder:** the output can't change freely, and a mistake in schema v1 stays until v2.
+- **Roadmap:** steps 06.2–06.12 build this, and stage 09's skills copy the exit-code table, with a test keeping them equal.
+- **Revisit if:** the output needs a change that can't be made by adding fields.

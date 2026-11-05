@@ -1,6 +1,6 @@
 # Stage 06 — CLI, UX & machine-readable output
 
-**Status:** Not started · **Depends on:** 05 · **Branch:** `stage/06-cli` · **Effort:** M
+**Status:** In progress · **Depends on:** 05 · **Branch:** `stage/06-cli` · **Effort:** M
 
 ## Goal
 Give BECK a real command-line interface (subcommands, flags, help) that is safe by default and pleasant for
@@ -14,7 +14,7 @@ reliably (DEC-05, DEC-23).
 - The opt-in destructive flags promised by DEC-02 live here.
 
 ## Decisions applied
-DEC-01, DEC-02, DEC-04, DEC-05, DEC-17, DEC-23, DEC-36.
+DEC-01, DEC-02, DEC-04, DEC-05, DEC-17, DEC-23, DEC-36, DEC-54.
 
 ## Command-line design (reference for all steps)
 
@@ -49,7 +49,10 @@ beck config  init | show | path                     # added in stage 07
 ## Steps
 
 ### 06.1 — CLI design document
-- [ ] Done
+- [x] Done (2026-11-05: the document says at the top that it's a design still being built. Beyond the design block above, it records:
+  a file valid for an `INCORRECT` target is never deleted; a warning that `--clean-unmatched` deletes good files after a rescan; a
+  required `INCORRECT` file counts for `--fail-if-missing`; a transport error beats `--fail-if-missing`. These are proposals until the
+  owner confirms them. Step 06.5's premise was corrected.)
 - **What:** `docs/cli.md`, the hand-written user reference: the design block and exit-code table above, one
   example per command, and the safety semantics (what each destructive flag deletes and when it asks for
   confirmation). Add `docs/adr/0007-cli-contract.md` describing the exit codes and the JSON compatibility
@@ -110,9 +113,10 @@ beck config  init | show | path                     # added in stage 07
 ### 06.5 — Owner decision: remote files that already exist
 - [ ] Done
 - **Blocked by:** an owner decision (record a new DEC first).
-- **What:** If the target path already exists on the device, Recalbox still reporting it missing means the
-  existing file is a **bad dump**. Today BECK overwrites it silently. Ask the owner, explaining the trade-offs,
-  which default to adopt. Files the report lists as `INCORRECT` are kept for now (DEC-54); include whether a flag can
+- **What:** If the target path already exists on the device, BECK overwrites it silently today. **Corrected in 06.1:** Recalbox's
+  source shows that a bad dump is reported as `INCORRECT` (DEC-54), or not at all when `hashMatchMandatory` is false, while `MISSING`
+  means the file wasn't found. So a `MISSING` entry whose file exists mostly means **the report is out of date**, and the file may be
+  fine. Ask the owner, explaining the trade-offs, which default to adopt. Files the report lists as `INCORRECT` are kept for now (DEC-54); include whether a flag can
   replace them:
   1. overwrite (current behavior);
   2. skip and report, with an `--overwrite` flag;
@@ -132,14 +136,15 @@ beck config  init | show | path                     # added in stage 07
   - `--dry-run`: build and show the full plan, including what *would* be deleted, and change nothing.
   - `--move`: after a file has been uploaded to **all** of its targets **and** each remote size matches, delete
     the local source. Nothing is deleted if any upload of that file failed.
-  - `--clean-unmatched`: delete local files that matched nothing. Duplicates are kept and reported.
+  - `--clean-unmatched`: delete local files that matched nothing. Duplicates are kept and reported, and so is a file valid for an
+    `INCORRECT` target. After an upload and a rescan, good files no longer match anything, so the plan must make that plain.
   - Confirmation: when `--move` or `--clean-unmatched` would delete files, list them and ask `Delete N files?
     [y/N]` on a TTY. Without a TTY (scripts, agents, CI), deletion requires `--yes`; otherwise exit 2 with a
     message explaining that. `--json` implies no prompt, so it also requires `--yes`.
   - Deletions are recorded in the result (`deleted` list).
 - **Files:** `src/beck/executor.py`, `src/beck/cli.py`, `tests/unit/test_safety_flags.py`
-- **Done when:** Tests cover a dry run with the move and clean flags (nothing deleted, plan lists them), move
-  after success, no move after a partial failure, refusal without `--yes` off-TTY, and acceptance with `--yes`.
+- **Done when:** Tests cover a dry run with the move and clean flags (nothing deleted, plan lists them), a file valid for an
+  `INCORRECT` target kept, move after success, no move after a partial failure, refusal without `--yes` off-TTY, and acceptance with `--yes`.
 - **Verify:** `uv run pytest tests/unit/test_safety_flags.py -q`
 - **Commit message:** `feat(cli): add dry-run and opt-in move/clean flags with confirmation`
 

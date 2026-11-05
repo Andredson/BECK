@@ -14,8 +14,8 @@ the consequences. The short form of every decision is a `DEC-NN` row in the
 | [0004](0004-ci-security-release.md) | CI, security and release | Accepted | DEC-11, 25, 32, 33, 34, 35, 37, 38, 41, 48 |
 | [0005](0005-process-and-docs.md) | Process and documentation | Accepted | DEC-14, 16, 20, 30, 31, 39, 51, 52 |
 | [0006](0006-core-and-adapters.md) | Core and adapters | Accepted | None of its own (follows from DEC-02, 03, 04, 53) |
+| [0007](0007-cli-contract.md) | The CLI contract | Accepted | None of its own (follows from DEC-02, 05, 17, 23, 54) |
 
-Planned by the roadmap: `0007-cli-contract.md` (step 06.1).
 
 ## Adding a decision
 
