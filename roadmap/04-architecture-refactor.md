@@ -225,7 +225,12 @@ flowchart LR
 - **Commit message:** `feat(transports): implement SMB transport on pysmb`
 
 ### 04.10 — Pure matcher
-- [ ] Done
+- [x] Done (2026-11-04: parity with stage 03 was checked with a one-off comparison, not committed, on the real report: 600
+  randomized file sets, with no difference in targets, duplicates, unmatched, already-filled or still-missing files. The
+  owner's 233 files also give an identical plan: 152 targets, 5 duplicates, 80 unmatched, 1 already filled. The permutation
+  test covers 14,400 input orders. **One difference for 04.12:** `Plan.uploads` is sorted by target, so `FOUND` lines come
+  in a different order than in stage 03; the per-file lines stay sorted by path. Every entry for an unfilled target stays in
+  `still_missing`, so a summary must count distinct targets. Checked by breaking each rule on purpose.)
 - **What:** `matcher.plan(missing: Sequence[MissingBios], local: Sequence[LocalFile]) -> Plan`, a pure
   function with no I/O. "First by path" compares paths as text (see 04.6). It carries over the 03.8 and 03.12a behavior: one file can satisfy many entries; each
   target is filled once; a file named like a target gets that target first; duplicate local files are listed;
