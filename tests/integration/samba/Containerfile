@@ -1,0 +1,21 @@
+# A minimal Samba server for BECK's integration tests (DEC-40). Test use only: guests can write to it.
+# debian:trixie-20261020-slim, pinned by digest, and at least 14 days old when pinned (DEC-45).
+FROM docker.io/library/debian:trixie-20261020-slim@sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends samba \
+    && rm -rf /var/lib/apt/lists/*
+
+# An obviously fake password, for tests only (allow-listed in .gitleaks.toml).
+RUN useradd --no-create-home --shell /usr/sbin/nologin beck \
+    && printf 'beck-test-password\nbeck-test-password\n' | smbpasswd -a -s beck
+
+RUN mkdir -p /srv/samba/bios /srv/samba/private /srv/samba/readonly \
+    && echo "seeded by the Containerfile" > /srv/samba/readonly/seeded.txt \
+    && chown -R beck /srv/samba/private
+
+COPY smb.conf /etc/samba/smb.conf
+
+EXPOSE 445
+
+CMD ["smbd", "--foreground", "--no-process-group", "--debug-stdout", "--configfile=/etc/samba/smb.conf"]

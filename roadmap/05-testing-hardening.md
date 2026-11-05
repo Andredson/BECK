@@ -15,7 +15,7 @@ container (the runtime-testing choice, DEC-33), and an enforced coverage gate.
   testing tools.
 
 ## Decisions applied
-DEC-08, DEC-09, DEC-25, DEC-33, DEC-36, DEC-40.
+DEC-08, DEC-09, DEC-25, DEC-33, DEC-36, DEC-40, DEC-55.
 
 ## Steps
 
@@ -100,8 +100,12 @@ DEC-08, DEC-09, DEC-25, DEC-33, DEC-36, DEC-40.
 - **Commit message:** `fix(parser): report an unrecognized report instead of nothing missing`
 
 ### 05.4 — Samba test server image (DEC-40)
-- [ ] Done
-- **What:** `tests/integration/samba/Dockerfile`: our own minimal image with **no third-party Samba image**.
+- [x] Done (2026-11-05: built and run with rootless Podman (DEC-55), on `debian:trixie-20261020-slim`, the newest past the cooldown,
+  with Samba 4.22. Different from the list below: the port is published on `127.0.0.1` only, because guests can write to this
+  server. `server min protocol = SMB2_02`, like Recalbox, because **`pysmb` can't connect with anything higher**; see
+  [the spike](../docs/spikes/smbprotocol.md). `samba` itself isn't pinned by version, so the cooldown doesn't cover it: pinning would
+  break whenever Debian replaces it, and this image is test-only. BECK's transport was checked against all three shares.)
+- **What:** `tests/integration/samba/Containerfile`: our own minimal image with **no third-party Samba image**.
   - `FROM debian:<release>-slim@sha256:<digest>`, pinned by digest with the tag in a comment.
   - `apt-get install --no-install-recommends samba`; create the user `beck` with password `beck-test-password`
     (clearly fake; allow-listed in `.gitleaks.toml`, 02.12).
@@ -113,12 +117,12 @@ DEC-08, DEC-09, DEC-25, DEC-33, DEC-36, DEC-40.
   - The container runs `smbd` in the foreground with logs on stdout. Check the current `smbd` flags for the
     pinned Samba version.
   - `tests/integration/samba/README.md`: build and run commands for local use, e.g.
-    `docker build -t beck-samba tests/integration/samba && docker run -d --rm -p 4450:445 --name beck-samba beck-samba`.
-- **Files:** `tests/integration/samba/Dockerfile`, `tests/integration/samba/smb.conf`,
+    `podman build -t beck-samba tests/integration/samba && podman run -d --rm -p 127.0.0.1:4450:445 --name beck-samba beck-samba`.
+- **Files:** `tests/integration/samba/Containerfile`, `tests/integration/samba/smb.conf`,
   `tests/integration/samba/README.md`
 - **Done when:** After the run command, `smbclient -L` (or a short Python check) lists the three shares on
   `127.0.0.1:4450`.
-- **Verify:** `docker build -t beck-samba tests/integration/samba` succeeds
+- **Verify:** `podman build -t beck-samba tests/integration/samba` succeeds
 - **Commit message:** `test(integration): add minimal Samba server image for SMB tests`
 
 ### 05.5 — SMB integration tests (DEC-33)
@@ -143,7 +147,7 @@ DEC-08, DEC-09, DEC-25, DEC-33, DEC-36, DEC-40.
 - [ ] Done
 - **What:** Add an `integration` job to `ci.yml` on `ubuntu-latest` only (GitHub's macOS and Windows runners
   don't run Linux containers). It builds the image, starts the container, waits until port 4450 accepts
-  connections (bounded retry loop), and runs `uv run pytest -m integration`. On failure it dumps `docker logs`.
+  connections (bounded retry loop), and runs `uv run pytest -m integration`. On failure it dumps `podman logs`.
   Add `integration` to the required checks (human step, as in 02.16).
 - **Files:** `.github/workflows/ci.yml`
 - **Done when:** The job is green on the PR and required for merging.
@@ -196,5 +200,5 @@ DEC-08, DEC-09, DEC-25, DEC-33, DEC-36, DEC-40.
 - Hypothesis, snapshot libraries, mutation testing (DEC-36). Atheris fuzzing was offered and not chosen.
 
 ## Agent notes
-- If you can't run Docker in your environment, say so and skip the integration tests locally with
+- If you can't run Podman in your environment, say so and skip the integration tests locally with
   `-m "not integration"`. Never point integration tests at a real Recalbox.

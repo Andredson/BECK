@@ -43,6 +43,11 @@ Other findings:
 - Its source has no SMB encryption code, so it can't encrypt, even with a password account.
 - It has no recursive folder creation, so BECK keeps `SmbSession.ensure_dir` from step 03.9.
 
+**Found later, in step 05.4:** `pysmb` connects only if the server still accepts SMB 2.02. Against Samba 4.22, it worked with
+`server min protocol = SMB2_02`, which is Samba's default and what Recalbox 10.1.1 uses, and failed with `SMB2_10`, `SMB3_00`
+and `SMB3_11` (`Server does not support any of the pysmb dialects`). So BECK would stop working if a future Recalbox raised
+that minimum. If that happens, this comparison is the place to start. `smbprotocol` negotiated SMB 3.1.1 here.
+
 ## Not verified
 Real hardware. The real-device run in [step 10.11](../../roadmap/10-packaging-and-release.md#1011--define-and-reach-10)
 covers BECK's final transport.

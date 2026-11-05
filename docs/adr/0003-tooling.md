@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-11-02
 - **Decisions covered:** DEC-07, DEC-08, DEC-17, DEC-18, DEC-19, DEC-24, DEC-26, DEC-27, DEC-28, DEC-29, DEC-36,
-  DEC-40, DEC-42, DEC-45, DEC-49, DEC-53
+  DEC-40, DEC-42, DEC-45, DEC-49, DEC-53, DEC-55
 
 ## Context
 At baseline the project had no tooling: no lockfile, tests, linters or packaging. The owner asked that every
@@ -92,6 +92,7 @@ dependencies**, even where a tool was recommended.
   fixtures (step 05.2).
 
 ## DEC-40 — Own minimal Samba Dockerfile for tests
+- **Status:** The Docker part is superseded by [DEC-55](#dec-55--podman-only); building our own minimal image stands.
 - **Decision:** Build the integration-test SMB server from our own Dockerfile: Debian-slim pinned by digest, plus the
   `samba` package and a Recalbox-like `smb.conf`.
 - **Alternatives considered:** *A community Samba image* configured through env vars: less code, but you trust a
@@ -158,3 +159,17 @@ dependencies**, even where a tool was recommended.
   - Its dependencies stay: `pyasn1`, with the `.trivyignore` entries until the upgrade due from 2026-11-10, and `tqdm`.
   - BECK's dependencies stay small, and guest login needs no special settings.
   - Changing library later is contained, because only `transports/smb.py` will use `pysmb`.
+
+## DEC-55 — Podman only
+- **Date:** 2026-11-05 (step 05.4).
+- **Status:** Accepted. Supersedes the Docker part of [DEC-40](#dec-40--own-minimal-samba-dockerfile-for-tests).
+- **Context:** Step 05.4 needed a container engine. The owner's account wasn't in the `docker` group, which amounts to root
+  access. The agent offered running Docker through `sudo`, or joining the group. The owner chose instead to remove Docker
+  from the machine, install Podman, and use only Podman in this project.
+- **Decision:** Use Podman, locally and in CI. The test server's file is `Containerfile`, Podman's default name.
+- **Alternatives considered:**
+  - *Docker through `sudo`* (recommended by the agent at the time): no root-equivalent group, but needs the owner for each
+    build. Not chosen.
+  - *Docker with the owner in the `docker` group*: common, but root-equivalent for anything run as that user. Not chosen.
+- **Consequences:** Rootless Podman runs as the user, so agents can build and run the test server with no extra privileges.
+  Images are named in full (`docker.io/library/debian:…`), which is only the registry's name. Step 05.6 uses Podman in CI.
