@@ -32,7 +32,8 @@ class RecalboxAdapter:
 
     def parse_report(self, text: str) -> list[MissingBios]:
         """Turn a report into one entry per ``MISSING ... BIOS`` block, in report order. Pure."""
-        text = text.replace("\r\n", "\n")
+        # A BOM would hide a heading on the first line: "^" wouldn't match, and the block would vanish.
+        text = text.removeprefix("\ufeff").replace("\r\n", "\n")
         systems = list(SYSTEM_LINE.finditer(text))
         headings = list(BLOCK_HEADING.finditer(text))
         missing = []

@@ -42,7 +42,11 @@ DEC-08, DEC-09, DEC-25, DEC-33, DEC-36, DEC-40.
 - **Commit message:** `test: organize unit and integration suites with shared factories`
 
 ### 05.2 — Parser coverage across all fixtures and edge cases
-- [ ] Done
+- [x] Done (2026-11-05: **this found a bug.** A UTF-8 BOM right before the first block made that block vanish with no error, so
+  a report with one entry would say nothing is missing. `parse_report` now removes the BOM. Real reports start with a `====`
+  line, so they weren't affected. The commit message is `fix(parser)`, so that the changelog shows it. A temporary fixture in
+  a deeper folder was picked up with no code change. Also tested: the word `or` in a file name. Still open, not changed: a bad
+  byte in a *name* becomes `\ufffd`, and BECK would upload under that name.)
 - **What:** One parametrized test over **every** fixture in `tests/fixtures/reports/**`, so a new fixture is
   tested automatically. Explicit edge-case tests: hyphens, spaces, parentheses, multiple dots, nested paths,
   shared MD5s, uppercase and lowercase hashes, CRLF, a UTF-8 BOM, non-UTF-8 bytes (decoded with replacement, no
