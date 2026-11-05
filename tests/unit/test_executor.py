@@ -60,7 +60,7 @@ def test_normal_run_creates_folders_and_uploads(source: Path, target: Path) -> N
     nested, top = make_bios_file(source, "ps1/copy.bin"), make_bios_file(source, "top.bin")
     report = [make_missing("amiga/bios/kick.rom", nested.md5), make_missing("root.bin", top.md5)]
 
-    result = run(plan(report, scan(source)), target)
+    result = run(plan(report, scan(source).files), target)
 
     assert (target / "amiga" / "bios" / "kick.rom").read_bytes() == nested.path.read_bytes()
     assert (target / "root.bin").read_bytes() == top.path.read_bytes()
@@ -71,7 +71,7 @@ def test_normal_run_creates_folders_and_uploads(source: Path, target: Path) -> N
 
 def test_the_result_carries_the_plan(source: Path, target: Path) -> None:
     file = make_bios_file(source, "copy.bin")
-    built = plan([make_missing("a.bin", file.md5)], scan(source))
+    built = plan([make_missing("a.bin", file.md5)], scan(source).files)
 
     assert run(built, target).plan == built
 
@@ -82,7 +82,7 @@ def test_one_file_reaches_all_its_targets(source: Path, target: Path) -> None:
     report = [make_missing(name, file.md5) for name in ("a.bin", "b.bin", "c/d.bin")]
     data = file.path.read_bytes()
 
-    run(plan(report, scan(source)), target)
+    run(plan(report, scan(source).files), target)
 
     assert snapshot(target).keys() == {"a.bin", "b.bin", "c/d.bin"}
     assert file.path.read_bytes() == data
@@ -100,7 +100,7 @@ def test_dry_run_changes_nothing_and_skips_every_upload(source: Path, target: Pa
     (target / "existing.bin").write_bytes(b"old content")
     before = snapshot(target), snapshot(source)
     report = [make_missing("ps1/a.bin", file.md5), make_missing("existing.bin", file.md5)]
-    built = plan(report, scan(source))
+    built = plan(report, scan(source).files)
 
     result = run(built, target, dry_run=True)
 
@@ -139,7 +139,7 @@ class Untouchable:
 
 def test_dry_run_calls_no_transport_method(source: Path) -> None:
     file = make_bios_file(source, "copy.bin")
-    built = plan([make_missing("ps1/a.bin", file.md5)], scan(source))
+    built = plan([make_missing("ps1/a.bin", file.md5)], scan(source).files)
 
     assert execute(built, Untouchable(), dry_run=True).skipped == built.uploads
 
@@ -148,7 +148,7 @@ def test_running_again_gives_the_same_result_and_files(source: Path, target: Pat
     file = make_bios_file(source, "copy.bin")
     make_bios_file(source, "junk.bin")
     report = [make_missing("a.bin", file.md5), make_missing("ps1/x/b.bin", file.md5)]
-    built = plan(report, scan(source))
+    built = plan(report, scan(source).files)
 
     first = run(built, target)
     files_after_first = {name: state[2] for name, state in snapshot(target).items()}
@@ -161,7 +161,7 @@ def test_running_again_gives_the_same_result_and_files(source: Path, target: Pat
 
 def test_a_dry_run_after_a_real_run_changes_nothing(source: Path, target: Path) -> None:
     file = make_bios_file(source, "copy.bin")
-    built = plan([make_missing("ps1/a.bin", file.md5)], scan(source))
+    built = plan([make_missing("ps1/a.bin", file.md5)], scan(source).files)
     run(built, target)
     before = snapshot(target)
 
@@ -197,7 +197,7 @@ def test_a_read_only_folder_is_recorded_and_the_run_continues(
         make_missing("z.bin", file.md5),
     ]
 
-    result = run(plan(report, scan(source)), target)
+    result = run(plan(report, scan(source).files), target)
 
     assert targets(result.completed) == ["a.bin", "z.bin"]
     assert [error.item for error in result.errors] == ["locked/b.bin"]
@@ -215,7 +215,7 @@ def test_a_read_only_target_file_is_recorded_and_kept(
     existing.chmod(0o444)
     restore_permissions.append(existing)
 
-    result = run(plan([make_missing("a.bin", file.md5)], scan(source)), target)
+    result = run(plan([make_missing("a.bin", file.md5)], scan(source).files), target)
 
     assert [error.item for error in result.errors] == ["a.bin"]
     assert existing.read_bytes() == b"old content"
@@ -232,7 +232,7 @@ def test_a_folder_it_cannot_create_skips_its_uploads_and_continues(
     restore_permissions.append(locked)
     report = [make_missing("locked/new/b.bin", file.md5), make_missing("z.bin", file.md5)]
 
-    result = run(plan(report, scan(source)), target)
+    result = run(plan(report, scan(source).files), target)
 
     assert [error.item for error in result.errors] == ["locked/new"]
     assert targets(result.skipped) == ["locked/new/b.bin"]
@@ -245,7 +245,7 @@ def test_a_local_file_it_cannot_read_is_recorded_and_the_run_continues(
 ) -> None:
     unreadable, kept = make_bios_file(source, "a.bin"), make_bios_file(source, "b.bin")
     report = [make_missing("x.bin", unreadable.md5), make_missing("y.bin", kept.md5)]
-    built = plan(report, scan(source))
+    built = plan(report, scan(source).files)
     unreadable.path.chmod(0o000)
     restore_permissions.append(unreadable.path)
 
@@ -268,7 +268,7 @@ def test_a_failed_upload_is_recorded_and_the_run_continues(source: Path, target:
     ]
     (target / "b.bin").mkdir()  # uploading over a folder fails
 
-    result = run(plan(report, scan(source)), target)
+    result = run(plan(report, scan(source).files), target)
 
     assert targets(result.completed) == ["a.bin", "z.bin"]
     assert [error.item for error in result.errors] == ["b.bin"]
@@ -280,7 +280,7 @@ def test_a_failed_upload_is_recorded_and_the_run_continues(source: Path, target:
 def test_a_local_file_that_vanished_is_a_failed_item(source: Path, target: Path) -> None:
     gone, kept = make_bios_file(source, "gone.bin"), make_bios_file(source, "kept.bin")
     report = [make_missing("a.bin", gone.md5), make_missing("b.bin", kept.md5)]
-    built = plan(report, scan(source))
+    built = plan(report, scan(source).files)
     gone.path.unlink()
 
     result = run(built, target)
@@ -297,7 +297,7 @@ def test_a_failed_folder_skips_its_uploads_and_the_run_continues(
     names = ("blocked/a.bin", "blocked/b.bin", "ps1/c.bin", "root.bin")
     report = [make_missing(name, file.md5) for name in names]
 
-    result = run(plan(report, scan(source)), target)
+    result = run(plan(report, scan(source).files), target)
 
     assert [error.item for error in result.errors] == ["blocked"]
     assert targets(result.skipped) == ["blocked/a.bin", "blocked/b.bin"]
@@ -311,7 +311,7 @@ def test_an_unexpected_error_is_not_swallowed(source: Path, tmp_path: Path) -> N
             raise RuntimeError("a bug in BECK")
 
     file = make_bios_file(source, "copy.bin")
-    built = plan([make_missing("a.bin", file.md5)], scan(source))
+    built = plan([make_missing("a.bin", file.md5)], scan(source).files)
 
     with Broken(tmp_path) as transport, pytest.raises(RuntimeError, match="a bug in BECK"):
         execute(built, transport, dry_run=False)
@@ -321,7 +321,7 @@ def test_an_existing_remote_file_is_replaced_as_in_stage_03(source: Path, target
     file = make_bios_file(source, "copy.bin")
     (target / "a.bin").write_bytes(b"old content")
 
-    run(plan([make_missing("a.bin", file.md5)], scan(source)), target)
+    run(plan([make_missing("a.bin", file.md5)], scan(source).files), target)
 
     assert (target / "a.bin").read_bytes() == file.path.read_bytes()
 
@@ -337,7 +337,7 @@ def test_the_source_folder_is_unchanged_afterwards(
     make_bios_file(source, "ps1/duplicate.bin", file.path.read_bytes())
     make_bios_file(source, "junk.bin")
     make_bios_file(source, ".keep", b"")
-    built = plan([make_missing("x/a.bin", file.md5)], scan(source))
+    built = plan([make_missing("x/a.bin", file.md5)], scan(source).files)
     before = snapshot(source)
     for name in ("rename", "replace", "unlink", "rmdir"):
         monkeypatch.setattr(Path, name, forbidden)
@@ -366,7 +366,7 @@ def test_a_full_run_through_the_smb_transport(
     server = install_fake_smb(monkeypatch)
     monkeypatch.chdir(tmp_path)
     file = make_bios_file(source, "copy.bin")
-    built = plan([make_missing("amiga/bios/kick.rom", file.md5)], scan(source))
+    built = plan([make_missing("amiga/bios/kick.rom", file.md5)], scan(source).files)
 
     with SmbTransport("beck-test-server", 445, "bios", "", "") as transport:
         result = execute(built, transport, dry_run=False)
@@ -383,7 +383,7 @@ def test_transport_errors_through_smb_are_item_errors(
     server = install_fake_smb(monkeypatch)
     monkeypatch.chdir(tmp_path)
     file = make_bios_file(source, "copy.bin")
-    built = plan([make_missing("a.bin", file.md5)], scan(source))
+    built = plan([make_missing("a.bin", file.md5)], scan(source).files)
 
     with SmbTransport("beck-test-server", 445, "bios", "", "") as transport:
         server.failures["storeFile"] = TimeoutError()
@@ -400,7 +400,7 @@ def test_transport_error_type_is_the_item_failure(source: Path, tmp_path: Path) 
             raise TransportError("refused")
 
     file = make_bios_file(source, "copy.bin")
-    built = plan([make_missing("a.bin", file.md5)], scan(source))
+    built = plan([make_missing("a.bin", file.md5)], scan(source).files)
 
     with Refusing(tmp_path) as transport:
         result = execute(built, transport, dry_run=False)

@@ -665,6 +665,51 @@ def test_no_color_works_before_or_after_the_command(
 # Every way out of cli.main, by exit code
 
 
+def test_unreadable_local_files_are_reported_and_the_good_ones_upload(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    good = write(app / "bios" / "good.bin")
+    (app / "bios" / "broken.bin").symlink_to(app / "no-such-target")
+    os.mkfifo(app / "bios" / "pipe.bin")
+    report(server, block("a.bin", md5_of(good)))
+
+    assert run(app) == 0  # DEC-59: an unreadable file doesn't change the exit code
+
+    assert server.files[("bios", "a.bin")] == good
+    captured = capsys.readouterr()
+    assert "broken.bin: can't be read, skipped: broken symlink" in captured.out
+    assert "pipe.bin: can't be read, skipped: not a regular file" in captured.out
+    assert "There are 1 possible bios" in captured.out
+    assert "Final result: 1/1 missing entries satisfied, 1 files analysed" in captured.out
+    assert captured.err == ""  # no traceback
+
+
+def test_only_unreadable_files_says_so_and_stops_cleanly(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (app / "bios" / "broken.bin").symlink_to(app / "no-such-target")
+    report(server, block("a.bin", "0" * 32))
+
+    assert run(app) == 0
+
+    output = capsys.readouterr().out
+    assert "broken.bin: can't be read, skipped: broken symlink" in output
+    assert "No BIOS files found" in output
+    assert "Final result" not in output
+
+
+def test_unreadable_files_stay_as_they_were(server: FakeSMBServer, app: Path) -> None:
+    link = app / "bios" / "broken.bin"
+    link.symlink_to(app / "no-such-target")
+    write(app / "bios" / "good.bin")
+    report(server, block("a.bin", "0" * 32))
+
+    run(app)
+
+    assert link.is_symlink()
+    assert not (app / "no-such-target").exists()
+
+
 def test_exit_0_a_normal_run(
     server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

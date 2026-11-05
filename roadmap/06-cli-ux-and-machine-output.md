@@ -79,7 +79,10 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `feat(cli): add check, scan and report subcommands`
 
 ### 06.2a — A local file BECK can't read doesn't stop the run
-- [ ] Done
+- [x] Done (2026-11-05: `scan` now returns a `ScanResult` with the files and what it couldn't read. Beyond the list below: **a sub-folder
+  that can't be read** is reported too, because `os.walk` skipped those silently, so all its files just went missing. A symlink loop is
+  reported like a broken symlink. A symlink to a folder still isn't followed, as before. The local files stay as they were. Tested with
+  real symlinks, permissions and named pipes, and through a real Samba server. Checked by breaking each rule on purpose.)
 - **What:** Today, a broken symlink or an unreadable file in the source folder ends in a traceback and exit 1, before anything
   is uploaded (found in 04.6, and the reason error handling stayed at 7/10). `hashing.scan` records the file and its reason,
   and carries on with the others. Only regular files, or symlinks to them, get hashed, because opening a named pipe would hang

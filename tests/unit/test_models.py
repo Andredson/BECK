@@ -14,6 +14,8 @@ from beck.models import (
     Plan,
     PlannedUpload,
     RunResult,
+    ScanResult,
+    Unreadable,
 )
 
 MD5_A = "a" * 32
@@ -47,6 +49,8 @@ def upload(target: str = "ps1/scph.bin", relative: str = "copy.bin") -> PlannedU
         Duplicate(file=local("b.bin"), of=local("a.bin")),
         Plan(),
         ItemError(item="a.bin", message="failed"),
+        Unreadable(relative=PurePosixPath("a.bin"), reason="broken symlink"),
+        ScanResult(),
         RunResult(plan=Plan()),
     ],
     ids=lambda instance: type(instance).__name__,

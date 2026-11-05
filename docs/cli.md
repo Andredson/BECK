@@ -132,7 +132,7 @@ These are a stable contract (DEC-23), and scripts can rely on them.
 Some details:
 
 - A failed upload exits with 3 even though the other uploads finished.
-- A local file that can't be read is reported, and doesn't change the exit code.
+- A local file or folder that can't be read, such as a broken symlink, is reported and skipped, and doesn't change the exit code.
 - `--fail-if-missing` counts entries that are required or whose status is unknown. A required file listed as `INCORRECT` counts too,
   because the device still can't use it.
 - If several apply, the transport error wins over `--fail-if-missing`, because the run didn't do all it could.

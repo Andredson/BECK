@@ -169,7 +169,7 @@ def test_read_only_share_errors_are_recorded_and_the_run_continues(
     before = snapshot(tmp_path)
 
     with samba.guest("readonly") as transport:
-        result = execute(plan(report, scan(tmp_path)), transport, dry_run=False)
+        result = execute(plan(report, scan(tmp_path).files), transport, dry_run=False)
 
         assert not transport.exists(PurePosixPath("x.bin"))
 
@@ -251,6 +251,27 @@ def test_end_to_end_files_arrive_under_the_right_names_and_folders(
     assert "Final result: 4/5 missing entries satisfied, 5 files analysed" in output
     assert "junk.bin: no match, kept" in output
     assert "PLEASE SCAN" in output
+
+
+def test_end_to_end_an_unreadable_file_doesnt_stop_the_upload(
+    samba: Samba,
+    app: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    good = make_bios_file(app / "bios", "good.bin")
+    (app / "bios" / "broken.bin").symlink_to(app / "no-such-target")
+    target = folder / "a.bin"
+    put_report(make_report_text([make_missing(target.as_posix(), good.md5)]))
+
+    assert cli.main(["check"], base_dir=app) == 0
+
+    with samba.guest() as transport:
+        assert transport.read_bytes(target) == good.path.read_bytes()
+    captured = capsys.readouterr()
+    assert "broken.bin: can't be read, skipped: broken symlink" in captured.out
+    assert captured.err == ""
 
 
 def test_end_to_end_running_again_gives_the_same_files(

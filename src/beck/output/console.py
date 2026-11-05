@@ -8,7 +8,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import TextIO
 
-from beck.models import LocalFile, MissingBios, RunResult
+from beck.models import LocalFile, MissingBios, RunResult, Unreadable
 
 RESET = "\033[0m"
 RED = "\033[91m"
@@ -100,6 +100,12 @@ class ConsoleRenderer:
 
     def error(self, message: object) -> None:
         self._print(f"{self._paint('Error', RED)}: {message}")
+
+    def unreadable(self, items: tuple[Unreadable, ...]) -> None:
+        """Local files and folders that couldn't be read. The run carries on without them."""
+        for item in items:
+            label = self._paint("can't be read", RED)
+            self._print(f"{item.relative}: {label}, skipped: {item.reason}")
 
     def incorrect(self, entries: list[MissingBios]) -> None:
         """Files on the device with a wrong hash, which BECK keeps (DEC-54). One line per target."""

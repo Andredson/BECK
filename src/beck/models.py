@@ -65,6 +65,22 @@ class LocalFile:
 
 
 @dataclass(frozen=True, slots=True)
+class Unreadable:
+    """A file or folder in the user's BIOS folder that couldn't be read, and why."""
+
+    relative: PurePosixPath  # to the scanned folder
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class ScanResult:
+    """What a scan of the user's BIOS folder found. Both are sorted by path, as text."""
+
+    files: tuple[LocalFile, ...] = ()
+    unreadable: tuple[Unreadable, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class PlannedUpload:
     """One local file going to one target."""
 

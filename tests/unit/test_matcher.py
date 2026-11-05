@@ -352,7 +352,7 @@ def test_the_plan_only_references_files_in_the_scanned_folder(tmp_path: Path) ->
     make_bios_file(tmp_path, "other.bin", match.path.read_bytes())
     make_bios_file(tmp_path, "junk.bin")
 
-    result = plan([make_missing("t.bin", match.md5)], scan(tmp_path))
+    result = plan([make_missing("t.bin", match.md5)], scan(tmp_path).files)
 
     found = [u.source for u in result.uploads] + list(result.unmatched)
     found += [d.file for d in result.duplicates] + [d.of for d in result.duplicates]

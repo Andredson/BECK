@@ -87,13 +87,14 @@ def _run(base_dir: Path, renderer: ConsoleRenderer) -> int:
             return 0
         renderer.missing_count(len(missing))
 
-        local = scan(bios_dir)
-        if not local:
+        scanned = scan(bios_dir)
+        renderer.unreadable(scanned.unreadable)
+        if not scanned.files:
             renderer.no_files(bios_dir)
             return 0
-        renderer.files_found(len(local))
+        renderer.files_found(len(scanned.files))
 
-        result = execute(plan(entries, local), transport, dry_run=False)
+        result = execute(plan(entries, scanned.files), transport, dry_run=False)
 
     renderer.result(result)
     return TransportError.exit_code if result.errors else 0
