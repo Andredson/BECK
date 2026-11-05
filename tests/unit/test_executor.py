@@ -1,6 +1,7 @@
 """The executor: normal runs, dry runs, failures that don't stop the run, and no local changes."""
 
 import os
+from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
 from typing import Any, NoReturn, Self
 
@@ -31,9 +32,24 @@ def target(tmp_path: Path) -> Path:
     return folder
 
 
+def source_state(planned: Plan) -> dict[Path, tuple[int, bytes]]:
+    files = {upload.source for upload in planned.uploads}
+    files.update(duplicate.file for duplicate in planned.duplicates)
+    files.update(planned.unmatched, planned.already_filled)
+    return {
+        file.path: (file.path.stat().st_mtime_ns, file.path.read_bytes())
+        for file in files
+        if file.path.exists()
+    }
+
+
 def run(plan_to_run: Plan, target: Path, *, dry_run: bool = False) -> RunResult:
+    """Execute a plan, and check that every local file is untouched in every scenario (DEC-02)."""
+    before = source_state(plan_to_run)
     with LocalTransport(target) as transport:
-        return execute(plan_to_run, transport, dry_run=dry_run)
+        result = execute(plan_to_run, transport, dry_run=dry_run)
+    assert source_state(plan_to_run) == before
+    return result
 
 
 def targets(uploads: tuple[PlannedUpload, ...]) -> list[str]:
@@ -126,6 +142,119 @@ def test_dry_run_calls_no_transport_method(source: Path) -> None:
     built = plan([make_missing("ps1/a.bin", file.md5)], scan(source))
 
     assert execute(built, Untouchable(), dry_run=True).skipped == built.uploads
+
+
+def test_running_again_gives_the_same_result_and_files(source: Path, target: Path) -> None:
+    file = make_bios_file(source, "copy.bin")
+    make_bios_file(source, "junk.bin")
+    report = [make_missing("a.bin", file.md5), make_missing("ps1/x/b.bin", file.md5)]
+    built = plan(report, scan(source))
+
+    first = run(built, target)
+    files_after_first = {name: state[2] for name, state in snapshot(target).items()}
+    second = run(built, target)
+
+    assert second == first
+    assert not second.errors
+    assert {name: state[2] for name, state in snapshot(target).items()} == files_after_first
+
+
+def test_a_dry_run_after_a_real_run_changes_nothing(source: Path, target: Path) -> None:
+    file = make_bios_file(source, "copy.bin")
+    built = plan([make_missing("ps1/a.bin", file.md5)], scan(source))
+    run(built, target)
+    before = snapshot(target)
+
+    run(built, target, dry_run=True)
+
+    assert snapshot(target) == before
+
+
+needs_permissions = pytest.mark.skipif(os.geteuid() == 0, reason="root ignores file permissions")
+
+
+@pytest.fixture
+def restore_permissions() -> Iterator[list[Path]]:
+    """Paths whose permissions a test took away; restored so that pytest can clean them up."""
+    changed: list[Path] = []
+    yield changed
+    for path in changed:
+        path.chmod(0o755)
+
+
+@needs_permissions
+def test_a_read_only_folder_is_recorded_and_the_run_continues(
+    source: Path, target: Path, restore_permissions: list[Path]
+) -> None:
+    file = make_bios_file(source, "copy.bin")
+    locked = target / "locked"
+    locked.mkdir()
+    locked.chmod(0o555)
+    restore_permissions.append(locked)
+    report = [
+        make_missing("a.bin", file.md5),
+        make_missing("locked/b.bin", file.md5),
+        make_missing("z.bin", file.md5),
+    ]
+
+    result = run(plan(report, scan(source)), target)
+
+    assert targets(result.completed) == ["a.bin", "z.bin"]
+    assert [error.item for error in result.errors] == ["locked/b.bin"]
+    assert "Permission denied" in result.errors[0].message
+    assert list(locked.iterdir()) == []
+
+
+@needs_permissions
+def test_a_read_only_target_file_is_recorded_and_kept(
+    source: Path, target: Path, restore_permissions: list[Path]
+) -> None:
+    file = make_bios_file(source, "copy.bin")
+    existing = target / "a.bin"
+    existing.write_bytes(b"old content")
+    existing.chmod(0o444)
+    restore_permissions.append(existing)
+
+    result = run(plan([make_missing("a.bin", file.md5)], scan(source)), target)
+
+    assert [error.item for error in result.errors] == ["a.bin"]
+    assert existing.read_bytes() == b"old content"
+
+
+@needs_permissions
+def test_a_folder_it_cannot_create_skips_its_uploads_and_continues(
+    source: Path, target: Path, restore_permissions: list[Path]
+) -> None:
+    file = make_bios_file(source, "copy.bin")
+    locked = target / "locked"
+    locked.mkdir()
+    locked.chmod(0o555)
+    restore_permissions.append(locked)
+    report = [make_missing("locked/new/b.bin", file.md5), make_missing("z.bin", file.md5)]
+
+    result = run(plan(report, scan(source)), target)
+
+    assert [error.item for error in result.errors] == ["locked/new"]
+    assert targets(result.skipped) == ["locked/new/b.bin"]
+    assert targets(result.completed) == ["z.bin"]
+
+
+@needs_permissions
+def test_a_local_file_it_cannot_read_is_recorded_and_the_run_continues(
+    source: Path, target: Path, restore_permissions: list[Path]
+) -> None:
+    unreadable, kept = make_bios_file(source, "a.bin"), make_bios_file(source, "b.bin")
+    report = [make_missing("x.bin", unreadable.md5), make_missing("y.bin", kept.md5)]
+    built = plan(report, scan(source))
+    unreadable.path.chmod(0o000)
+    restore_permissions.append(unreadable.path)
+
+    with LocalTransport(target) as transport:
+        result = execute(built, transport, dry_run=False)
+
+    assert [error.item for error in result.errors] == ["x.bin"]
+    assert targets(result.completed) == ["y.bin"]
+    assert not (target / "x.bin").exists()
 
 
 def test_a_failed_upload_is_recorded_and_the_run_continues(source: Path, target: Path) -> None:

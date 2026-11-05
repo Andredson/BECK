@@ -1,12 +1,13 @@
 """The matcher: ported from the stage 03 matching tests (D3, step 03.12a), now with plain data."""
 
 import itertools
+import random
 from pathlib import Path, PurePosixPath
 
 from beck.frontends.recalbox import RecalboxAdapter
 from beck.hashing import scan
 from beck.matcher import plan
-from beck.models import Duplicate, Plan
+from beck.models import Duplicate, LocalFile, MissingBios, Plan
 from tests.conftest import REAL_REPORT, load_report
 from tests.factories import make_bios_file, make_local_file, make_missing
 
@@ -20,6 +21,47 @@ def filled(result: Plan) -> dict[str, str]:
 
 def test_nothing_in_gives_an_empty_plan() -> None:
     assert plan([], []) == Plan()
+
+
+def test_nothing_matches() -> None:
+    report = [make_missing("a.bin", A), make_missing("ps1/b.bin", B)]
+    junk = make_local_file("junk.bin", C)
+
+    result = plan(report, [junk])
+
+    assert result == Plan(unmatched=(junk,), still_missing=tuple(report))
+
+
+def test_no_files_leaves_everything_missing() -> None:
+    report = [make_missing("a.bin", A)]
+
+    assert plan(report, []) == Plan(still_missing=tuple(report))
+
+
+def test_no_report_entries_leaves_every_file_unmatched() -> None:
+    file = make_local_file("a.bin", A)
+
+    assert plan([], [file]) == Plan(unmatched=(file,))
+
+
+def test_everything_matches() -> None:
+    report = [make_missing("a.bin", A), make_missing("ps1/b.bin", B), make_missing("x/y/c.bin", C)]
+    files = [make_local_file("1", A), make_local_file("2", B), make_local_file("3", C)]
+
+    result = plan(report, files)
+
+    assert filled(result) == {"a.bin": "1", "ps1/b.bin": "2", "x/y/c.bin": "3"}
+    assert not (result.unmatched or result.duplicates or result.already_filled)
+    assert not result.still_missing
+
+
+def test_many_files_for_one_entry_fill_it_once() -> None:
+    files = [make_local_file(name, md5) for name, md5 in (("1", A), ("2", B), ("3", C))]
+
+    result = plan([make_missing("t.bin", A, B, C)], files)
+
+    assert filled(result) == {"t.bin": "1"}
+    assert [file.relative.name for file in result.already_filled] == ["2", "3"]
 
 
 def test_one_file_two_entries_gives_two_uploads() -> None:
@@ -212,6 +254,38 @@ def test_identical_copy_in_a_sub_folder_named_like_the_target_is_the_one_uploade
 
     assert filled(result) == {"tos.img": "z/tos.img"}
     assert result.duplicates == (Duplicate(file=copy, of=named),)
+
+
+def _real_report_and_files() -> tuple[list[MissingBios], list[LocalFile]]:
+    report = RecalboxAdapter().parse_report(load_report(REAL_REPORT))
+    md5s = sorted(md5 for entry in report for md5 in entry.md5s)[::3]
+    files = [make_local_file(f"{i % 5}/f{i}.bin", md5) for i, md5 in enumerate(md5s)]
+    return report, [*files, make_local_file("junk.bin", "e" * 32)]
+
+
+def test_a_shuffled_real_report_gives_the_same_plan() -> None:
+    report, files = _real_report_and_files()
+    expected = plan(report, files)
+    shuffler = random.Random(20261105)  # noqa: S311 - a repeatable test order, not security
+
+    for _ in range(25):
+        shuffler.shuffle(report)
+        shuffler.shuffle(files)
+        assert plan(report, files) == expected
+    assert expected.uploads
+    assert expected.still_missing
+
+
+def test_targets_and_folders_stay_relative() -> None:
+    report, files = _real_report_and_files()
+
+    result = plan(report, files)
+
+    paths = [upload.target for upload in result.uploads] + list(result.directories)
+    assert paths
+    for path in paths:
+        assert not path.is_absolute()
+        assert ".." not in path.parts
 
 
 def test_real_report_shared_md5_and_repeated_target() -> None:

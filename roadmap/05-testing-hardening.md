@@ -58,7 +58,10 @@ DEC-08, DEC-09, DEC-25, DEC-33, DEC-36, DEC-40.
 - **Commit message:** `test(parser): cover every fixture and report edge case`
 
 ### 05.3 — Matcher and executor edge cases
-- [ ] Done
+- [x] Done (2026-11-05: permission errors use real file modes: a read-only folder, a read-only target file, a folder that
+  can't be created, and a local file that can't be read. They're skipped when run as root. "Source unchanged" is built into
+  the tests' `run` helper, so every scenario using it checks it, including new ones. The shuffled test uses the real report.
+  Checked by breaking each rule on purpose.)
 - **What:**
   - Matcher: empty inputs; nothing matches; everything matches; one file to many entries; many files to one
     entry; deterministic output under shuffled input; targets stay relative.
