@@ -153,8 +153,8 @@ DEC-08, DEC-09, DEC-25, DEC-33, DEC-36, DEC-40, DEC-55.
 
 ### 05.6 — CI integration job
 - [ ] Done
-- **What:** Add an `integration` job to `ci.yml` on `ubuntu-latest` only (GitHub's macOS and Windows runners
-  don't run Linux containers). It builds the image, starts the container, waits until port 4450 accepts
+- **What:** Add an `integration` job to `ci.yml` on Linux only (GitHub's macOS and Windows runners
+  don't run Linux containers), using Podman (DEC-55). It builds the image, starts the container, waits until port 4450 accepts
   connections (bounded retry loop), and runs `uv run pytest -m integration`. On failure it dumps `podman logs`.
   Add `integration` to the required checks (human step, as in 02.16).
 - **Files:** `.github/workflows/ci.yml`

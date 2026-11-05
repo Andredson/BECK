@@ -29,7 +29,7 @@ CI (stage 02): lint, types, tests on Python 3.11–3.14, commit-message, secret 
 | `tests/` | pytest suite: `tests/unit/` has a test file per module, full runs through `cli.main` (`test_cli.py`), and the architecture rules checked on the source (`test_architecture.py`). `tests/` has the package and shim tests, the Markdown link checker, and tests for the hygiene guard and the workflow pins. `tests/factories.py` builds test data (always random bytes, and reports in the real format), and `tests/fakes.py` is the in-memory SMB server the application tests use. `tests/fixtures/reports/` holds real and derived Recalbox reports, with provenance in `tests/fixtures/README.md`; the real report keeps its CRLF line endings byte-exact. |
 | `tests/integration/samba/` | The Samba test server for integration tests, built with **Podman, never Docker** (DEC-55). See [its README](tests/integration/samba/README.md). |
 | `scripts/check_repo_hygiene.py` | Fails if git tracks BIOS/ROM-like files, files over 1 MiB, or config files (each allowed exception has a reason). |
-| `.github/workflows/ci.yml` | CI on every PR and push to `main`: `quality`, the `tests` matrix (Linux × Python 3.11–3.14; Windows and macOS removed, DEC-49) summarized by `tests-passed`, `commits`, `secrets`, `sca`. |
+| `.github/workflows/ci.yml` | CI on every PR and push to `main`: `quality`, the `tests` matrix (Linux × Python 3.11–3.14; Windows and macOS removed, DEC-49) summarized by `tests-passed`, `integration` (a real Samba server, with Podman), `commits`, `secrets`, `sca`. |
 | `.github/workflows/security.yml` | Weekly (Mondays 06:00 UTC): full-history secret scan and dependency scan. |
 | `.gitleaks.toml`, `.trivyignore` | gitleaks settings (fake `beck-test-*` values allowed only under `tests/`); accepted Trivy findings, each with a link and an expiry date. |
 | `.editorconfig`, `.gitattributes` | Editor settings; LF line endings in the repository. |
@@ -184,7 +184,7 @@ skill below, **read its whole `SKILL.md` before acting** and follow it.
 - One branch and one PR per stage (`stage/NN-slug`), one commit per step, merged with a merge commit (DEC-14,
   DEC-39).
 - `main` is protected by a ruleset: changes arrive only through a PR, merge commits only, and the checks
-  `quality`, `tests-passed`, `commits`, `secrets` and `sca` must pass. Nobody can bypass it.
+  `quality`, `tests-passed`, `integration`, `commits`, `secrets` and `sca` must pass. Nobody can bypass it.
 - Agents commit (DEC-46) and push the stage branch (DEC-47); the human creates branches, opens and merges PRs,
   and tags (DEC-43).
 

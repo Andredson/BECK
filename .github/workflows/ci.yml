@@ -94,6 +94,49 @@ jobs:
           echo "Test matrix result: $RESULT"
           test "$RESULT" = "success"
 
+  # BECK against a real Samba server (DEC-33, DEC-40), with Podman (DEC-55).
+  integration:
+    name: integration
+    # Not ubuntu-latest: this is the Ubuntu and the Podman version (5.7.0) the owner develops on, and
+    # ubuntu-latest is moving from 24.04 to 26.04 until 2026-11-19, so it could be either image.
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    env:
+      BECK_TEST_SMB_HOST: "127.0.0.1"
+      BECK_TEST_SMB_PORT: "4450"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: false # avoids racing the quality job's cache key
+      - run: uv sync --locked
+      - run: podman build -t beck-samba tests/integration/samba
+      # No --rm, unlike the local command: if the server crashes, its logs are what's needed.
+      - run: podman run -d -p 127.0.0.1:4450:445 --name beck-samba beck-samba
+      - name: Wait until the server accepts connections
+        run: |
+          for attempt in $(seq 1 30); do
+            if timeout 1 bash -c '</dev/tcp/127.0.0.1/4450' 2>/dev/null; then
+              echo "Ready after attempt $attempt"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "The server didn't accept connections in time"
+          exit 1
+      # These tests skip themselves without the variables above, so a skip here means nothing was tested.
+      - name: Integration tests, none skipped
+        shell: bash # bash, not sh: adds pipefail, so that a test failure isn't hidden by tee
+        run: |
+          uv run pytest -m integration -q -rs | tee pytest-output.txt
+          ! grep -q "skipped" pytest-output.txt
+      - name: Server logs
+        if: ${{ failure() }}
+        run: podman logs beck-samba
+
   commits:
     name: commits
     if: github.event_name == 'pull_request'
