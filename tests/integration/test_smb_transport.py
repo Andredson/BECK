@@ -189,16 +189,18 @@ def test_direct_tcp_is_chosen_for_port_445_and_works(
         assert address[1] == 445
         return real_connection((address[0], samba.port), *args, **kwargs)
 
-    monkeypatch.setattr(socket, "create_connection", redirect)
     data = os.urandom(4096)
     target = folder / "direct" / "a.bin"
     transport = SmbTransport(samba.host, 445, "bios", "", "", timeout=20)
 
-    with transport:
-        assert transport._conn.is_direct_tcp is True
-        transport.makedirs(target.parent)
-        assert transport.upload(local_file(tmp_path, data), target) == len(data)
-        assert transport.read_bytes(target) == data
+    # Only for this block, because the folder fixture connects to the real port to clean up.
+    with monkeypatch.context() as patch:
+        patch.setattr(socket, "create_connection", redirect)
+        with transport:
+            assert transport._conn.is_direct_tcp is True
+            transport.makedirs(target.parent)
+            assert transport.upload(local_file(tmp_path, data), target) == len(data)
+            assert transport.read_bytes(target) == data
 
 
 # End to end, through cli.main

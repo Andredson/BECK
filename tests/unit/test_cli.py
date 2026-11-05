@@ -5,6 +5,8 @@ D1-D14 regression tests that need a whole run live here; the rest are next to ea
 
 import os
 import shutil
+import subprocess
+import sys
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
@@ -17,7 +19,7 @@ from beck import cli
 from beck.errors import ConfigError
 from tests.conftest import REAL_REPORT, load_report
 from tests.factories import md5_of, snapshot
-from tests.fakes import FakeSMBServer, install_fake_smb
+from tests.fakes import FakeSMBConnection, FakeSMBServer, install_fake_smb
 
 GUEST = 'smb: {user: "", passwd: "", server: "beck-test-server", port: 445}\n'
 ACCOUNT = """\
@@ -546,6 +548,193 @@ def test_a_summary_counts_targets_and_files(
     assert run(app) == 0
 
     assert "2/3 missing entries satisfied, 1 files analysed" in capsys.readouterr().out
+
+
+# Every way out of cli.main, by exit code
+
+
+def test_exit_0_a_normal_run(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    file = write(app / "bios" / "copy.bin")
+    write(app / "bios" / "junk.bin")
+    report(server, block("a.bin", md5_of(file), folder="ps1/") + block("b.bin", "0" * 32))
+
+    assert cli.main([], base_dir=app) == 0
+
+    output = capsys.readouterr().out
+    for line in (
+        "There are 2 missing bios in your RECALBOX",
+        "There are 2 possible bios to be analysed in your system",
+        "FOUND: a.bin -> ps1/a.bin",
+        "copy.bin: copied -> ps1/a.bin",
+        "junk.bin: no match, kept",
+        "Final result: 1/2 missing entries satisfied, 2 files analysed",
+        "*** PLEASE SCAN THE BIOS ON YOUR RECALBOX ***",
+    ):
+        assert line in output
+
+
+def test_exit_0_nothing_matched_has_no_scan_message(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write(app / "bios" / "junk.bin")
+    report(server, block("a.bin", "0" * 32))
+
+    assert cli.main([], base_dir=app) == 0
+
+    output = capsys.readouterr().out
+    assert "Final result: 0/1 missing entries satisfied, 1 files analysed" in output
+    assert "PLEASE SCAN" not in output
+
+
+def test_exit_0_help(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["--help"])
+
+    assert exit_info.value.code == 0
+    assert "usage: beck" in capsys.readouterr().out
+
+
+def test_exit_2_usage_error(server: FakeSMBServer, capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["--no-such-flag"])
+
+    assert exit_info.value.code == 2
+    assert "unrecognized arguments: --no-such-flag" in capsys.readouterr().err
+    assert server.connections == []
+
+
+@pytest.mark.parametrize(
+    ("config", "message"),
+    [
+        (None, "Copy config/config.example.yml"),
+        ("smb: {unclosed\n", "isn't valid YAML"),
+        ("other: 1\n", "needs an smb section"),
+    ],
+    ids=["missing", "malformed", "no-smb-section"],
+)
+def test_exit_2_config_error(
+    server: FakeSMBServer,
+    app: Path,
+    capsys: pytest.CaptureFixture[str],
+    config: str | None,
+    message: str,
+) -> None:
+    if config is None:
+        (app / "config" / "config.yml").unlink()
+    else:
+        write(app / "config" / "config.yml", config.encode())
+
+    assert cli.main([], base_dir=app) == 2
+
+    assert message in capsys.readouterr().out
+    assert server.connections == []
+
+
+def test_exit_3_one_failed_upload_after_the_others_finish(
+    server: FakeSMBServer,
+    app: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    good, bad = write(app / "bios" / "good.bin"), write(app / "bios" / "bad.bin")
+    report(server, block("a.bin", md5_of(good)) + block("b.bin", md5_of(bad)))
+    real_store = FakeSMBConnection.storeFile
+
+    def fail_for_b(
+        self: FakeSMBConnection, share: str, path: str, *args: Any, **kwargs: Any
+    ) -> int:
+        if path == "b.bin":
+            raise OSError("disk full")
+        return real_store(self, share, path, *args, **kwargs)
+
+    monkeypatch.setattr(FakeSMBConnection, "storeFile", fail_for_b)
+
+    assert cli.main([], base_dir=app) == 3
+
+    assert server.files[("bios", "a.bin")] == good
+    output = capsys.readouterr().out
+    assert "good.bin: copied -> a.bin" in output
+    assert "bad.bin: failed -> b.bin" in output
+    assert "disk full" in output
+    assert "Final result: 1/2 missing entries satisfied, 2 files analysed" in output
+    assert "PLEASE SCAN" in output
+
+
+# The real entry points, in a new process. A folder with no config, so they can't reach any device.
+
+
+def test_python_dash_m_beck_help_runs_as_a_process(tmp_path: Path) -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "beck", "--help"],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=tmp_path,
+    )
+
+    assert result.returncode == 0
+    assert "usage: beck" in result.stdout
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    "command",
+    [[sys.executable, "-m", "beck"], [str(Path(sys.executable).with_name("beck"))]],
+    ids=["python-m", "console-script"],
+)
+def test_the_exit_code_reaches_the_operating_system(tmp_path: Path, command: list[str]) -> None:
+    result = subprocess.run(  # noqa: S603 - fixed arguments, no external input
+        command, capture_output=True, text=True, check=False, cwd=tmp_path
+    )
+
+    assert result.returncode == 2
+    assert "Copy config/config.example.yml" in result.stdout
+    assert result.stderr == ""
+
+
+def test_a_usage_error_reaches_the_operating_system(tmp_path: Path) -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "beck", "--no-such-flag"],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=tmp_path,
+    )
+
+    assert result.returncode == 2
+    assert "unrecognized arguments" in result.stderr
+
+
+# Color, through the real command
+
+
+def test_no_color_means_no_escape_codes(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    file = write(app / "bios" / "copy.bin")
+    report(server, block("a.bin", md5_of(file)))
+
+    assert run(app) == 0
+
+    assert "\033[" not in capsys.readouterr().out
+
+
+def test_force_color_reaches_the_output(
+    server: FakeSMBServer,
+    app: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("NO_COLOR")
+    monkeypatch.setenv("FORCE_COLOR", "1")
+    file = write(app / "bios" / "copy.bin")
+    report(server, block("a.bin", md5_of(file)))
+
+    assert run(app) == 0
+
+    assert "\033[92mFOUND:\033[0m a.bin -> a.bin" in capsys.readouterr().out
 
 
 # Failures

@@ -152,7 +152,11 @@ DEC-08, DEC-09, DEC-25, DEC-33, DEC-36, DEC-40, DEC-55.
 - **Commit message:** `test(integration): exercise the SMB transport against a real Samba server`
 
 ### 05.6 — CI integration job
-- [ ] Done
+- [x] Done (2026-11-05: green on the PR with 25 tests and none skipped, and the owner made `integration` a required check.
+  Different from the list below: it runs on `ubuntu-26.04`, not `ubuntu-latest`, because that's the owner's Ubuntu and Podman
+  version, and `ubuntu-latest` is migrating until 2026-11-19. The job fails if any test is skipped, because these tests skip
+  themselves without their variables. It pulls the base image from Docker Hub with no login, so a rate limit could fail a run;
+  that hasn't happened. The base image refresh is now in `docs/maintenance.md`.)
 - **What:** Add an `integration` job to `ci.yml` on Linux only (GitHub's macOS and Windows runners
   don't run Linux containers), using Podman (DEC-55). It builds the image, starts the container, waits until port 4450 accepts
   connections (bounded retry loop), and runs `uv run pytest -m integration`. On failure it dumps `podman logs`.
@@ -163,7 +167,9 @@ DEC-08, DEC-09, DEC-25, DEC-33, DEC-36, DEC-40, DEC-55.
 - **Commit message:** `ci: run SMB integration tests against the Samba container`
 
 ### 05.7 — CLI tests
-- [ ] Done
+- [x] Done (2026-11-05: every exit code, 0 to 4, has named tests. The real entry points run as new processes, in a folder with
+  no config, so they can't reach a device. **This found a test problem:** 14 tests failed for a developer with `FORCE_COLOR=1`
+  in their shell. A fixture in `tests/conftest.py` now sets `NO_COLOR` for every test. Checked by breaking each rule on purpose.)
 - **What:** Tests that call `cli.main([...])` with `capsys` and `monkeypatch.setenv("NO_COLOR", "1")`. They
   check exit codes for success, usage error, config error, transport error and report error, and that the key
   output lines are present (summary, per-file status). They use plain assertions on substrings, no snapshot files
