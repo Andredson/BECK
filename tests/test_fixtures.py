@@ -17,7 +17,9 @@ def test_expected_file_matches_the_report(name: str) -> None:
     report = load_report(name)
     expected = load_expected(name)
 
-    assert len(expected) == len(re.findall(r"MISSING (?:REQUIRED|OPTIONAL) BIOS: ", report))
+    assert len(expected) == len(
+        re.findall(r"(?:MISSING|INCORRECT) (?:REQUIRED|OPTIONAL) BIOS: ", report)
+    )
     for entry in expected:
         assert set(entry) == {"name", "path", "relativePath", "hashes"}
         assert f"BIOS: {entry['name']}" in report

@@ -16,7 +16,7 @@ executed **one step at a time**, by a human or an AI agent, in the order below. 
 | 02 | [Foundation tooling & CI](02-foundation-tooling-and-ci.md) | 01 | `stage/02-foundation` | M | Done (2026-11-03) |
 | 03 | [Critical fixes & data safety](03-critical-fixes-and-data-safety.md) | 02 | `stage/03-critical-fixes` | M | Done (2026-11-04) |
 | 04 | [Architecture refactor](04-architecture-refactor.md) | 03 | `stage/04-architecture` | L | Done (2026-11-04) |
-| 05 | [Testing hardening](05-testing-hardening.md) | 04 | `stage/05-testing` | M | Not started |
+| 05 | [Testing hardening](05-testing-hardening.md) | 04 | `stage/05-testing` | M | Done (2026-11-05) |
 | 06 | [CLI, UX & machine-readable output](06-cli-ux-and-machine-output.md) | 05 | `stage/06-cli` | M | Not started |
 | 07 | [Configuration & security](07-configuration-and-security.md) | 06 | `stage/07-config-security` | M | Not started |
 | 08 | [Documentation](08-documentation.md) | 07 | `stage/08-docs` | M | Not started |
@@ -140,6 +140,8 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-49 | **Supersedes the operating-system part of DEC-08.** CI runs on Linux only (`ubuntu-latest` × Python 3.11–3.14); Windows and macOS are removed from the test matrix, and later CI jobs (such as the stage 10 wheel smoke install) are Linux-only too. DEC-08's Python versions stand. *(2026-11-03, before merging stage 02)* |
 | DEC-50 | When a report entry lists two locations (`<path> or <path>`), BECK uses the **first** one. *(2026-11-04, step 03.4)* |
 | DEC-53 | **Supersedes DEC-26.** BECK keeps `pysmb` behind the `Transport` interface, instead of switching to `smbprotocol`. No SMB encryption. *(2026-11-04, step 04.1)* |
+| DEC-54 | When a report lists a file as `INCORRECT` (on the device with a wrong hash), BECK **keeps the device's file and reports it**, and never uploads to that target, even with a valid local file. The general overwrite policy stays with step 06.5. *(2026-11-05, step 05.3a)* |
+| DEC-55 | **Supersedes the Docker part of DEC-40.** The project uses **Podman only**, locally and in CI, and the test server is built from a `Containerfile`. *(2026-11-05, step 05.4)* |
 
 ### CI/CD, security, and release
 

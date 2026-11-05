@@ -23,8 +23,14 @@ def plan(missing: Sequence[MissingBios], local: Sequence[LocalFile]) -> Plan:
     target gets that target first: otherwise ``falcon.img``, which sorts earlier, would take the
     place of the user's real ``tos.img``. Remaining targets go to the first file by path. Identical
     copies upload once, and the copy named like a target is the one uploaded.
+
+    A target that's incorrect on the device is never uploaded to (DEC-54), even if another entry
+    lists it as missing. It goes in ``Plan.incorrect``, and files that fit it stay unmatched.
     """
-    entries = sorted(missing, key=_entry_order)
+    ordered = sorted(missing, key=_entry_order)
+    incorrect = [entry for entry in ordered if entry.incorrect]
+    kept_targets = {entry.target for entry in incorrect}
+    entries = [entry for entry in ordered if entry.target not in kept_targets]
     entries_by_md5: dict[str, list[MissingBios]] = {}
     for entry in entries:
         for md5 in entry.md5s:
@@ -60,4 +66,5 @@ def plan(missing: Sequence[MissingBios], local: Sequence[LocalFile]) -> Plan:
         unmatched=tuple(file for file in local if file.md5 not in entries_by_md5),
         already_filled=tuple(file for file in chosen.values() if file not in sources),
         still_missing=tuple(entry for entry in entries if entry.target not in uploads),
+        incorrect=tuple(incorrect),
     )

@@ -110,10 +110,35 @@ def test_an_upload_source_must_have_a_listed_md5() -> None:
         PlannedUpload(source=local(md5=MD5_B), target=missing().target, entry=missing())
 
 
+def test_a_current_md5_needs_an_incorrect_entry() -> None:
+    path = PurePosixPath("a.bin")
+
+    with pytest.raises(ValueError, match="isn't incorrect"):
+        MissingBios(name="a.bin", target=path, md5s=frozenset({MD5_A}), current_md5=MD5_B)
+
+
+def test_a_current_md5_must_be_a_valid_md5() -> None:
+    path = PurePosixPath("a.bin")
+
+    with pytest.raises(ValueError, match="Not a lowercase MD5"):
+        MissingBios(
+            name="a.bin", target=path, md5s=frozenset({MD5_A}), incorrect=True, current_md5="BAD"
+        )
+
+
+def test_an_upload_can_never_go_to_an_incorrect_entry() -> None:
+    entry = MissingBios(
+        name="a.bin", target=PurePosixPath("a.bin"), md5s=frozenset({MD5_A}), incorrect=True
+    )
+
+    with pytest.raises(ValueError, match="isn't replaced"):
+        PlannedUpload(source=local(), target=entry.target, entry=entry)
+
+
 def test_plan_is_empty_by_default() -> None:
     plan = Plan()
 
-    assert dataclasses.astuple(plan) == ((), (), (), (), (), ())
+    assert dataclasses.astuple(plan) == ((), (), (), (), (), (), ())
 
 
 def test_plan_sorts_every_field_whatever_the_input_order() -> None:
@@ -148,6 +173,17 @@ def test_plan_sorts_every_field_whatever_the_input_order() -> None:
     assert backward.unmatched == (a, b)
     assert backward.already_filled == (a, b)
     assert backward.still_missing == (gone, later)
+
+
+def test_plan_sorts_incorrect_entries() -> None:
+    first = MissingBios(
+        name="a.bin", target=PurePosixPath("a.bin"), md5s=frozenset({MD5_A}), incorrect=True
+    )
+    second = MissingBios(
+        name="b.bin", target=PurePosixPath("b.bin"), md5s=frozenset({MD5_A}), incorrect=True
+    )
+
+    assert Plan(incorrect=(second, first)).incorrect == (first, second)
 
 
 def test_uploads_to_one_target_are_ordered_by_source() -> None:

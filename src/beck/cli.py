@@ -60,11 +60,15 @@ def _run(base_dir: Path, renderer: ConsoleRenderer) -> int:
                 "Generate the report on the device first."
             )
         text = transport.read_bytes(adapter.report_path).decode("utf-8", errors="replace")
-        missing = adapter.parse_report(text)
-        if not missing:
+        entries = adapter.parse_report(text)
+        if not entries:
             renderer.nothing_missing()
             return 0
-        renderer.missing_count(len({entry.target for entry in missing}))
+        renderer.incorrect([entry for entry in entries if entry.incorrect])
+        missing = {entry.target for entry in entries if not entry.incorrect}
+        if not missing:
+            return 0
+        renderer.missing_count(len(missing))
 
         local = scan(bios_dir)
         if not local:
@@ -72,7 +76,7 @@ def _run(base_dir: Path, renderer: ConsoleRenderer) -> int:
             return 0
         renderer.files_found(len(local))
 
-        result = execute(plan(missing, local), transport, dry_run=False)
+        result = execute(plan(entries, local), transport, dry_run=False)
 
     renderer.result(result)
     return TransportError.exit_code if result.errors else 0

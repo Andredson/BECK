@@ -98,7 +98,8 @@ beck config  init | show | path                     # added in stage 07
 - **Blocked by:** an owner decision (record a new DEC first).
 - **What:** If the target path already exists on the device, Recalbox still reporting it missing means the
   existing file is a **bad dump**. Today BECK overwrites it silently. Ask the owner, explaining the trade-offs,
-  which default to adopt:
+  which default to adopt. Files the report lists as `INCORRECT` are kept for now (DEC-54); include whether a flag can
+  replace them:
   1. overwrite (current behavior);
   2. skip and report, with an `--overwrite` flag;
   3. rename the existing file to `<name>.beck-backup-<timestamp>`, then upload;
@@ -148,7 +149,7 @@ beck config  init | show | path                     # added in stage 07
   - Top-level fields: `schema_version` (1), `beck_version`, `command`, `ok` (bool), `dry_run`, `frontend`,
     `target` (URL **without** credentials), `summary` {`missing_entries`, `satisfied`, `still_missing`,
     `files_scanned`, `uploaded`, `duplicates`, `unmatched`, `deleted`, `errors`}, `uploads[]` {`source`,
-    `target`, `md5`, `status`: planned|uploaded|failed|skipped, `error`}, `still_missing[]` {`name`, `target`,
+    `target`, `md5`, `status`: planned|uploaded|failed|skipped, `error`}, `incorrect[]` {`name`, `target`, `current_md5`, `md5s`}, `still_missing[]` {`name`, `target`,
     `md5s`, `required`}, `duplicates[]`, `unmatched[]`, `deleted[]`, `errors[]` {`code`, `message`, `item`}.
   - Errors that stop a run (config, connection, report) still print a valid document with `ok: false` and the
     matching exit code.

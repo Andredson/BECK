@@ -145,6 +145,17 @@ uvx --exclude-newer "14 days" --from "commitizen==NEW_VERSION" cz check --rev-ra
 
 The gitleaks and Trivy pins are proven by CI: the install step fails if the hash doesn't match.
 
+### The Samba test server's base image
+
+`tests/integration/samba/Containerfile` pins a Debian image by digest. Find the newest `trixie-<date>-slim` tag at least 14
+days old (DEC-45), with its digest:
+
+```sh
+curl -sS 'https://hub.docker.com/v2/repositories/library/debian/tags?page_size=100&name=trixie-2' | python3 -c "import json,sys; [print(t['name'], t.get('tag_last_pushed','?')[:10], t.get('digest')) for t in json.load(sys.stdin)['results'] if t['name'].endswith('-slim')]" | sort -k2 -r | head
+```
+
+Update the tag and digest, then check that the integration tests still pass, with the commands in [AGENTS.md](../AGENTS.md#commands).
+
 ## 5. Security review
 
 1. **Weekly runs.** `gh run list --workflow security.yml --limit 5`, then `gh run view RUN_ID --log-failed` for any

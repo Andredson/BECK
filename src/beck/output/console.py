@@ -8,7 +8,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import TextIO
 
-from beck.models import LocalFile, RunResult
+from beck.models import LocalFile, MissingBios, RunResult
 
 RESET = "\033[0m"
 RED = "\033[91m"
@@ -101,6 +101,12 @@ class ConsoleRenderer:
     def error(self, message: object) -> None:
         self._print(f"{self._paint('Error', RED)}: {message}")
 
+    def incorrect(self, entries: list[MissingBios]) -> None:
+        """Files on the device with a wrong hash, which BECK keeps (DEC-54). One line per target."""
+        for target in sorted({entry.target for entry in entries}):
+            label = self._paint("INCORRECT:", RED)
+            self._print(f"{label} {target} is on the device with a wrong MD5, and was kept")
+
     def result(self, result: RunResult) -> None:
         """What happened: uploads, then one or more lines per local file, then the summary."""
         for upload in result.completed:
@@ -126,7 +132,14 @@ class ConsoleRenderer:
             elif file in plan.already_filled:
                 lines.append(f"{path}: target already filled, kept")
             elif not uploads:
-                lines.append(f"{path}: no match, kept")
+                fits = sorted({e.target for e in plan.incorrect if file.md5 in e.md5s})
+                if fits:
+                    targets = ", ".join(str(target) for target in fits)
+                    lines.append(
+                        f"{path}: valid for {targets}, which is incorrect on the device, kept"
+                    )
+                else:
+                    lines.append(f"{path}: no match, kept")
             for upload in uploads:
                 if result.dry_run:
                     outcome = "would copy"

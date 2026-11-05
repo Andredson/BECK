@@ -14,4 +14,3 @@ class FrontendAdapter(Protocol):
 
     def parse_report(self, text: str) -> list[MissingBios]:
         """Turn a report's text into entries, in report order. Raises ReportParseError."""
-        ...

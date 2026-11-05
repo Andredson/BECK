@@ -8,10 +8,37 @@ from beck.models import MissingBios
 
 BIOS_ROOT = "/recalbox/share/bios/"
 
+TITLE = "MISSING BIOS REPORT"
 SYSTEM_LINE = re.compile(r"^[ \t]*SYSTEM:[ \t]*(.+)$", re.MULTILINE)
-BLOCK_HEADING = re.compile(r"^[ \t]*MISSING (REQUIRED|OPTIONAL) BIOS\b:?[ \t]*(.*)$", re.MULTILINE)
+BLOCK_HEADING = re.compile(
+    r"^[ \t]*(MISSING|INCORRECT) (REQUIRED|OPTIONAL) BIOS\b:?[ \t]*(.*)$", re.MULTILINE
+)
+# Anything that looks like a heading: used to notice a format BECK doesn't know.
+LOOKS_LIKE_HEADING = re.compile(
+    r"^[ \t]*(?:MISSING\b|INCORRECT\b|[A-Z]+(?: [A-Z]+)* BIOS\b).*$", re.MULTILINE
+)
 PATH_LINE = re.compile(r"^[ \t]*Path:[ \t]*(.+)$", re.MULTILINE)
+CURRENT_MD5_LINE = re.compile(r"^[ \t]*Current MD5:[ \t]*([a-fA-F0-9]{32})\b", re.MULTILINE)
+MD5_LIST = "Possible MD5 List:"
 MD5 = re.compile(r"\b[a-fA-F0-9]{32}\b")
+
+
+def _check_format(text: str, systems: list[re.Match[str]], headings: list[re.Match[str]]) -> None:
+    """Refuse a report BECK can't read, so that a new format never reads as "nothing missing"."""
+    for line in LOOKS_LIKE_HEADING.finditer(text):
+        stripped = line.group(0).strip()
+        if stripped != TITLE and not BLOCK_HEADING.fullmatch(line.group(0)):
+            raise ReportParseError(f"Unrecognized heading in the report: {stripped}")
+
+    # Recalbox leaves out a system with nothing to report, so a lone heading means a changed format.
+    for index, system in enumerate(systems):
+        end = systems[index + 1].start() if index + 1 < len(systems) else len(text)
+        if not any(system.end() <= heading.start() < end for heading in headings):
+            raise ReportParseError(f"No BIOS block under: {system.group(0).strip()}")
+
+    # A report with nothing missing is just its header, so the title has to be there.
+    if not headings and not any(line.strip() == TITLE for line in text.splitlines()):
+        raise ReportParseError(f"This doesn't look like a report: it has no {TITLE} title")
 
 
 def _system_at(systems: list[re.Match[str]], position: int) -> str | None:
@@ -31,18 +58,26 @@ class RecalboxAdapter:
     report_path = PurePosixPath("missing_bios_report.txt")
 
     def parse_report(self, text: str) -> list[MissingBios]:
-        """Turn a report into one entry per ``MISSING ... BIOS`` block, in report order. Pure."""
-        text = text.replace("\r\n", "\n")
+        """Turn a report into one entry per ``MISSING`` or ``INCORRECT`` block, in order. Pure.
+
+        Candidate MD5s come only from below ``Possible MD5 List:``. An INCORRECT block's
+        ``Current MD5:`` is the hash of the wrong file, so it must never become a candidate.
+        """
+        # A BOM would hide a heading on the first line, because "^" wouldn't match there.
+        text = text.removeprefix("\ufeff").replace("\r\n", "\n")
         systems = list(SYSTEM_LINE.finditer(text))
         headings = list(BLOCK_HEADING.finditer(text))
+        _check_format(text, systems, headings)
         missing = []
 
         for heading, following in zip(headings, [*headings[1:], None], strict=False):
             block = text[heading.end() : following.start() if following else len(text)]
             first_line = heading.group(0).strip()
-            name = heading.group(2).strip()
+            name = heading.group(3).strip()
             location = PATH_LINE.search(block)
-            md5s = frozenset(md5.lower() for md5 in MD5.findall(block))
+            md5_list = block.partition(MD5_LIST)[2]
+            md5s = frozenset(md5.lower() for md5 in MD5.findall(md5_list))
+            current = CURRENT_MD5_LINE.search(block)
 
             if not name:
                 raise ReportParseError(f"No file name in report block: {first_line}")
@@ -62,8 +97,10 @@ class RecalboxAdapter:
                     name=name,
                     target=PurePosixPath(folder) / name,
                     md5s=md5s,
-                    required=heading.group(1) == "REQUIRED",
+                    required=heading.group(2) == "REQUIRED",
                     system=_system_at(systems, heading.start()),
+                    incorrect=heading.group(1) == "INCORRECT",
+                    current_md5=current.group(1).lower() if current else None,
                 )
             except ValueError as e:
                 raise ReportParseError(f"Unsafe path in report block: {first_line}") from e

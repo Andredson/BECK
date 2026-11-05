@@ -10,7 +10,7 @@ in report order, with repeated entries kept. Each entry has:
 
 | Key | Meaning |
 |---|---|
-| `name` | File name from the `MISSING … BIOS:` line |
+| `name` | File name from the `MISSING … BIOS:` or `INCORRECT … BIOS:` line |
 | `path` | Folder of the **first** location on the `Path:` line (DEC-50), with a trailing slash |
 | `relativePath` | The same folder, relative to the `bios` share (empty at the share root) |
 | `hashes` | MD5 values in first-seen order, without repeats, with the case used in the report |
@@ -26,6 +26,7 @@ don't copy the parser's bugs. The tricky entries were then checked by hand and l
 | Fixture | Recalbox | Date | Platform | How it was generated | Anonymized | Entries |
 |---|---|---|---|---|---|---|
 | `recalbox-10.1.1/default-install` | 10.1.1 | 2026-11-04 | x86_64, fresh install in a QEMU VM | Main menu → BIOS CHECKING → REPORT | Nothing: no host names or user names found; the date line was kept by the owner's choice | 238 |
+| `recalbox-10.1.1/incorrect-files` | 10.1.1 | 2026-11-05 | x86_64, the same QEMU VM after a BECK run | 1 KiB of random bytes placed at `xbox/mcpx_1.0.bin` and `scummvm/MT32_CONTROL.ROM`, then the same menu path. The `Current MD5:` values are of those random bytes | Nothing needed it | 81, of which 2 `INCORRECT` |
 
 ## Derived fixtures
 

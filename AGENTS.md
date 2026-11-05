@@ -10,10 +10,10 @@ BECK (BIOS checker for Recalbox) matches a user's BIOS files against the MD5 has
 report that Recalbox generates, then copies the matching files, under the expected names, into the right
 folders on the Recalbox over SMB.
 
-**Status (2026-11-04):** prototype, not published yet. The application is the `beck` package in `src/beck/`, with a pure
+**Status (2026-11-05):** prototype, not published yet. The application is the `beck` package in `src/beck/`, with a pure
 core and adapters around it ([design](docs/ARCHITECTURE.md)). Its [known defects are fixed](roadmap/00-assessment.md#defects),
 and it never deletes or renames local files. The repository around it has tooling and
-CI (stage 02): lint, types, tests on Python 3.11–3.14, commit-message, secret and dependency checks. It is being improved stage by stage following
+CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against a real Samba server, commit-message, secret and dependency checks. It is being improved stage by stage following
 [roadmap/README.md](roadmap/README.md). The target is an installable CLI `beck` published on PyPI as `beck-bios`.
 
 ## Repository map
@@ -26,9 +26,10 @@ CI (stage 02): lint, types, tests on Python 3.11–3.14, commit-message, secret 
 | `bios/` | Input folder for the user's BIOS files. Everything except `bios/.keep` is gitignored. |
 | `pyproject.toml`, `uv.lock`, `.python-version` | Project metadata, runtime and dev dependencies, tool settings (ruff, mypy, pytest, coverage, commitizen), the lockfile, and Python 3.11 for local work. Managed with uv; `exclude-newer` is the 14-day cooldown (DEC-45). The distribution is `beck-bios`, built with `uv_build` (DEC-18), and it installs the `beck` command. |
 | `requirements.txt` | Runtime dependencies for pip users, **generated** from `uv.lock` (see [Commands](#commands)). Don't edit it by hand; CI fails if it drifts. |
-| `tests/` | pytest suite: `tests/unit/` has a test file per module, full runs through `cli.main` (`test_cli.py`), and the architecture rules checked on the source (`test_architecture.py`). `tests/` has the package and shim tests, the Markdown link checker, and tests for the hygiene guard and the workflow pins. `tests/fakes.py` is the in-memory SMB server the application tests use. `tests/fixtures/reports/` holds real and derived Recalbox reports, with provenance in `tests/fixtures/README.md`; the real report keeps its CRLF line endings byte-exact. |
+| `tests/` | pytest suite: `tests/unit/` has a test file per module, full runs through `cli.main` (`test_cli.py`), and the architecture rules checked on the source (`test_architecture.py`). `tests/` has the package and shim tests, the Markdown link checker, and tests for the hygiene guard and the workflow pins. `tests/factories.py` builds test data (always random bytes, and reports in the real format), and `tests/fakes.py` is the in-memory SMB server the application tests use. `tests/fixtures/reports/` holds real and derived Recalbox reports, with provenance in `tests/fixtures/README.md`; the real report keeps its CRLF line endings byte-exact. |
+| `tests/integration/samba/` | The Samba test server for integration tests, built with **Podman, never Docker** (DEC-55). See [its README](tests/integration/samba/README.md). |
 | `scripts/check_repo_hygiene.py` | Fails if git tracks BIOS/ROM-like files, files over 1 MiB, or config files (each allowed exception has a reason). |
-| `.github/workflows/ci.yml` | CI on every PR and push to `main`: `quality`, the `tests` matrix (Linux × Python 3.11–3.14; Windows and macOS removed, DEC-49) summarized by `tests-passed`, `commits`, `secrets`, `sca`. |
+| `.github/workflows/ci.yml` | CI on every PR and push to `main`: `quality`, the `tests` matrix (Linux × Python 3.11–3.14; Windows and macOS removed, DEC-49) summarized by `tests-passed`, `integration` (a real Samba server, with Podman), `commits`, `secrets`, `sca`. |
 | `.github/workflows/security.yml` | Weekly (Mondays 06:00 UTC): full-history secret scan and dependency scan. |
 | `.gitleaks.toml`, `.trivyignore` | gitleaks settings (fake `beck-test-*` values allowed only under `tests/`); accepted Trivy findings, each with a link and an expiry date. |
 | `.editorconfig`, `.gitattributes` | Editor settings; LF line endings in the repository. |
@@ -55,6 +56,13 @@ uv run mypy                                   # type-check: strict everywhere
 uv run pytest                                 # tests; they never touch the network or a device
 uv run python scripts/check_repo_hygiene.py   # no BIOS files, large files or tracked config files
 uv build                                      # build the wheel and sdist into dist/ (ignored by git)
+```
+
+Integration tests need the [Samba test server](tests/integration/samba/README.md), and are skipped without it:
+
+```sh
+podman build -t beck-samba tests/integration/samba && podman run -d --rm -p 127.0.0.1:4450:445 --name beck-samba beck-samba
+BECK_TEST_SMB_HOST=127.0.0.1 BECK_TEST_SMB_PORT=4450 uv run pytest -m integration
 ```
 
 Before committing, this must pass; it's what the `quality` and `tests` CI jobs run:
@@ -159,14 +167,20 @@ skill below, **read its whole `SKILL.md` before acting** and follow it.
 
 ## Testing
 
-- `uv run pytest` (pytest + pytest-cov). CI runs it on Linux with Python 3.11–3.14 (not on Windows or macOS,
-  DEC-49), and uploads `coverage.xml` as a workflow artifact. Write tests that don't depend on the platform
+- **Unit tests,** `uv run pytest` (pytest + pytest-cov), need nothing else. CI runs them on Linux with Python 3.11–3.14 (not on
+  Windows or macOS, DEC-49), and uploads `coverage.xml` as a workflow artifact. Write tests that don't depend on the platform
   to catch Windows-only bugs, e.g. assert that a file handle is closed rather than relying on Windows locking.
-- Application tests replace pysmb with the fake from `tests/fakes.py` (`install_fake_smb(monkeypatch)`, which also
+- **Integration tests** (`tests/integration/`, marked `integration`) run against the Samba test server, started with Podman as in
+  [Commands](#commands). They skip themselves without `BECK_TEST_SMB_HOST` and `BECK_TEST_SMB_PORT`, but CI fails if any is
+  skipped. They refuse any server without the test server's seeded file, so that they can't write to a real device. Never
+  work around that.
+- Unit tests replace pysmb with the fake from `tests/fakes.py` (`install_fake_smb(monkeypatch)`, which also
   fails any real socket connection) and work in `tmp_path`, never in the repository folder.
-- Every bug fix ships with a regression test. From stage 05: ≥ 90 % branch coverage on the
-  package, plus integration tests against the Samba container (marked `integration`).
-- Tests never touch the network (except the local Samba container) and never use real BIOS content.
+- Every bug fix ships with a regression test. `uv run pytest --cov` fails below 90 % branch coverage on the package, and
+  `# pragma: no cover` doesn't work here. Integration tests don't count towards that.
+- **Never real BIOS bytes.** Test files are random bytes (`tests/factories.py`); MD5 values and file names are fine. Tests never
+  touch the network, except the local Samba test server.
+- Color settings in your shell can't affect results: `tests/conftest.py` sets `NO_COLOR` for every test.
 
 ## Commits and pull requests
 
@@ -175,7 +189,7 @@ skill below, **read its whole `SKILL.md` before acting** and follow it.
 - One branch and one PR per stage (`stage/NN-slug`), one commit per step, merged with a merge commit (DEC-14,
   DEC-39).
 - `main` is protected by a ruleset: changes arrive only through a PR, merge commits only, and the checks
-  `quality`, `tests-passed`, `commits`, `secrets` and `sca` must pass. Nobody can bypass it.
+  `quality`, `tests-passed`, `integration`, `commits`, `secrets` and `sca` must pass. Nobody can bypass it.
 - Agents commit (DEC-46) and push the stage branch (DEC-47); the human creates branches, opens and merges PRs,
   and tags (DEC-43).
 
