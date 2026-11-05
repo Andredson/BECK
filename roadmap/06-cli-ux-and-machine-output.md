@@ -137,7 +137,7 @@ beck config  init | show | path                     # added in stage 07
   - `--move`: after a file has been uploaded to **all** of its targets **and** each remote size matches, delete
     the local source. Nothing is deleted if any upload of that file failed.
   - `--clean-unmatched`: delete local files that matched nothing. Duplicates are kept and reported, and so is a file valid for an
-    `INCORRECT` target. After an upload and a rescan, good files no longer match anything, so the plan must make that plain.
+    `INCORRECT` target. After an upload and a rescan, good files no longer match anything, so the plan must make that plain (DEC-56).
   - Confirmation: when `--move` or `--clean-unmatched` would delete files, list them and ask `Delete N files?
     [y/N]` on a TTY. Without a TTY (scripts, agents, CI), deletion requires `--yes`; otherwise exit 2 with a
     message explaining that. `--json` implies no prompt, so it also requires `--yes`.

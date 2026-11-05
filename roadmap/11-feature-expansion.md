@@ -31,7 +31,7 @@ Each feature below is independent and goes through the same sub-steps, using the
 
 ### 11.1 — Prioritize with the owner
 - [ ] Done
-- **What:** Present the features below (11.2–11.9) with a one-line value and a cost estimate. Ask the owner to
+- **What:** Present the features below (11.2–11.9 and 11.12) with a one-line value and a cost estimate. Ask the owner to
   choose which ones to pursue and in what order, and to drop or add items. Record the order in this file and
   mark dropped items as such; don't delete them.
 - **Files:** this file
@@ -148,12 +148,42 @@ Each feature below is independent and goes through the same sub-steps, using the
 - **Verify:** Owner decision recorded.
 - **Commit message:** none
 
+### 11.12 — Export: copy BIOS files from the target to this machine
+- [ ] Done
+- **Requested by the owner (2026-11-05):** a flag that gets all the BIOS files on the target system and copies them to the machine
+  running BECK, for example as a backup or to move to another device. It's the opposite direction to `check`.
+- **Research first:**
+  - **What counts as a BIOS file?** The report can't tell, because it only lists what's missing. On the Recalbox 10.1.1 VM, the `bios`
+    share has 3,108 files (317 MB), mostly `.ini`, `.png` and shaders, with about 230 `.rom` and `.bin` files. Options to present:
+    everything on the share, which is simple and complete; only what's listed in Recalbox's `es_bios.xml`, if it can be read (see
+    11.2), which is exact; or filters by name.
+  - **Which hashes can it verify?** Each copy can at least be compared with the device by size, and by MD5 if it's read back.
+- **Decide with the owner, and record a DEC:**
+  - **A flag or a command?** The owner asked for a flag. The design in `docs/cli.md` has `check`, which uploads, so `beck check --export DIR`
+    would make one command do opposite things; a `beck export` command would fit that design better. Present both.
+  - **Where do the files go, and how are they laid out?** Presumably a required `DIR`, keeping the target's folder layout.
+  - **What if a local file already exists?** Presumably never overwrite it by default (DEC-02), and report it.
+- **What:** New `Transport` operations, on both SMB and local targets, to list files recursively and to download them, with the same
+  path checks as uploads. Export only reads from the target, and never changes or deletes anything there. It supports `--dry-run`
+  and `--json`. One failed file is recorded and the run continues. **pysmb's timeout covers a whole file** (see 04.9), so check it with
+  large files on a slow network.
+- **Legal wording:** this is copying from the user's own device, not downloading from the internet, so it's in line with the project's
+  rules. But the README's legal notice and AGENTS.md say BECK never downloads BIOS files, so reword them in the same change.
+- **Repository safety:** exported files are real BIOS files. If `DIR` is inside a git repository, warn, and don't count on anything
+  but `bios/` being ignored. Tests use random bytes only.
+- **Files:** `src/beck/transports/`, `src/beck/cli.py`, `src/beck/output/`, `docs/cli.md`, `docs/schemas/`, `README.md`, `AGENTS.md`, tests
+- **Done when:** Unit and Samba integration tests cover a full export, nested folders, a dry run, an existing local file and a failed
+  file, with the target unchanged afterwards. The owner has run it against a device or the VM.
+- **Verify:** `uv run pytest -q`, and the integration tests with the Samba test server.
+- **Commit message:** `feat(cli): export BIOS files from the target to this machine`
+
 ## Stage acceptance criteria
 - Every chosen feature went through research → decision → implementation → docs, with fixtures from real data.
 - No dependency, tool or bundled data was added without a DEC.
 
 ## Out of scope
-- Anything that downloads, ships or links to BIOS files themselves. That will never be in scope.
+- Anything that downloads BIOS files from the internet, or ships or links to them. That will never be in scope. Copying
+  files from the user's own device (11.12) is different.
 
 ## Agent notes
 - A new frontend without real reference data is guesswork. If the data isn't there, mark the step BLOCKED

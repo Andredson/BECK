@@ -107,7 +107,7 @@ These are never deleted:
 > [!WARNING]
 > "Unmatched" only means that the **current report** doesn't ask for that file. After you upload your files and scan again on the
 > device, the report no longer lists them, so a later `--clean-unmatched` treats all your good BIOS files as unmatched and **deletes
-> them**. Always run `beck check --dry-run --clean-unmatched` first, and read the list.
+> them**. Always run `beck check --dry-run --clean-unmatched` first, and read the list (DEC-56).
 
 ## Files already on the device
 

@@ -141,6 +141,7 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-50 | When a report entry lists two locations (`<path> or <path>`), BECK uses the **first** one. *(2026-11-04, step 03.4)* |
 | DEC-53 | **Supersedes DEC-26.** BECK keeps `pysmb` behind the `Transport` interface, instead of switching to `smbprotocol`. No SMB encryption. *(2026-11-04, step 04.1)* |
 | DEC-54 | When a report lists a file as `INCORRECT` (on the device with a wrong hash), BECK **keeps the device's file and reports it**, and never uploads to that target, even with a valid local file. The general overwrite policy stays with step 06.5. *(2026-11-05, step 05.3a)* |
+| DEC-56 | `--clean-unmatched` stays as DEC-02 planned it, with a prominent warning that files stop matching after a rescan. *(2026-11-05, step 06.1)* |
 | DEC-55 | **Supersedes the Docker part of DEC-40.** The project uses **Podman only**, locally and in CI, and the test server is built from a `Containerfile`. *(2026-11-05, step 05.4)* |
 
 ### CI/CD, security, and release

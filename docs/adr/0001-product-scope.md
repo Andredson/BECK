@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-02
-- **Decisions covered:** DEC-01, DEC-02, DEC-03, DEC-04, DEC-09, DEC-10, DEC-12, DEC-13, DEC-15, DEC-50, DEC-54
+- **Decisions covered:** DEC-01, DEC-02, DEC-03, DEC-04, DEC-09, DEC-10, DEC-12, DEC-13, DEC-15, DEC-50, DEC-54, DEC-56
 
 ## Context
 At the baseline review ([assessment](../../roadmap/00-assessment.md)), BECK was a 243-line script with an overall
@@ -117,3 +117,16 @@ differed from the recommendation.
   - The owner chose the option the agent recommended, and gave no further reason.
 - **Consequences:** The user replaces such a file by hand for now, and BECK names a local file that would fit. Step 06.5
   decides whether a flag can replace these files. Step 06.7 adds them to the JSON output.
+
+## DEC-56 — `--clean-unmatched` stays, with a warning
+- **Date:** 2026-11-05 (step 06.1).
+- **Context:** Writing the CLI design showed a risk in DEC-02's `--clean-unmatched`. "Unmatched" only means that the current report
+  doesn't ask for a file. After an upload and a rescan, the report no longer lists the user's good files, so a later run with this
+  flag treats them as unmatched and deletes them, unless the user reads the confirmation list closely.
+- **Decision:** Keep the flag as planned, with its confirmation, and a prominent warning in the documentation that recommends a dry run first.
+- **Alternatives considered:**
+  - *Remove the flag* (recommended by the agent): the safest, because a wrong delete can't be undone, and users can delete files
+    themselves. Not chosen. The owner gave no further reason.
+  - *Delete only files BECK can recognize as junk*: safer, but BECK has no such list, and building one is real work. Not chosen.
+- **Consequences:** Step 06.6 implements the flag, and its plan output must make the risk plain. The risk stays for a user who confirms
+  without reading.
