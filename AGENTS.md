@@ -10,10 +10,10 @@ BECK (BIOS checker for Recalbox) matches a user's BIOS files against the MD5 has
 report that Recalbox generates, then copies the matching files, under the expected names, into the right
 folders on the Recalbox over SMB.
 
-**Status (2026-11-04):** prototype, not published yet. The application is the `beck` package in `src/beck/`, with a pure
+**Status (2026-11-05):** prototype, not published yet. The application is the `beck` package in `src/beck/`, with a pure
 core and adapters around it ([design](docs/ARCHITECTURE.md)). Its [known defects are fixed](roadmap/00-assessment.md#defects),
 and it never deletes or renames local files. The repository around it has tooling and
-CI (stage 02): lint, types, tests on Python 3.11–3.14, commit-message, secret and dependency checks. It is being improved stage by stage following
+CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against a real Samba server, commit-message, secret and dependency checks. It is being improved stage by stage following
 [roadmap/README.md](roadmap/README.md). The target is an installable CLI `beck` published on PyPI as `beck-bios`.
 
 ## Repository map
@@ -167,15 +167,20 @@ skill below, **read its whole `SKILL.md` before acting** and follow it.
 
 ## Testing
 
-- `uv run pytest` (pytest + pytest-cov). CI runs it on Linux with Python 3.11–3.14 (not on Windows or macOS,
-  DEC-49), and uploads `coverage.xml` as a workflow artifact. Write tests that don't depend on the platform
+- **Unit tests,** `uv run pytest` (pytest + pytest-cov), need nothing else. CI runs them on Linux with Python 3.11–3.14 (not on
+  Windows or macOS, DEC-49), and uploads `coverage.xml` as a workflow artifact. Write tests that don't depend on the platform
   to catch Windows-only bugs, e.g. assert that a file handle is closed rather than relying on Windows locking.
-- Application tests replace pysmb with the fake from `tests/fakes.py` (`install_fake_smb(monkeypatch)`, which also
+- **Integration tests** (`tests/integration/`, marked `integration`) run against the Samba test server, started with Podman as in
+  [Commands](#commands). They skip themselves without `BECK_TEST_SMB_HOST` and `BECK_TEST_SMB_PORT`, but CI fails if any is
+  skipped. They refuse any server without the test server's seeded file, so that they can't write to a real device. Never
+  work around that.
+- Unit tests replace pysmb with the fake from `tests/fakes.py` (`install_fake_smb(monkeypatch)`, which also
   fails any real socket connection) and work in `tmp_path`, never in the repository folder.
 - Every bug fix ships with a regression test. `uv run pytest --cov` fails below 90 % branch coverage on the package, and
-  `# pragma: no cover` doesn't work here. There are also integration tests against the Samba container (marked `integration`).
-- Tests never touch the network (except the local Samba container) and never use real BIOS content. The integration tests
-  refuse any server without the test server's seeded file, so that they can't write to a real device.
+  `# pragma: no cover` doesn't work here. Integration tests don't count towards that.
+- **Never real BIOS bytes.** Test files are random bytes (`tests/factories.py`); MD5 values and file names are fine. Tests never
+  touch the network, except the local Samba test server.
+- Color settings in your shell can't affect results: `tests/conftest.py` sets `NO_COLOR` for every test.
 
 ## Commits and pull requests
 

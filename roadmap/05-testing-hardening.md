@@ -1,6 +1,6 @@
 # Stage 05 — Testing hardening
 
-**Status:** In progress · **Depends on:** 04 · **Branch:** `stage/05-testing` · **Effort:** M
+**Status:** Done (2026-11-05) · **Depends on:** 04 · **Branch:** `stage/05-testing` · **Effort:** M
 
 ## Goal
 Make the test suite trustworthy enough that any agent or contributor can change BECK and know right away
@@ -193,7 +193,9 @@ DEC-08, DEC-09, DEC-25, DEC-33, DEC-36, DEC-40, DEC-55.
 - **Commit message:** `test: enforce 90% branch coverage on the beck package`
 
 ### 05.9 — Close the stage
-- [ ] Done
+- [x] Done (2026-11-05: the acceptance criteria below hold; "all OS" means Linux only, per DEC-49. The stage scores 6/10, with a sum
+  of 122, up from 118. The tests found three real bugs, in 05.2 and 05.3a. Draft PR #5 already exists, so the owner marks it ready and
+  merges it with a merge commit.)
 - **What:** Update AGENTS.md: testing section (unit vs integration, how to start the Samba container, the "never
   real BIOS bytes" rule). Re-score [00-assessment](00-assessment.md#re-scoring-history). Update the
   [README](README.md#stages) status. Push the closing commit (DEC-47). If the stage PR doesn't exist yet, print
@@ -209,7 +211,7 @@ DEC-08, DEC-09, DEC-25, DEC-33, DEC-36, DEC-40, DEC-55.
 - **Commit message:** `docs(roadmap): close stage 05 and re-score assessment`
 
 ## Stage acceptance criteria
-- Unit suite ≥ 90 % branch coverage and green on all OS / Python combinations.
+- Unit suite ≥ 90 % branch coverage and green on all Python versions, on Linux (DEC-49).
 - Integration suite green against the Samba container in CI, and required for merging.
 - No test uses the network other than the local container, and no test uses real BIOS data.
 
