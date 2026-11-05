@@ -309,6 +309,24 @@ def test_end_to_end_with_a_sub_path_in_the_target_url(
         assert not transport.exists(PurePosixPath("ps1"))
 
 
+def test_report_reads_a_real_server_and_writes_nothing(
+    samba: Samba,
+    tmp_path: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    target = folder / "ps1" / "a.bin"
+    put_report(make_report_text([make_missing(target.as_posix(), "0" * 32)]))
+    url = f"smb://{samba.host}:{samba.port}/bios"
+
+    assert cli.main(["report", "--target", url], base_dir=tmp_path) == 0
+
+    with samba.guest() as transport:
+        assert not transport.exists(folder)
+    assert "  a.bin (required)" in capsys.readouterr().out
+
+
 def test_end_to_end_running_again_gives_the_same_files(
     samba: Samba, app: Path, folder: PurePosixPath, put_report: PutReport
 ) -> None:

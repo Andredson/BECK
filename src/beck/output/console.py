@@ -5,10 +5,10 @@ import logging
 import os
 import sys
 from collections.abc import Mapping
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import TextIO
 
-from beck.models import LocalFile, MissingBios, RunResult, Unreadable
+from beck.models import SHARE_ROOT, LocalFile, MissingBios, RunResult, Unreadable
 
 RESET = "\033[0m"
 RED = "\033[91m"
@@ -112,6 +112,27 @@ class ConsoleRenderer:
         for target in sorted({entry.target for entry in entries}):
             label = self._paint("INCORRECT:", RED)
             self._print(f"{label} {target} is on the device with a wrong MD5, and was kept")
+
+    def report(self, entries: list[MissingBios]) -> None:
+        """What a report lists, grouped by folder. One line per target."""
+        if not entries:
+            self.nothing_missing()
+            return
+        self.incorrect([entry for entry in entries if entry.incorrect])
+        missing = [entry for entry in entries if not entry.incorrect]
+        by_target: dict[PurePosixPath, bool] = {}
+        for entry in missing:
+            by_target[entry.target] = (
+                by_target.get(entry.target, False) or entry.required is not False
+            )
+        if by_target:
+            self.missing_count(len(by_target))
+        for folder in sorted({target.parent for target in by_target}, key=PurePosixPath.as_posix):
+            self._print(f"{folder.as_posix()}/" if folder != SHARE_ROOT else "(BIOS folder)")
+            for target in sorted(by_target, key=PurePosixPath.as_posix):
+                if target.parent == folder:
+                    kind = "required" if by_target[target] else "optional"
+                    self._print(f"  {target.name} ({kind})")
 
     def result(self, result: RunResult) -> None:
         """What happened: uploads, then one or more lines per local file, then the summary."""

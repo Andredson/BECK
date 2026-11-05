@@ -630,13 +630,12 @@ def test_beck_check_has_no_hint(
     assert capsys.readouterr().err == ""
 
 
-@pytest.mark.parametrize("command", ["scan", "report"])
-def test_commands_still_to_come_say_so_and_exit_2(
-    command: str, server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+def test_scan_still_to_come_says_so_and_exits_2(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    assert cli.main([command], base_dir=app) == 2
+    assert cli.main(["scan"], base_dir=app) == 2
 
-    assert f"beck {command} isn't available yet" in capsys.readouterr().out
+    assert "beck scan isn't available yet" in capsys.readouterr().out
     assert server.connections == []
 
 
@@ -816,12 +815,264 @@ def test_report_accepts_the_target_options(capsys: pytest.CaptureFixture[str]) -
     output = capsys.readouterr().out
     assert "--target URL" in output
     assert "--target-dir DIR" in output
+    assert "--report-file FILE" in output
 
 
 def test_scan_has_no_target_options(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as exit_info:
         cli.main(["scan", "--target", "smb://host/bios"])
 
+    assert exit_info.value.code == 2
+
+
+# --source and --report-file
+
+
+def test_source_is_used_instead_of_the_bios_folder(
+    server: FakeSMBServer, app: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write(app / "bios" / "ignored.bin")
+    data = write(tmp_path / "elsewhere" / "ps1" / "copy.bin")
+    report(server, block("a.bin", md5_of(data)))
+
+    assert cli.main(["check", "--source", str(tmp_path / "elsewhere")], base_dir=app) == 0
+
+    assert server.files[("bios", "a.bin")] == data
+    output = capsys.readouterr().out
+    assert "ps1/copy.bin: copied -> a.bin" in output
+    assert "ignored.bin" not in output
+
+
+def test_a_relative_source_is_relative_to_the_current_folder(
+    server: FakeSMBServer, app: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    data = write(tmp_path / "work" / "mine" / "copy.bin")
+    report(server, block("a.bin", md5_of(data)))
+    monkeypatch.chdir(tmp_path / "work")
+
+    assert cli.main(["check", "--source", "mine"], base_dir=app) == 0
+
+    assert server.files[("bios", "a.bin")] == data
+
+
+@pytest.mark.parametrize("name", ["no-such-folder", "a-file"])
+def test_a_source_that_isnt_a_folder_exits_2(
+    name: str,
+    server: FakeSMBServer,
+    app: Path,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # Treating a typo as an empty folder would say "No BIOS files found" and exit 0.
+    write(tmp_path / "a-file")
+
+    assert cli.main(["check", "--source", str(tmp_path / name)], base_dir=app) == 2
+
+    assert f"The source folder {tmp_path / name} doesn't exist" in capsys.readouterr().out
+    assert server.connections == []
+
+
+def test_a_missing_default_bios_folder_still_says_no_files(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (app / "bios").rmdir()
+    report(server, block("a.bin", "0" * 32))
+
+    assert run(app) == 0
+
+    assert "No BIOS files found" in capsys.readouterr().out
+
+
+def local_report(tmp_path: Path, text: str) -> str:
+    file = tmp_path / "copy-of-the-report.txt"
+    file.write_bytes(text.encode())
+    return str(file)
+
+
+def test_check_with_a_report_file_ignores_the_report_on_the_target(
+    server: FakeSMBServer, app: Path, tmp_path: Path
+) -> None:
+    data = write(app / "bios" / "copy.bin")
+    report(server, "MISSING BIOS REPORT\n")  # says nothing is missing
+    file = local_report(tmp_path, block("a.bin", md5_of(data), folder="ps1/"))
+
+    assert cli.main(["check", "--report-file", file], base_dir=app) == 0
+
+    assert server.files[("bios", "ps1/a.bin")] == data
+    assert server.connections[0].calls.count("retrieveFile") == 0
+
+
+def test_check_with_a_report_file_still_needs_a_target(
+    server: FakeSMBServer, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    file = local_report(tmp_path, "MISSING BIOS REPORT\n")
+
+    assert cli.main(["check", "--report-file", file], base_dir=tmp_path) == 2
+
+    assert "Copy config/config.example.yml" in capsys.readouterr().out
+
+
+def test_check_can_combine_a_report_file_and_a_target(
+    server: FakeSMBServer, tmp_path: Path
+) -> None:
+    (tmp_path / "bios").mkdir()
+    data = write(tmp_path / "bios" / "copy.bin")
+    file = local_report(tmp_path, block("a.bin", md5_of(data)))
+
+    arguments = ["check", "--report-file", file, "--target", "smb://host/bios"]
+    assert cli.main(arguments, base_dir=tmp_path) == 0
+
+    assert server.files[("bios", "a.bin")] == data
+
+
+def test_report_from_a_file_uses_no_network_and_no_config(
+    server: FakeSMBServer, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    text = (
+        block("b.bin", "0" * 32, folder="ps1/")
+        + block("a.bin", "1" * 32, folder="ps1/").replace("REQUIRED", "OPTIONAL")
+        + block("root.bin", "2" * 32)
+        + block("kick.rom", "3" * 32, folder="amiga/bios/")
+    )
+    file = local_report(tmp_path, text)
+
+    assert cli.main(["report", "--report-file", file], base_dir=tmp_path) == 0
+
+    assert server.connections == []
+    assert capsys.readouterr().out.splitlines() == [
+        "There are 4 missing bios in your RECALBOX",
+        "(BIOS folder)",
+        "  root.bin (required)",
+        "amiga/bios/",
+        "  kick.rom (required)",
+        "ps1/",
+        "  a.bin (optional)",
+        "  b.bin (required)",
+    ]
+
+
+def test_report_lists_a_repeated_target_once_and_required_wins(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    optional = block("x.pce", "0" * 32).replace("REQUIRED", "OPTIONAL")
+    file = local_report(tmp_path, optional + block("x.pce", "1" * 32))
+
+    assert cli.main(["report", "--report-file", file], base_dir=tmp_path) == 0
+
+    assert capsys.readouterr().out.splitlines() == [
+        "There are 1 missing bios in your RECALBOX",
+        "(BIOS folder)",
+        "  x.pce (required)",
+    ]
+
+
+def test_report_shows_incorrect_files(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    file = local_report(tmp_path, incorrect("b.bin", "0" * 32))
+
+    assert cli.main(["report", "--report-file", file], base_dir=tmp_path) == 0
+
+    output = capsys.readouterr().out
+    assert "INCORRECT: two/b.bin is on the device with a wrong MD5" in output
+    assert "No missing bios" not in output
+    assert "There are" not in output
+
+
+def test_report_with_nothing_missing(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    file = local_report(tmp_path, "MISSING BIOS REPORT\n")
+
+    assert cli.main(["report", "--report-file", file], base_dir=tmp_path) == 0
+
+    assert "No missing bios were found" in capsys.readouterr().out
+
+
+def test_report_of_the_real_fixture(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> None:
+    file = local_report(tmp_path, load_report(REAL_REPORT))
+
+    assert cli.main(["report", "--report-file", file], base_dir=tmp_path) == 0
+
+    output = capsys.readouterr().out
+    assert "There are 232 missing bios in your RECALBOX" in output
+    assert "amiga/bios/\n" in output
+    assert "  kick39106.A1200 (required)\n" in output
+
+
+def test_report_reads_the_target_and_writes_nothing(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write(app / "bios" / "copy.bin")
+    report(server, block("a.bin", md5_of((app / "bios" / "copy.bin").read_bytes()), folder="x/"))
+
+    assert cli.main(["report"], base_dir=app) == 0
+
+    calls = server.connections[0].calls
+    assert "storeFile" not in calls
+    assert "createDirectory" not in calls
+    assert ("bios", "x/a.bin") not in server.files
+    assert "  a.bin (required)" in capsys.readouterr().out
+
+
+def test_report_from_a_target_folder(
+    device: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write(device / "missing_bios_report.txt", block("a.bin", "0" * 32).encode())
+    before = snapshot(device)
+
+    assert cli.main(["report", "--target-dir", str(device)], base_dir=tmp_path) == 0
+
+    assert snapshot(device) == before
+    assert "  a.bin (required)" in capsys.readouterr().out
+
+
+def test_report_file_and_a_target_together_exit_2(
+    server: FakeSMBServer, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    arguments = ["report", "--report-file", "x.txt", "--target", "smb://host/bios"]
+
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(arguments, base_dir=tmp_path)
+
+    assert exit_info.value.code == 2
+    assert "not allowed with argument" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("command", ["check", "report"])
+def test_a_missing_report_file_is_exit_4(
+    command: str, server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert cli.main([command, "--report-file", "no-such-report.txt"], base_dir=app) == 4
+
+    output = capsys.readouterr().out
+    assert "Can't read the report no-such-report.txt: No such file or directory" in output
+
+
+def test_a_folder_as_report_file_is_exit_4(tmp_path: Path) -> None:
+    assert cli.main(["report", "--report-file", str(tmp_path)], base_dir=tmp_path) == 4
+
+
+def test_a_report_file_in_an_unknown_format_is_exit_4(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    file = local_report(tmp_path, "A FORMAT BECK DOESN'T KNOW\n")
+
+    assert cli.main(["report", "--report-file", file], base_dir=tmp_path) == 4
+
+    assert "doesn't look like a report" in capsys.readouterr().out
+
+
+def test_a_report_file_with_bytes_that_arent_utf8_still_parses(tmp_path: Path) -> None:
+    file = tmp_path / "report.txt"
+    file.write_bytes(b"caf\xe9\n" + block("a.bin", "0" * 32).encode())
+
+    assert cli.main(["report", "--report-file", str(file)], base_dir=tmp_path) == 0
+
+
+def test_scan_accepts_source_but_report_does_not(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        cli.main(["scan", "--help"])
+    assert "--source DIR" in capsys.readouterr().out
+
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["report", "--source", "x"])
     assert exit_info.value.code == 2
 
 

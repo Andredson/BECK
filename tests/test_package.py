@@ -39,7 +39,7 @@ def test_version_when_run_from_a_clone_without_installing(monkeypatch: pytest.Mo
 def test_help_describes_the_command_and_runs_nothing(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(cli, "_run", forbidden)
+    monkeypatch.setattr(cli, "_run_check", forbidden)
 
     with pytest.raises(SystemExit) as exit_info:
         cli.main(["--help"])
@@ -51,7 +51,7 @@ def test_help_describes_the_command_and_runs_nothing(
 
 
 def test_an_unknown_argument_is_a_usage_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cli, "_run", forbidden)
+    monkeypatch.setattr(cli, "_run_check", forbidden)
 
     with pytest.raises(SystemExit) as exit_info:
         cli.main(["--no-such-flag"])

@@ -12,8 +12,10 @@ from beck import __version__
 from beck.errors import BeckError, ConfigError, ReportNotFoundError, TransportError, UsageError
 from beck.executor import execute
 from beck.frontends import get_adapter
+from beck.frontends.base import FrontendAdapter
 from beck.hashing import scan
 from beck.matcher import plan
+from beck.models import MissingBios
 from beck.output.console import LOGGER_NAME, ConsoleRenderer, configure_logging
 from beck.targets import URL_FORM, parse_smb_url
 from beck.transports.base import Transport
@@ -39,6 +41,7 @@ COMMANDS = {
 
 SMB_SETTINGS = ("server", "port", "user", "passwd")
 DEFAULT_FRONTEND = "recalbox"
+REPORT_FILE_HELP = "read this local copy of the report, not the one on the target"
 
 
 def load_legacy_config(file: Path) -> dict[str, Any]:
@@ -84,18 +87,45 @@ def _open_target(args: argparse.Namespace, base_dir: Path) -> Transport:
     )
 
 
-def _run(args: argparse.Namespace, base_dir: Path, renderer: ConsoleRenderer) -> int:
-    bios_dir = base_dir / "bios"
+def _entries_from_file(adapter: FrontendAdapter, report_file: str) -> list[MissingBios]:
+    """Parse a local copy of the report."""
+    try:
+        raw = Path(report_file).read_bytes()
+    except OSError as e:
+        raise ReportNotFoundError(f"Can't read the report {report_file}: {e.strerror}") from e
+    return adapter.parse_report(raw.decode("utf-8", errors="replace"))
+
+
+def _entries_from_target(adapter: FrontendAdapter, transport: Transport) -> list[MissingBios]:
+    """Parse the report on the target."""
+    if not transport.exists(adapter.report_path):
+        raise ReportNotFoundError(
+            f"{adapter.report_path} not found on {transport.describe()}. "
+            "Generate the report on the device first."
+        )
+    raw = transport.read_bytes(adapter.report_path)
+    return adapter.parse_report(raw.decode("utf-8", errors="replace"))
+
+
+def _source_folder(args: argparse.Namespace, base_dir: Path) -> Path:
+    """The folder of BIOS files. One the user named must exist, so a typo can't read as empty."""
+    if args.source is None:
+        return base_dir / "bios"
+    source = Path(args.source)
+    if not source.is_dir():
+        raise UsageError(f"The source folder {source} doesn't exist")
+    return source
+
+
+def _run_check(args: argparse.Namespace, base_dir: Path, renderer: ConsoleRenderer) -> int:
+    source = _source_folder(args, base_dir)
     adapter = get_adapter(args.frontend)
 
     with _open_target(args, base_dir) as transport:
-        if not transport.exists(adapter.report_path):
-            raise ReportNotFoundError(
-                f"{adapter.report_path} not found on {transport.describe()}. "
-                "Generate the report on the device first."
-            )
-        text = transport.read_bytes(adapter.report_path).decode("utf-8", errors="replace")
-        entries = adapter.parse_report(text)
+        if args.report_file is not None:
+            entries = _entries_from_file(adapter, args.report_file)
+        else:
+            entries = _entries_from_target(adapter, transport)
         if not entries:
             renderer.nothing_missing()
             return 0
@@ -105,10 +135,10 @@ def _run(args: argparse.Namespace, base_dir: Path, renderer: ConsoleRenderer) ->
             return 0
         renderer.missing_count(len(missing))
 
-        scanned = scan(bios_dir)
+        scanned = scan(source)
         renderer.unreadable(scanned.unreadable)
         if not scanned.files:
-            renderer.no_files(bios_dir)
+            renderer.no_files(source)
             return 0
         renderer.files_found(len(scanned.files))
 
@@ -116,6 +146,18 @@ def _run(args: argparse.Namespace, base_dir: Path, renderer: ConsoleRenderer) ->
 
     renderer.result(result)
     return TransportError.exit_code if result.errors else 0
+
+
+def _run_report(args: argparse.Namespace, base_dir: Path, renderer: ConsoleRenderer) -> int:
+    """List what the report says. It never writes anything, and a local copy needs no target."""
+    adapter = get_adapter(args.frontend)
+    if args.report_file is not None:
+        entries = _entries_from_file(adapter, args.report_file)
+    else:
+        with _open_target(args, base_dir) as transport:
+            entries = _entries_from_target(adapter, transport)
+    renderer.report(entries)
+    return 0
 
 
 def _add_global_options(parser: argparse.ArgumentParser, *, on_a_command: bool) -> None:
@@ -132,7 +174,7 @@ def _add_global_options(parser: argparse.ArgumentParser, *, on_a_command: bool) 
     )
 
 
-def _add_target_options(parser: argparse.ArgumentParser) -> None:
+def _add_target_options(parser: argparse.ArgumentParser) -> Any:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--target", metavar="URL", help=f"an SMB target: {URL_FORM}")
     group.add_argument(
@@ -140,6 +182,7 @@ def _add_target_options(parser: argparse.ArgumentParser) -> None:
         metavar="DIR",
         help="a folder: a mounted SD card or USB drive, or the device itself",
     )
+    return group
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -161,16 +204,25 @@ def _build_parser() -> argparse.ArgumentParser:
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
         _add_global_options(command, on_a_command=True)
-        if name in ("check", "report"):
-            _add_target_options(command)
+        if name in ("check", "scan"):
+            command.add_argument(
+                "--source", metavar="DIR", help="your folder of BIOS files (default: ./bios)"
+            )
         if name == "check":
+            group = _add_target_options(command)
+            command.add_argument("--report-file", metavar="FILE", help=REPORT_FILE_HELP)
             command.add_argument(
                 "--frontend",
                 default=DEFAULT_FRONTEND,
                 metavar="NAME",
                 help=f"the kind of device (default: {DEFAULT_FRONTEND})",
             )
-    parser.set_defaults(target=None, target_dir=None, frontend=DEFAULT_FRONTEND)
+        if name == "report":
+            group = _add_target_options(command)
+            group.add_argument("--report-file", metavar="FILE", help=REPORT_FILE_HELP)
+    parser.set_defaults(
+        target=None, target_dir=None, frontend=DEFAULT_FRONTEND, source=None, report_file=None
+    )
     return parser
 
 
@@ -187,9 +239,12 @@ def main(argv: list[str] | None = None, *, base_dir: Path | None = None) -> int:
         logger.warning("Hint: use 'beck check'. Running beck with no command is going away.")
 
     try:
-        if args.command in ("scan", "report"):
-            raise UsageError(f"beck {args.command} isn't available yet")
-        return _run(args, Path.cwd() if base_dir is None else base_dir, renderer)
+        if args.command == "scan":
+            raise UsageError("beck scan isn't available yet")
+        folder = Path.cwd() if base_dir is None else base_dir
+        if args.command == "report":
+            return _run_report(args, folder, renderer)
+        return _run_check(args, folder, renderer)
     except BeckError as error:
         renderer.error(error)
         return error.exit_code

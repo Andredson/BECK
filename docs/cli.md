@@ -3,8 +3,8 @@
 The reference for using BECK from the command line.
 
 **Status:** this is the design [stage 06](../roadmap/06-cli-ux-and-machine-output.md) is building, so most of it doesn't exist yet.
-Today, `beck check` runs with `--target`, `--target-dir` and `--frontend`, or reads its settings from `config/config.yml` in the
-current folder, and `--version` and `--no-color` work. `beck scan` and `beck report` only say they aren't available yet.
+Today, `beck check` and `beck report` work with the options under [Choosing what BECK works on](#choosing-what-beck-works-on), and
+`--version` and `--no-color` work. `beck scan` only says it isn't available yet. The rest arrives in later steps of the stage.
 
 ```text
 beck [--version] [-v | -q] [--no-color] [--json] <command> [options]
@@ -44,7 +44,8 @@ beck scan --source ~/my-bios
 
 ### `beck report`
 
-Lists what the report says is missing or incorrect, grouped by folder, with whether each file is required. It writes nothing.
+Lists what the report says is missing or incorrect, grouped by folder, with whether each file is required. A file listed in several
+systems appears once, and counts as required if any of them requires it. It writes nothing.
 
 ```sh
 beck report --target smb://recalbox.local/bios
@@ -71,11 +72,11 @@ Colors follow `NO_COLOR`, then `FORCE_COLOR`, and otherwise appear only on a ter
 
 | Option | Commands | What it does |
 |---|---|---|
-| `--source DIR` | `check`, `scan` | Your folder of BIOS files. The default is `./bios`. Hidden files and folders are skipped. |
+| `--source DIR` | `check`, `scan` | Your folder of BIOS files. The default is `./bios`. Hidden files and folders are skipped. A folder you name must exist, or BECK exits with 2. |
 | `--target URL` | `check`, `report` | An SMB target: `smb://[user@]host[:port]/share[/sub/path]`. The port defaults to 445. A URL with a password is refused, and the password in `config/config.yml` isn't used, so this means guest access until stage 07 adds passwords for targets. |
 | `--target-dir DIR` | `check`, `report` | A folder: a mounted SD card or USB drive, or the device itself. It can't be combined with `--target`. |
 | `--frontend NAME` | `check` | The kind of device. Only `recalbox`, for now. |
-| `--report-file FILE` | `check`, `report` | Reads a local copy of the report, not the one on the target. |
+| `--report-file FILE` | `check`, `report` | Reads a local copy of the report, not the one on the target. `beck report` then needs no target, and can't take one. `beck check` still needs a target to upload to. |
 
 With no target, BECK uses the settings in `config/config.yml`.
 

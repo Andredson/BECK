@@ -111,7 +111,10 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `feat(cli): select SMB or local targets and the frontend adapter`
 
 ### 06.4 — Source folder and offline report options
-- [ ] Done
+- [x] Done (2026-11-05: `beck report` was built here, grouped by folder with required and optional markers, because this step's check
+  needs it; 06.11 keeps `scan`. Beyond the list below: a `--source` that doesn't exist exits with 2, because treating a typo as an empty
+  folder would say "No BIOS files found" and exit 0; the default `./bios` still works as before. On `report`, `--report-file` can't be
+  combined with a target. Checked by breaking each rule on purpose.)
 - **What:** `--source DIR` (default `./bios`) for `check` and `scan`. `--report-file FILE` makes `check` and
   `report` parse a local copy of the report instead of reading it through the transport. That's useful offline,
   for bug reports, and for agents.
@@ -224,8 +227,8 @@ beck config  init | show | path                     # added in stage 07
 
 ### 06.11 — `beck scan` and `beck report`
 - [ ] Done
-- **What:** `scan` lists local files with relative path, size and MD5. `report` lists missing entries, grouped
-  by folder, with the `required` / optional marker. Both support `--json`. Neither ever writes anything.
+- **What:** `scan` lists local files with relative path, size and MD5. `report` already lists missing entries, grouped
+  by folder, with the `required` / optional marker (06.4). Both support `--json`. Neither ever writes anything.
 - **Files:** `src/beck/cli.py`, `tests/unit/test_cli.py`
 - **Done when:** Both commands work offline (`scan`, and `report --report-file`) and are covered by tests.
 - **Verify:** `uv run beck scan --source tests && uv run beck --json scan --source tests | python3 -m json.tool`
