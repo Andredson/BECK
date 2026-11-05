@@ -188,7 +188,10 @@ flowchart LR
 - **Commit message:** `feat(frontends): add adapter interface and Recalbox adapter`
 
 ### 04.8 — Transport interface and local transport
-- [ ] Done
+- [x] Done (2026-11-04: all five file operations refuse `..`, absolute paths, a sibling folder that shares the root's name
+  as a prefix, and symlinks out of the root, and nothing is created when they do. Operating-system errors become
+  `TransportError`. `upload` replaces an existing file, and needs its folder to exist, because the executor creates folders
+  first. Checked by breaking each rule on purpose. Nothing uses this yet.)
 - **What:**
   - `transports/base.py`: a `Transport` Protocol, used as a context manager, with `read_bytes(path)`,
     `exists(path)`, `size(path)`, `makedirs(path)`, `upload(local, remote) -> int` (bytes written), and
