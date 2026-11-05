@@ -172,8 +172,8 @@ skill below, **read its whole `SKILL.md` before acting** and follow it.
   to catch Windows-only bugs, e.g. assert that a file handle is closed rather than relying on Windows locking.
 - Application tests replace pysmb with the fake from `tests/fakes.py` (`install_fake_smb(monkeypatch)`, which also
   fails any real socket connection) and work in `tmp_path`, never in the repository folder.
-- Every bug fix ships with a regression test. From stage 05: ≥ 90 % branch coverage on the
-  package, plus integration tests against the Samba container (marked `integration`).
+- Every bug fix ships with a regression test. `uv run pytest --cov` fails below 90 % branch coverage on the package, and
+  `# pragma: no cover` doesn't work here. There are also integration tests against the Samba container (marked `integration`).
 - Tests never touch the network (except the local Samba container) and never use real BIOS content. The integration tests
   refuse any server without the test server's seeded file, so that they can't write to a real device.
 

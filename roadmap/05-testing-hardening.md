@@ -180,7 +180,10 @@ DEC-08, DEC-09, DEC-25, DEC-33, DEC-36, DEC-40, DEC-55.
 - **Commit message:** `test(cli): cover exit codes and key output lines`
 
 ### 05.8 — Coverage gate
-- [ ] Done
+- [x] Done (2026-11-05: the package is at 99.86 %. Checked with real untested code: 66 % fails with exit 1, also with `# pragma: no
+  cover` on that code, because `exclude_lines` replaces coverage's defaults; 95 % passes. That also stopped coverage ignoring
+  `...` bodies, so the Protocol classes' placeholder bodies were removed, as their docstrings are enough. The gate only applies
+  to `uv run pytest --cov`, which CI runs on every Python version; a plain `uv run pytest` has none.)
 - **What:** Add `fail_under = 90` (branch coverage) in `[tool.coverage.report]` for the unit run, and
   `show_missing = true`. Exclude only `if TYPE_CHECKING:` and `raise NotImplementedError` lines. The
   integration job doesn't count towards the gate; it covers behavior, not lines.

@@ -56,6 +56,13 @@ markers = ["integration: needs the Samba test container (stage 05)"]
 branch = true
 source = ["beck"]
 
+[tool.coverage.report]
+# Checked on the unit run, `uv run pytest --cov`. Integration tests cover behavior, not lines.
+fail_under = 90
+show_missing = true
+# Replaces coverage's defaults, so `# pragma: no cover` can't hide code from the gate.
+exclude_lines = ["if TYPE_CHECKING:", "raise NotImplementedError"]
+
 # Commit-message rule checked in CI by `cz check` (DEC-38). Commitizen is used only for checking:
 # versions come from `uv version --bump` (DEC-18) and the changelog from git-cliff (DEC-20).
 [tool.commitizen]
