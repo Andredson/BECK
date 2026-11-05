@@ -65,8 +65,10 @@ If you never edited it, `git pull` removes it; create it again as described in [
 2. From the repository folder, run:
 
    ```sh
-   python check_bios.py              # with uv: uv run python check_bios.py
+   uv run beck                       # with pip: python check_bios.py
    ```
+
+   `check_bios.py` still works and prints a notice that it's deprecated.
 
 3. BECK lists what happened to each file: copied to the Recalbox, or kept because it's a duplicate, matches nothing,
    or its target was already filled.
@@ -76,7 +78,9 @@ If you never edited it, `git pull` removes it; create it again as described in [
 
 ```
 ┌BECK
-├── check_bios.py
+├── check_bios.py          (kept for old usage: use beck)
+├─┬─src
+│ └── beck                  (the application)
 ├─┬─bios
 │ └── *
 ├─┬─config

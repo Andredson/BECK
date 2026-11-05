@@ -1,6 +1,6 @@
 # Stage 04 — Architecture refactor
 
-**Status:** Not started · **Depends on:** 03 · **Branch:** `stage/04-architecture` · **Effort:** L
+**Status:** Done (2026-11-04) · **Depends on:** 03 · **Branch:** `stage/04-architecture` · **Effort:** L
 
 ## Goal
 Turn the single script into a small, typed, testable package, `beck`. It has a **pure core** (parse → match →
@@ -10,11 +10,10 @@ folder, DEC-04) and output. User-visible behavior stays the same as at the end o
 ## Why
 - Architecture 2/10, maintainability and portability are low ([assessment](00-assessment.md#scorecard)).
 - Later stages need clean seams: `--json` output (06), config precedence (07), more frontends (11).
-- DEC-26 switches the SMB library to `smbprotocol`. Doing that behind a `Transport` interface keeps the
-  change contained.
+- DEC-53 keeps `pysmb`. Putting it behind a `Transport` interface keeps any later library change contained.
 
 ## Decisions applied
-DEC-01, DEC-02, DEC-03, DEC-04, DEC-08, DEC-17, DEC-18, DEC-26, DEC-43.
+DEC-01, DEC-02, DEC-03, DEC-04, DEC-08, DEC-17, DEC-18, DEC-43, DEC-52, DEC-53.
 
 ## Target layout
 
@@ -36,7 +35,7 @@ src/beck/
 │   ├── __init__.py
 │   ├── base.py          # Transport Protocol (context manager)
 │   ├── local.py         # folder on disk: mounted SD/USB, on-device runs, tests
-│   └── smb.py           # smbprotocol (smbclient API)
+│   └── smb.py           # pysmb (DEC-53)
 └── output/
     ├── __init__.py
     └── console.py       # human output: colors, NO_COLOR, TTY detection
@@ -59,7 +58,11 @@ flowchart LR
 ## Steps
 
 ### 04.1 — Spike: smbprotocol against a real Recalbox (gate for DEC-26)
-- [ ] Done
+- [x] Done (2026-11-04: run on a Recalbox 10.1.1 VM, not a real device (DEC-52), and by the agent, at the owner's
+  request. [Results](../docs/spikes/smbprotocol.md): password login and every file operation passed, but guest login
+  failed with the library's defaults and needs three settings. The owner chose to **keep `pysmb`** (DEC-53), so
+  DEC-26 doesn't stand and this step's commit message differs from the one below. Steps 04.9, 04.14, 07.7, 07's
+  acceptance criteria, 10's SBOM step and this stage's acceptance criteria were updated.)
 - **What:** Before rewriting the transport, prove that `smbprotocol`'s `smbclient` API works against the owner's
   Recalbox. The agent writes `docs/spikes/smbprotocol.md` containing a short script (not committed as code).
   The **owner runs it** and records the results:
@@ -77,7 +80,9 @@ flowchart LR
 - **Commit message:** `docs(spike): verify smbprotocol against a real Recalbox share`
 
 ### 04.2 — Architecture document and ADR
-- [ ] Done
+- [x] Done (2026-11-04: the layout and diagram match this file. The document also records the matching rules, exit
+  codes and how to extend BECK. ADR-0006 has no DEC of its own, because the structure follows from existing decisions and
+  this stage's plan. It says so, and that these options weren't offered to the owner as a separate choice.)
 - **What:** `docs/ARCHITECTURE.md` with the layout and diagram above, the responsibility of each module, the
   data flow, and the rules: the core (`models`, `hashing`, `matcher`) never does network I/O; `exit` only in
   `cli.py`; adapters are the only code that knows about Recalbox paths or SMB. Add
@@ -88,7 +93,12 @@ flowchart LR
 - **Commit message:** `docs(architecture): describe core and adapter design`
 
 ### 04.3 — Package skeleton (src layout, uv_build, entry points)
-- [ ] Done
+- [x] Done (2026-11-04: `uv_build>=0.13.2,<0.14`. The lower bound is CI's uv version, so CI and local uv use their
+  built-in backend and download nothing; 0.13.4 is the newest release past the 14-day cooldown (DEC-45). The upper bound
+  is what uv recommends, so a build run by another tool, such as `pip install .`, could fetch a newer `0.13.x` without
+  the cooldown. Beyond the list below: `uv export` needs `--no-emit-project` now, or `requirements.txt` gains `-e .` and
+  CI's drift check fails, so CI, AGENTS.md and `docs/maintenance.md` were updated; `tests/test_package.py`. `check_bios.py`
+  isn't in the wheel, so until 04.13 an installed copy prints a clear message and exits 1.)
 - **What:**
   ```toml
   [build-system]
@@ -112,7 +122,9 @@ flowchart LR
 - **Commit message:** `build: package BECK as beck-bios with a beck console command`
 
 ### 04.4 — Error hierarchy and exit codes
-- [ ] Done
+- [x] Done (2026-11-04: added beside the legacy script's own `BeckError`, which stays until 04.13, so nothing uses these
+  yet. A test fails if a new error class has no pinned code. The base `BeckError` exits 1. Checked by changing a code on
+  purpose. `tests/unit/` starts here.)
 - **What:** `errors.py`: `BeckError(Exception)` with `exit_code: int`. Subclasses: `UsageError`/`ConfigError`
   (2), `TransportError` (3), `ReportNotFoundError`/`ReportParseError` (4). Anything else is unexpected (1). This
   matches the exit-code table that stage 06 publishes (DEC-23). Library code raises; only `cli.main` turns
@@ -123,7 +135,11 @@ flowchart LR
 - **Commit message:** `feat(core): add error hierarchy with stable exit codes`
 
 ### 04.5 — Domain models
-- [ ] Done
+- [x] Done (2026-11-04: each model is frozen and slotted, and breaking an invariant raises `ValueError`, because it means a
+  bug in BECK; adapters reject bad input with a `BeckError` first. Checked by breaking each rule on purpose. Beyond the
+  list below, for parity with stage 03's output: `Plan.already_filled`, for `target already filled, kept`; a `Duplicate`
+  model, for `duplicate of <file>`; `ItemError` for `RunResult.errors`. Also: a target must end in the entry's name, and
+  an upload's source must have an MD5 on its entry's list.)
 - **What:** Frozen, slotted dataclasses in `models.py`:
   - `MissingBios(name, target: PurePosixPath, md5s: frozenset[str], required: bool | None, system: str | None)`
     — `required` comes from the report's `MISSING R…` / `MISSING O…` marker when present.
@@ -140,7 +156,10 @@ flowchart LR
 - **Commit message:** `feat(core): add typed domain models`
 
 ### 04.6 — Hashing and local scanning module
-- [ ] Done
+- [x] Done (2026-11-04: the code was copied, because `check_bios.py` must keep working until 04.13. Its printed messages
+  aren't ported: `scan` prints nothing, and the messages move to the output layer in 04.12. Local paths sort as text, as in
+  stage 03, because `PurePosixPath` puts `a/x` before `a-b/x` and "first by path" decides which file wins; `Plan` from
+  04.5 was changed to match, and 04.10 must sort the same way. Checked by breaking each rule on purpose.)
 - **What:** Move the stage 03 scanner and hashing into `hashing.py`: `md5_file(path) -> str` and
   `scan(folder) -> list[LocalFile]` (recursive, hidden files skipped, deterministic order). Port the stage 03
   tests unchanged in intent.
@@ -150,7 +169,12 @@ flowchart LR
 - **Commit message:** `refactor(core): move hashing and scanning into beck.hashing`
 
 ### 04.7 — Frontend adapter interface and Recalbox adapter
-- [ ] Done
+- [x] Done (2026-11-04: all six fixtures parse to their expected entries, and the real report gives 238 entries, 232 targets,
+  123 required, 115 optional and 64 systems. The parser was copied, because `check_bios.py` must keep working until 04.13.
+  **One stricter rule than stage 03:** an unsafe location or name (`..`, `//etc`, a `/` in the name) is now a
+  `ReportParseError` that stops the run, instead of going to the upload. Step 07.6 can make it a per-item error. Checked
+  by breaking each rule on purpose; the one break no test catches is removing the CRLF normalization, because each
+  captured value is stripped anyway. The line stays, as 03.5 specifies, and the real CRLF report guards the result.)
 - **What:**
   - `frontends/base.py`: a `FrontendAdapter` Protocol with `name: str`, `report_path: PurePosixPath`,
     `parse_report(text: str) -> list[MissingBios]`.
@@ -164,7 +188,10 @@ flowchart LR
 - **Commit message:** `feat(frontends): add adapter interface and Recalbox adapter`
 
 ### 04.8 — Transport interface and local transport
-- [ ] Done
+- [x] Done (2026-11-04: all five file operations refuse `..`, absolute paths, a sibling folder that shares the root's name
+  as a prefix, and symlinks out of the root, and nothing is created when they do. Operating-system errors become
+  `TransportError`. `upload` replaces an existing file, and needs its folder to exist, because the executor creates folders
+  first. Checked by breaking each rule on purpose. Nothing uses this yet.)
 - **What:**
   - `transports/base.py`: a `Transport` Protocol, used as a context manager, with `read_bytes(path)`,
     `exists(path)`, `size(path)`, `makedirs(path)`, `upload(local, remote) -> int` (bytes written), and
@@ -177,36 +204,51 @@ flowchart LR
 - **Verify:** `uv run pytest tests/unit/test_local_transport.py -q`
 - **Commit message:** `feat(transports): add transport interface and local folder transport`
 
-### 04.9 — SMB transport on smbprotocol (D4, D11, D16)
-- [ ] Done
-- **What:** `transports/smb.py`: `SmbTransport(host, port, share, user, password, timeout)` using
-  `smbclient.register_session(...)` once in `__enter__`, and UNC paths `\\host\share\<relative>`. It uses
-  `smbclient.makedirs(..., exist_ok=True)`, which is natively recursive (final D4), `smbclient.open_file`
-  with `shutil.copyfileobj` for uploads, and `smbclient.stat` for sizes. It cleans up the session in
-  `__exit__` (final D11). Direct TCP on 445 is the library's default (final D16). Library exceptions map to
-  `TransportError` with readable messages (auth failure, share not found, host unreachable, timeout).
-  Guest/empty credentials behave as verified in the 04.1 spike. Replace `pysmb` with `smbprotocol` in the
-  dependencies (`uv remove pysmb && uv add smbprotocol`).
-- **Files:** `src/beck/transports/smb.py`, `pyproject.toml`, `uv.lock`, `tests/unit/test_smb_transport.py`
-- **Done when:** Unit tests with a mocked `smbclient` module cover the call sequence and the error mapping.
+### 04.9 — SMB transport on pysmb (D4, D11, D16)
+- [x] Done (2026-11-04: `exists` walks the listings, because `pysmb` raises the same exception for "not found" and "access
+  denied", and a failed listing stays an error. Error messages use `OperationFailure.message`, because `str()` adds a long
+  SMB dump. The default timeout is 30 seconds, including the connection, where `pysmb`'s own default is 60. Checked by
+  breaking each rule on purpose, which found two gaps in the tests. Also run **read-only** against the Recalbox 10.1.1 VM
+  as a guest, in NetBIOS mode: reading, `size`, `exists`, and the errors for a missing file, a missing share and a closed
+  port. Not run on a real server: `makedirs` and `upload` with the new `timeout` argument, and `storeFile`'s return value
+  (stage 05). Nothing uses this until 04.13.)
+- **What:** `transports/smb.py`: `SmbTransport(host, port, share, user, password, timeout)` on `pysmb` (DEC-53),
+  carrying over stage 03's `SmbSession`. One `SMBConnection` opens in `__enter__`, with `is_direct_tcp` when the port is
+  445 (final D16), and closes in `__exit__` (final D11). Nested folders are created one level at a time, as in
+  `ensure_dir` (final D4). Uploads pass an open file object to `storeFile`, and sizes come from `getAttributes`. Library
+  exceptions map to `TransportError` with readable messages (auth failure, share not found, host unreachable, timeout).
+  Empty credentials log in as a guest. No dependency changes.
+- **Files:** `src/beck/transports/smb.py`, `tests/unit/test_smb_transport.py`
+- **Done when:** Unit tests with the fake from `tests/fakes.py` cover the call sequence and the error mapping.
   Real-server tests come in stage 05.
 - **Verify:** `uv run pytest tests/unit/test_smb_transport.py -q`
-- **Commit message:** `feat(transports)!: implement SMB transport on smbprotocol`
+- **Commit message:** `feat(transports): implement SMB transport on pysmb`
 
 ### 04.10 — Pure matcher
-- [ ] Done
+- [x] Done (2026-11-04: parity with stage 03 was checked with a one-off comparison, not committed, on the real report: 600
+  randomized file sets, with no difference in targets, duplicates, unmatched, already-filled or still-missing files. The
+  owner's 233 files also give an identical plan: 152 targets, 5 duplicates, 80 unmatched, 1 already filled. The permutation
+  test covers 14,400 input orders. **One difference for 04.12:** `Plan.uploads` is sorted by target, so `FOUND` lines come
+  in a different order than in stage 03; the per-file lines stay sorted by path. Every entry for an unfilled target stays in
+  `still_missing`, so a summary must count distinct targets. Checked by breaking each rule on purpose.)
 - **What:** `matcher.plan(missing: Sequence[MissingBios], local: Sequence[LocalFile]) -> Plan`, a pure
-  function with no I/O. It carries over the 03.8 behavior: one file can satisfy many entries; duplicate local
-  files are listed; each entry counts once. It also lists the remote `directories` that uploads need, and the
-  entries that are `still_missing`.
+  function with no I/O. "First by path" compares paths as text (see 04.6). It carries over the 03.8 and 03.12a behavior: one file can satisfy many entries; each
+  target is filled once; a file named like a target gets that target first; duplicate local files are listed;
+  each entry counts once. It also lists the remote `directories` that uploads need, the files whose targets
+  were `already_filled`, and the entries that are `still_missing`.
 - **Files:** `src/beck/matcher.py`, `tests/unit/test_matcher.py`
-- **Done when:** The ported 03.8 tests pass, plus: the plan is deterministic regardless of input order; the
+- **Done when:** The ported 03.8 and 03.12a tests pass, plus: the plan is deterministic regardless of input order; the
   plan never references a local path outside the scanned folder.
 - **Verify:** `uv run pytest tests/unit/test_matcher.py -q`
 - **Commit message:** `refactor(core): extract a pure matcher that builds an upload plan`
 
 ### 04.11 — Executor with dry-run support
-- [ ] Done
+- [x] Done (2026-11-04: tested on `LocalTransport` and through `SmbTransport` on the fake server. Decisions the list below
+  leaves open: an upload whose folder couldn't be created is `skipped`, with one error for the folder, so a dead folder
+  doesn't cost a timeout per file; in a dry run, every upload is `skipped`; only `TransportError` is an item failure, and
+  anything else stops the run as a bug. The owner's files were replayed through the whole pipeline into a temporary folder:
+  152 of 152 targets matched by MD5. **For 04.12:** results arrive only after the run, so `FOUND` lines can't print live as
+  they do in stage 03. Checked by breaking each rule on purpose.)
 - **What:** `executor.execute(plan, transport, *, dry_run: bool) -> RunResult`:
   - It creates the directories, then uploads. A failure on one item is recorded in `errors` and the run
     **continues** with the other items (previously any error stopped the run).
@@ -221,7 +263,13 @@ flowchart LR
 - **Commit message:** `feat(core): add plan executor with dry-run and per-item error handling`
 
 ### 04.12 — Console output and logging
-- [ ] Done
+- [x] Done (2026-11-04: on the owner's files and the real report, with the fake server, the renderer's 394 lines match stage
+  03's as a set, and the files on the server are identical. **Order differs in two places:** `FOUND` lines, and the lines of
+  a file sent to several targets, are sorted by target. **Beyond stage 03:** `failed` and `skipped` lines, one `Error:` line
+  per failed item, and a dry-run summary, because a run can now continue after a failure. An empty `NO_COLOR` or
+  `FORCE_COLOR` counts as not set, as their conventions say, and `NO_COLOR` wins. Color now depends on the terminal, so
+  piped output has no escape codes. Windows color is tested with a fake `kernel32`, not on Windows (DEC-49). Nothing logs
+  yet. Checked by breaking each rule on purpose.)
 - **What:**
   - `output/console.py`: a `ConsoleRenderer` that renders a `RunResult` like today's output (colors, per-file
     lines, final summary). Color rules: `NO_COLOR` set → no color; `FORCE_COLOR` set → color; otherwise color
@@ -234,7 +282,21 @@ flowchart LR
 - **Commit message:** `feat(output): add console renderer with NO_COLOR support and logging`
 
 ### 04.13 — Thin CLI with behavior parity
-- [ ] Done
+- [x] Done (2026-11-04: all 85 tests from the old files were audited against their new homes, and one was dropped on
+  purpose, because the wheel now holds the whole application. Compared with the stage 03 script on the owner's files and the
+  real report, with the fake server: the same 394 lines as a set, and identical files on the server.
+  - **Run on the Recalbox 10.1.1 VM, with the owner's OK to write:** the `beck` command, the wheel on its own, and
+    `python check_bios.py` from a clean copy with only `requirements.txt` installed, in NetBIOS mode. `makedirs` with spaces
+    and parentheses, 3 MiB uploads, overwriting, and `storeFile`'s byte count all work.
+  - **Direct TCP:** a run with `port: 445` chose direct TCP by itself and uploaded, with real SMB against the VM's Samba.
+    Only the TCP port number was redirected to the VM's forward, because this machine can't bind port 445. This closes
+    check 8 of step 03.13 on the VM; real hardware is still open (DEC-52). The VM's file list was restored and verified
+    identical.
+  - **Differences from stage 03:** exit codes are now 2, 3 and 4 instead of always 1. A failed upload no longer stops the
+    run, and exits 3. A missing report has its own message. Malformed YAML or a missing setting is now a clear error, which
+    closes the traceback noted in 03.12. A bug prints a traceback to stderr and exits 1. `FOUND` lines print at the end.
+    `beck` uses the current folder; `check_bios.py` uses its own.
+  - **Overlap with 04.14:** a shim this small meant deleting the legacy functions here.)
 - **What:**
   - `cli.main(argv: list[str] | None = None, *, base_dir: Path | None = None) -> int` wires it all together:
     load the legacy config, open the transport, read and parse the report, scan, plan, execute, render. It maps
@@ -243,25 +305,33 @@ flowchart LR
     (an installed tool has no meaningful script folder).
   - The root `check_bios.py` becomes a 5-line shim. It prints a deprecation notice ("use `beck`") and calls
     `main(base_dir=<its own folder>)`, so old usage keeps working.
+  - Decode the report as stage 03 does: `decode("utf-8", errors="replace")`, because `read_bytes` returns raw bytes.
   - Port every stage 03 test to drive `cli.main` with `LocalTransport`, or a patched SMB transport where needed.
 - **Files:** `src/beck/cli.py`, `check_bios.py`, `tests/**`
 - **Done when:** All stage 03 regression tests pass through the new code path.
 - **Verify:** `uv run pytest -q`
 - **Commit message:** `refactor(cli): route all behavior through the beck package`
 
-### 04.14 — Remove legacy code and pysmb; strict typing everywhere
-- [ ] Done
-- **What:** Delete the legacy functions (only the shim stays in `check_bios.py`). Remove the mypy relaxed
-  override and the `pythonpath = ["."]` pytest setting. Point mypy `files` at `src` and `tests`. Regenerate
-  `requirements.txt`. Coverage `source = ["beck"]`.
-- **Files:** `check_bios.py`, `pyproject.toml`, `uv.lock`, `requirements.txt`
-- **Done when:** `mypy --strict` passes on all of `src/` with no overrides except third-party stubs, and pysmb is
-  gone from the lockfile.
-- **Verify:** `uv run mypy && uv run pytest --cov && ! grep -qi pysmb uv.lock`
-- **Commit message:** `refactor!: remove legacy script internals and pysmb`
+### 04.14 — Remove legacy code; strict typing everywhere
+- [x] Done (2026-11-04: an untyped function now fails `mypy` in `src`, `scripts` and the shim. Different from the list below:
+  mypy keeps checking `scripts/` and `check_bios.py` too, which is stricter than `src` and `tests` alone. The commit message
+  differs, because the legacy functions already went in 04.13, so this commit only changes settings. **For the changelog
+  (stage 10):** the breaking changes are in `40856f1` (04.13), whose message has no `!`: exit codes 2, 3 and 4 instead of
+  always 1, and `beck` finding files in the current folder. That pushed commit can't be rewritten, so the release notes must
+  say so.)
+- **What:** The legacy functions went in 04.13, so only the settings are left. Remove the mypy relaxed
+  override and the `pythonpath = ["."]` pytest setting. Point mypy `files` at `src` and `tests`. Coverage
+  `source = ["beck"]`. `pysmb` stays (DEC-53), so its import override stays, and no dependency changes.
+- **Files:** `pyproject.toml`
+- **Done when:** `mypy --strict` passes on all of `src/` with no overrides except third-party stubs.
+- **Verify:** `uv run mypy && uv run pytest --cov`
+- **Commit message:** `refactor!: remove legacy script internals`
 
 ### 04.15 — Close the stage
-- [ ] Done
+- [x] Done (2026-11-04: the acceptance criteria below hold, and `tests/unit/test_architecture.py` enforces the module rules.
+  `uv run beck` behaves like stage 03 **except** for the differences listed in 04.13. The stage scores 6/10, up from 5. The
+  stage 03 row's sum was corrected from 103 to 104, with its score unchanged. Draft PR #4 already exists, so the owner marks it
+  ready and merges it with a merge commit.)
 - **What:** Update AGENTS.md (repo map, architecture link, "the core is pure; adapters do I/O"). Re-score
   [00-assessment](00-assessment.md#re-scoring-history) and mark D3, D4, D11 and D16 fully fixed. Update the
   [README](README.md#stages) status. Push the closing commit (DEC-47). If the stage PR doesn't exist yet, print
@@ -279,7 +349,7 @@ flowchart LR
 ## Stage acceptance criteria
 - `uv run beck` behaves like the end of stage 03, and `python check_bios.py` still works through the shim.
 - No module except `cli.py` calls `sys.exit`; no core module imports a transport.
-- `mypy --strict` passes on `src/`; pysmb is gone; smbprotocol has been verified on a real device.
+- `mypy --strict` passes on `src/`; only `transports/smb.py` uses `pysmb` (DEC-53).
 
 ## Out of scope
 - New flags, `--json`, config precedence and TOML (stages 06–07); new frontends (stage 11).

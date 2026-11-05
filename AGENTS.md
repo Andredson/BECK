@@ -10,9 +10,9 @@ BECK (BIOS checker for Recalbox) matches a user's BIOS files against the MD5 has
 report that Recalbox generates, then copies the matching files, under the expected names, into the right
 folders on the Recalbox over SMB.
 
-**Status (2026-11-04):** prototype. The application is a single script, `check_bios.py`. Stage 03 fixed its known
-defects ([D1–D15, with D16 interim](roadmap/00-assessment.md#defects)), and it no longer deletes or renames local
-files. The repository around it has tooling and
+**Status (2026-11-04):** prototype, not published yet. The application is the `beck` package in `src/beck/`, with a pure
+core and adapters around it ([design](docs/ARCHITECTURE.md)). Its [known defects are fixed](roadmap/00-assessment.md#defects),
+and it never deletes or renames local files. The repository around it has tooling and
 CI (stage 02): lint, types, tests on Python 3.11–3.14, commit-message, secret and dependency checks. It is being improved stage by stage following
 [roadmap/README.md](roadmap/README.md). The target is an installable CLI `beck` published on PyPI as `beck-bios`.
 
@@ -20,12 +20,13 @@ CI (stage 02): lint, types, tests on Python 3.11–3.14, commit-message, secret 
 
 | Path | What it is |
 |---|---|
-| `check_bios.py` | The whole application today: SMB access, report parsing, hashing, matching, upload, output. |
+| `check_bios.py` | A deprecated shim: it prints a notice and runs `beck.cli.main` with its own folder, importing from `src/` so that the pip route works. |
+| `src/beck/` | The application ([design](docs/ARCHITECTURE.md)): `cli`, `models`, `hashing`, `matcher`, `executor`, `errors`, and `frontends/`, `transports/`, `output/`. `beck` finds `config/` and `bios/` in the current folder. |
 | `config/config.example.yml` | Example SMB settings (`user`, `passwd`, `server`, `port`) with empty credentials. Users copy it to `config/config.yml`, which is **gitignored** (step 03.2); never track or commit the real file. |
 | `bios/` | Input folder for the user's BIOS files. Everything except `bios/.keep` is gitignored. |
-| `pyproject.toml`, `uv.lock`, `.python-version` | Project metadata, runtime and dev dependencies, tool settings (ruff, mypy, pytest, coverage, commitizen), the lockfile, and Python 3.11 for local work. Managed with uv; `exclude-newer` is the 14-day cooldown (DEC-45). Not an installable package until stage 04 (`package = false`). |
+| `pyproject.toml`, `uv.lock`, `.python-version` | Project metadata, runtime and dev dependencies, tool settings (ruff, mypy, pytest, coverage, commitizen), the lockfile, and Python 3.11 for local work. Managed with uv; `exclude-newer` is the 14-day cooldown (DEC-45). The distribution is `beck-bios`, built with `uv_build` (DEC-18), and it installs the `beck` command. |
 | `requirements.txt` | Runtime dependencies for pip users, **generated** from `uv.lock` (see [Commands](#commands)). Don't edit it by hand; CI fails if it drifts. |
-| `tests/` | pytest suite: tests for each part of `check_bios.py` (config, SMB session, parser, hashing, scanner, matching, paths, non-destructive behavior), an import smoke test that blocks file and network access, the Markdown link checker, and tests for the hygiene guard and the workflow pins. `tests/fakes.py` is the in-memory SMB server the application tests use. `tests/fixtures/reports/` holds real and derived Recalbox reports, with provenance in `tests/fixtures/README.md`; the real report keeps its CRLF line endings byte-exact. |
+| `tests/` | pytest suite: `tests/unit/` has a test file per module, full runs through `cli.main` (`test_cli.py`), and the architecture rules checked on the source (`test_architecture.py`). `tests/` has the package and shim tests, the Markdown link checker, and tests for the hygiene guard and the workflow pins. `tests/fakes.py` is the in-memory SMB server the application tests use. `tests/fixtures/reports/` holds real and derived Recalbox reports, with provenance in `tests/fixtures/README.md`; the real report keeps its CRLF line endings byte-exact. |
 | `scripts/check_repo_hygiene.py` | Fails if git tracks BIOS/ROM-like files, files over 1 MiB, or config files (each allowed exception has a reason). |
 | `.github/workflows/ci.yml` | CI on every PR and push to `main`: `quality`, the `tests` matrix (Linux × Python 3.11–3.14; Windows and macOS removed, DEC-49) summarized by `tests-passed`, `commits`, `secrets`, `sca`. |
 | `.github/workflows/security.yml` | Weekly (Mondays 06:00 UTC): full-history secret scan and dependency scan. |
@@ -33,6 +34,8 @@ CI (stage 02): lint, types, tests on Python 3.11–3.14, commit-message, secret 
 | `.editorconfig`, `.gitattributes` | Editor settings; LF line endings in the repository. |
 | `roadmap/` | The improvement plan: [index and decision log](roadmap/README.md), [assessment](roadmap/00-assessment.md), one file per stage. |
 | `docs/agents.md` | Which AI agents were tested loading this file, and how to test another one. |
+| `docs/ARCHITECTURE.md` | [The design](docs/ARCHITECTURE.md): the core is pure and adapters do the I/O. Data flow, and the rules to keep, which `tests/unit/test_architecture.py` enforces. Read it before changing `src/beck/`. |
+| `docs/spikes/` | Results of technical experiments, such as [`smbprotocol` vs `pysmb`](docs/spikes/smbprotocol.md). |
 | `docs/maintenance.md` | [Monthly maintenance routine](docs/maintenance.md): dependency upgrades, pin refreshes, security review (replaces an update bot, DEC-29). Follow it when asked to update dependencies, or when the weekly *Security* run or an expired `.trivyignore` entry fails. |
 | `.github/pull_request_template.md` | PR description template with the roadmap checklist. Fill it in when preparing a PR description for the human. |
 | `docs/adr/` | [Architecture Decision Records](docs/adr/README.md): the reasoning and rejected alternatives behind every DEC. Read the relevant ADR before proposing to change a decision. |
@@ -48,9 +51,10 @@ Prerequisite: [uv](https://docs.astral.sh/uv/getting-started/installation/). It 
 uv sync                                       # create .venv with runtime and dev dependencies from uv.lock
 uv run ruff format .                          # format the code (CI runs `uv run ruff format --check .`)
 uv run ruff check .                           # lint, including the S security rules (DEC-32)
-uv run mypy                                   # type-check: strict, with a relaxed override for check_bios.py until step 04.14
+uv run mypy                                   # type-check: strict everywhere
 uv run pytest                                 # tests; they never touch the network or a device
 uv run python scripts/check_repo_hygiene.py   # no BIOS files, large files or tracked config files
+uv build                                      # build the wheel and sdist into dist/ (ignored by git)
 ```
 
 Before committing, this must pass; it's what the `quality` and `tests` CI jobs run:
@@ -59,7 +63,7 @@ Before committing, this must pass; it's what the `quality` and `tests` CI jobs r
 uv lock --check && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest && uv run python scripts/check_repo_hygiene.py
 ```
 
-- **After any change to dependencies**, regenerate the pip file: `uv export --no-dev --no-hashes -o requirements.txt`.
+- **After any change to dependencies**, regenerate the pip file: `uv export --no-dev --no-hashes --no-emit-project -o requirements.txt`.
   Adding a dependency needs a DEC first (see [Hard rules](#hard-rules)); `uv add` and `uv lock` respect the cooldown.
 - **The other CI checks**, if you have the tools installed (the pinned versions are in the `env:` block of
   `.github/workflows/ci.yml`; `X` below is `COMMITIZEN_VERSION`):
@@ -72,7 +76,7 @@ uv lock --check && uv run ruff check . && uv run ruff format --check . && uv run
   ```
 
 - **Updating dependencies or pins** follows [docs/maintenance.md](docs/maintenance.md).
-- `uv run python check_bios.py` connects to a **real Recalbox** over SMB and uploads files to it. Don't run it unless the human explicitly asks you to in this session.
+- `uv run python check_bios.py` and `uv run beck` connect to a **real Recalbox** over SMB and upload files to it. Don't run them unless the human explicitly asks you to in this session.
 
 ## Working on the roadmap (protocol)
 
@@ -145,12 +149,12 @@ skill below, **read its whole `SKILL.md` before acting** and follow it.
 
 ## Code style
 
-- Today: one script. Keep changes minimal and focused on the current step.
+- Keep changes minimal and focused on the current step.
 - Enforced by CI: `ruff format` and `ruff check` (including the `S` security rules), and `mypy` strict for new
   code. Also expected: type hints everywhere, `pathlib` for paths, no bare `except:`, and `sys.exit` only at the CLI
-  boundary. `check_bios.py` has a relaxed mypy override until step 04.14, and no ruff ignores. Don't add new ones.
-- From stage 04: pure core (`models`, `hashing`, `matcher`) with I/O only in adapters (`frontends/`,
-  `transports/`, `output/`). See `docs/ARCHITECTURE.md` once it exists.
+  boundary. There are no ruff or mypy exemptions for BECK's own code, only the mypy import override for `pysmb`. Don't add new ones.
+- Pure core (`models`, `hashing`, `matcher`) with device and network I/O only in adapters (`frontends/`,
+  `transports/`, `output/`). See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design and its rules.
 - MD5 is used to **identify** files, not for security: `hashlib.md5(..., usedforsecurity=False)`.
 
 ## Testing
@@ -160,7 +164,7 @@ skill below, **read its whole `SKILL.md` before acting** and follow it.
   to catch Windows-only bugs, e.g. assert that a file handle is closed rather than relying on Windows locking.
 - Application tests replace pysmb with the fake from `tests/fakes.py` (`install_fake_smb(monkeypatch)`, which also
   fails any real socket connection) and work in `tmp_path`, never in the repository folder.
-- From stage 03: every bug fix ships with a regression test. From stage 05: ≥ 90 % branch coverage on the
+- Every bug fix ships with a regression test. From stage 05: ≥ 90 % branch coverage on the
   package, plus integration tests against the Samba container (marked `integration`).
 - Tests never touch the network (except the local Samba container) and never use real BIOS content.
 
