@@ -150,32 +150,31 @@ Each feature below is independent and goes through the same sub-steps, using the
 
 ### 11.12 — Export: copy BIOS files from the target to this machine
 - [ ] Done
-- **Requested by the owner (2026-11-05):** a flag that gets all the BIOS files on the target system and copies them to the machine
-  running BECK, for example as a backup or to move to another device. It's the opposite direction to `check`.
-- **Research first:**
-  - **What counts as a BIOS file?** The report can't tell, because it only lists what's missing. On the Recalbox 10.1.1 VM, the `bios`
-    share has 3,108 files (317 MB), mostly `.ini`, `.png` and shaders, with about 230 `.rom` and `.bin` files. Options to present:
-    everything on the share, which is simple and complete; only what's listed in Recalbox's `es_bios.xml`, if it can be read (see
-    11.2), which is exact; or filters by name.
-  - **Which hashes can it verify?** Each copy can at least be compared with the device by size, and by MD5 if it's read back.
-- **Decide with the owner, and record a DEC:**
-  - **A flag or a command?** The owner asked for a flag. The design in `docs/cli.md` has `check`, which uploads, so `beck check --export DIR`
-    would make one command do opposite things; a `beck export` command would fit that design better. Present both.
-  - **Where do the files go, and how are they laid out?** Presumably a required `DIR`, keeping the target's folder layout.
-  - **What if a local file already exists?** Presumably never overwrite it by default (DEC-02), and report it.
-- **What:** New `Transport` operations, on both SMB and local targets, to list files recursively and to download them, with the same
-  path checks as uploads. Export only reads from the target, and never changes or deletes anything there. It supports `--dry-run`
-  and `--json`. One failed file is recorded and the run continues. **pysmb's timeout covers a whole file** (see 04.9), so check it with
-  large files on a slow network.
+- **Requested by the owner (2026-11-05):** a way to get the BIOS files on the target system and copy them to the machine running BECK,
+  for example as a backup or to move to another device. It's the opposite direction to `check`. The owner decided how it works
+  (DEC-57), so this feature's research and decision sub-steps are done.
+- **What:** A read-only command, `beck export DIR`:
+  - **What it copies:** every `.rom` or `.bin` file, in any case, anywhere under the target's BIOS root. It keeps the target's folder
+    layout under `DIR`.
+  - **If the local file exists:** skip it and report it. It never overwrites.
+  - **What it never does:** change or delete anything on the target.
+  - It supports `--target`, `--target-dir`, `--dry-run` and `--json`. One failed file is recorded and the run continues.
+  - New `Transport` operations, on both SMB and local targets, to list files recursively and to download them, with the same path
+    checks as uploads. A downloaded file's size is compared with the target's.
+  - **pysmb's timeout covers a whole file** (see 04.9), so check it with large files on a slow network.
+- **Say what's left out.** The rule doesn't cover every BIOS file (DEC-57): in the real Recalbox 10.1.1 report, 70 of 232 targets aren't
+  `.rom` or `.bin`, such as `neogeo.zip`, `atarist/tos.img` and the Amiga `kick*.A500` files. It also copies `.rom` and `.bin` files that
+  aren't BIOS files. The command's help and `docs/cli.md` must say so, and its output should say how many other files it left.
 - **Legal wording:** this is copying from the user's own device, not downloading from the internet, so it's in line with the project's
   rules. But the README's legal notice and AGENTS.md say BECK never downloads BIOS files, so reword them in the same change.
 - **Repository safety:** exported files are real BIOS files. If `DIR` is inside a git repository, warn, and don't count on anything
   but `bios/` being ignored. Tests use random bytes only.
 - **Files:** `src/beck/transports/`, `src/beck/cli.py`, `src/beck/output/`, `docs/cli.md`, `docs/schemas/`, `README.md`, `AGENTS.md`, tests
-- **Done when:** Unit and Samba integration tests cover a full export, nested folders, a dry run, an existing local file and a failed
-  file, with the target unchanged afterwards. The owner has run it against a device or the VM.
+- **Done when:** Unit and Samba integration tests cover a full export, mixed-case extensions, nested folders, other file types left
+  alone, a dry run, an existing local file and a failed file, with the target unchanged afterwards. The owner has run it against a
+  device or the VM.
 - **Verify:** `uv run pytest -q`, and the integration tests with the Samba test server.
-- **Commit message:** `feat(cli): export BIOS files from the target to this machine`
+- **Commit message:** `feat(cli): add an export command that copies BIOS files from the target`
 
 ## Stage acceptance criteria
 - Every chosen feature went through research → decision → implementation → docs, with fixtures from real data.

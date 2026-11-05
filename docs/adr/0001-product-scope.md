@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-02
-- **Decisions covered:** DEC-01, DEC-02, DEC-03, DEC-04, DEC-09, DEC-10, DEC-12, DEC-13, DEC-15, DEC-50, DEC-54, DEC-56
+- **Decisions covered:** DEC-01, DEC-02, DEC-03, DEC-04, DEC-09, DEC-10, DEC-12, DEC-13, DEC-15, DEC-50, DEC-54, DEC-56, DEC-57
 
 ## Context
 At the baseline review ([assessment](../../roadmap/00-assessment.md)), BECK was a 243-line script with an overall
@@ -130,3 +130,24 @@ differed from the recommendation.
   - *Delete only files BECK can recognize as junk*: safer, but BECK has no such list, and building one is real work. Not chosen.
 - **Consequences:** Step 06.6 implements the flag, and its plan output must make the risk plain. The risk stays for a user who confirms
   without reading.
+
+## DEC-57 — Exporting BIOS files from the target
+- **Date:** 2026-11-05 (step 11.12).
+- **Context:** The owner asked for a way to copy the BIOS files on a target to the machine running BECK. A report only lists what's
+  missing, so it can't say which files on the device are BIOS files. On a Recalbox 10.1.1 VM, the `bios` share has 3,108 files (317 MB),
+  mostly `.ini`, `.png` and shaders.
+- **Decision:**
+  - Every `.rom` or `.bin` file under the target's BIOS root counts as a BIOS file. On the VM, that's 232 files and 41.9 MB. The match
+    ignores case, which is the agent's reading, because real targets include names like `ATARIBAS.ROM`.
+  - It's a command, `beck export DIR`, not a flag. The owner first asked for a flag, and chose a command once the design showed that
+    `check --export` would make one command do opposite things.
+  - A file that already exists locally is skipped.
+- **Alternatives considered:**
+  - *Everything on the share*: simple and complete, but mostly not BIOS files. Not chosen.
+  - *Only what Recalbox's `es_bios.xml` lists*: exact, if it can be read, but needs research. Not chosen.
+  - *Filters by name*: not chosen.
+  - *`beck check --export DIR`*: not chosen, as above.
+- **Consequences:** The command leaves out BIOS files of other types: 70 of the 232 targets in the real report, such as `neogeo.zip`,
+  `atarist/tos.img` and the Amiga `kick*.A500` files. It also copies `.rom` and `.bin` files that aren't BIOS files. So it isn't a
+  complete backup of a device's BIOS files, and its help and output must say so. The owner gave these rules without further reason, after
+  seeing the file counts for the whole share. This entry's 70-of-232 figure was measured just afterwards.
