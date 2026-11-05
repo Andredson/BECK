@@ -366,6 +366,23 @@ def test_a_dry_run_says_what_it_would_replace_and_keep() -> None:
     assert "kept.bin: already on the device, kept -> kept.bin" in lines
 
 
+def test_deleted_files_are_listed_and_counted() -> None:
+    moved = upload(make_local_file("moved.bin", A), "x/moved.bin")
+    junk = make_local_file("junk.bin", B)
+    plan = Plan(uploads=(moved,), unmatched=(junk,))
+    result = RunResult(plan=plan, completed=(moved,), deleted=(moved.source, junk))
+
+    assert rendered(result) == [
+        "FOUND: moved.bin -> x/moved.bin",
+        "junk.bin: no match, deleted",
+        "moved.bin: copied -> x/moved.bin",
+        "moved.bin: deleted",
+        "Final result: 1/1 missing entries satisfied, 2 files analysed",
+        "Deleted 2 local files.",
+        "*** PLEASE SCAN THE BIOS ON YOUR RECALBOX ***",
+    ]
+
+
 def test_a_dry_run_says_what_would_happen() -> None:
     planned = upload(make_local_file("copy.bin", A), "a.bin")
     plan = Plan(uploads=(planned,), still_missing=(make_missing("b.bin", B),))

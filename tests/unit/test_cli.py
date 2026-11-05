@@ -381,6 +381,19 @@ def test_overwrite_with_no_local_files_still_reports_incorrect_files(
     assert "No BIOS files found" in output
 
 
+def test_a_normal_run_has_no_preview(server: FakeSMBServer, app: Path) -> None:
+    # A preview walks the listings a second time, so only a run that might delete has one.
+    data = write(app / "bios" / "copy.bin")
+    report(server, block("a.bin", md5_of(data)))
+
+    assert run(app) == 0
+    listings = server.connections[0].calls.count("listPath")
+
+    server.files.pop(("bios", "a.bin"))
+    assert cli.main(["check", "--move", "--yes"], base_dir=app) == 0
+    assert server.connections[1].calls.count("listPath") == listings
+
+
 def test_a_file_already_on_the_device_is_kept_and_exits_0(
     server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

@@ -274,6 +274,57 @@ def test_end_to_end_an_unreadable_file_doesnt_stop_the_upload(
     assert captured.err == ""
 
 
+def test_end_to_end_a_dry_run_changes_nothing_on_the_server(
+    samba: Samba,
+    app: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    file = make_bios_file(app / "bios", "copy.bin")
+    target = folder / "ps1" / "a.bin"
+    put_report(make_report_text([make_missing(target.as_posix(), file.md5)]))
+    before = snapshot(app / "bios")
+
+    assert cli.main(["check", "--dry-run", "--move"], base_dir=app) == 0
+
+    assert snapshot(app / "bios") == before
+    with samba.guest() as transport:
+        assert not transport.exists(folder)
+    assert f"copy.bin: would copy -> {target}" in capsys.readouterr().out
+
+
+def test_end_to_end_move_checks_the_size_on_a_real_server_then_deletes(
+    samba: Samba, app: Path, folder: PurePosixPath, put_report: PutReport
+) -> None:
+    file = make_bios_file(app / "bios", "copy.bin", os.urandom(3 * 1024 * 1024))
+    data = file.path.read_bytes()
+    first, second = folder / "a" / "x.bin", folder / "b" / "y.bin"
+    entries = [make_missing(first.as_posix(), file.md5), make_missing(second.as_posix(), file.md5)]
+    put_report(make_report_text(entries))
+
+    assert cli.main(["check", "--move", "--yes"], base_dir=app) == 0
+
+    assert not file.path.exists()
+    with samba.guest() as transport:
+        assert transport.read_bytes(first) == data
+        assert transport.read_bytes(second) == data
+
+
+def test_end_to_end_move_keeps_a_file_when_the_read_only_share_refuses(
+    samba: Samba, tmp_path: Path
+) -> None:
+    file = make_bios_file(tmp_path, "copy.bin")
+    built = plan([make_missing("x.bin", file.md5)], scan(tmp_path).files)
+
+    with samba.guest("readonly") as transport:
+        result = execute(built, transport, dry_run=False, move=True)
+
+    assert file.path.exists()
+    assert result.deleted == ()
+    assert [error.item for error in result.errors] == ["x.bin"]
+
+
 def test_end_to_end_with_a_target_url_and_no_config(
     samba: Samba, tmp_path: Path, folder: PurePosixPath, put_report: PutReport
 ) -> None:

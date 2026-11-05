@@ -3,6 +3,7 @@
 import argparse
 import logging
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +16,7 @@ from beck.frontends import get_adapter
 from beck.frontends.base import FrontendAdapter
 from beck.hashing import scan
 from beck.matcher import plan
-from beck.models import MissingBios
+from beck.models import MissingBios, RunResult
 from beck.output.console import LOGGER_NAME, ConsoleRenderer, configure_logging
 from beck.targets import URL_FORM, parse_smb_url
 from beck.transports.base import Transport
@@ -117,6 +118,18 @@ def _source_folder(args: argparse.Namespace, base_dir: Path) -> Path:
     return source
 
 
+def _confirm_deletion(preview: RunResult, renderer: ConsoleRenderer) -> None:
+    """Ask before deleting. Without a terminal to ask on, deleting needs --yes."""
+    count = len(preview.deleted)
+    if not sys.stdin.isatty():
+        raise UsageError(
+            f"BECK would delete {count} local files, and can't ask here. Nothing was changed. "
+            "To see them, use --dry-run. To confirm, use --yes."
+        )
+    if not renderer.confirm_deletion(preview):
+        raise UsageError("Nothing was changed, because you didn't confirm the deletion.")
+
+
 def _run_check(args: argparse.Namespace, base_dir: Path, renderer: ConsoleRenderer) -> int:
     source = _source_folder(args, base_dir)
     adapter = get_adapter(args.frontend)
@@ -147,7 +160,20 @@ def _run_check(args: argparse.Namespace, base_dir: Path, renderer: ConsoleRender
         renderer.files_found(len(scanned.files))
 
         built = plan(entries, scanned.files, replace_incorrect=args.overwrite)
-        result = execute(built, transport, dry_run=False, overwrite=args.overwrite)
+        options = {
+            "overwrite": args.overwrite,
+            "move": args.move,
+            "clean_unmatched": args.clean_unmatched,
+        }
+        if args.dry_run:
+            result = execute(built, transport, dry_run=True, **options)
+        else:
+            if (args.move or args.clean_unmatched) and not args.yes:
+                # The preview only reads, so that a refusal leaves everything as it was.
+                preview = execute(built, transport, dry_run=True, **options)
+                if preview.deleted:
+                    _confirm_deletion(preview, renderer)
+            result = execute(built, transport, dry_run=False, **options)
 
     if args.overwrite:
         renderer.incorrect(list(result.plan.incorrect))
@@ -224,6 +250,24 @@ def _build_parser() -> argparse.ArgumentParser:
                 help="replace files already on the device, even ones the report calls INCORRECT",
             )
             command.add_argument(
+                "--dry-run",
+                action="store_true",
+                help="show the plan, including what would be deleted, and change nothing",
+            )
+            command.add_argument(
+                "--move",
+                action="store_true",
+                help="delete a local file once it's uploaded to all its targets and sizes match",
+            )
+            command.add_argument(
+                "--clean-unmatched",
+                action="store_true",
+                help="delete local files the current report doesn't ask for (read docs/cli.md)",
+            )
+            command.add_argument(
+                "--yes", action="store_true", help="confirm deletions without asking"
+            )
+            command.add_argument(
                 "--frontend",
                 default=DEFAULT_FRONTEND,
                 metavar="NAME",
@@ -239,6 +283,10 @@ def _build_parser() -> argparse.ArgumentParser:
         source=None,
         report_file=None,
         overwrite=False,
+        dry_run=False,
+        move=False,
+        clean_unmatched=False,
+        yes=False,
     )
     return parser
 

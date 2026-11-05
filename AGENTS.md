@@ -122,7 +122,7 @@ uv lock --check && uv run ruff check . && uv run ruff format --check . && uv run
   output. Reports used as fixtures must be anonymized. Fake test credentials must look obviously fake (e.g.
   `beck-test-password`).
 - **Non-destructive by default (DEC-02).** Code you write must never delete or rename a user's local file
-  unless an explicit opt-in flag asks for it. Files on the device are kept unless `--overwrite` is passed (DEC-61).
+  unless an explicit opt-in flag asks for it, and only `executor.py` may delete (a test enforces this). Files on the device are kept unless `--overwrite` is passed (DEC-61).
 - **No real devices without explicit OK.** Don't connect to a real Recalbox or SMB server unless the human asks
   in this session. Use the local transport, fakes, or the Samba test container (stage 05).
 - **No silent tools or dependencies.** Don't add a library, tool, service, GitHub Action or bot that isn't in the

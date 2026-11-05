@@ -19,6 +19,12 @@ CYAN = "\033[36m"
 
 LOGGER_NAME = "beck"
 
+# DEC-56: the risk of --clean-unmatched, wherever it's about to delete something.
+UNMATCHED_WARNING = (
+    "These files aren't in the current report. That doesn't mean they're junk: after an upload and "
+    "a rescan, your good BIOS files aren't in it either."
+)
+
 
 def configure_logging(level: int = logging.WARNING) -> logging.Logger:
     """Send BECK's diagnostics to stderr, so that stdout only has the human output."""
@@ -54,6 +60,10 @@ def wants_color(stream: TextIO, environ: Mapping[str, str]) -> bool:
         enable_windows_ansi()
         return True
     return stream.isatty() and enable_windows_ansi()
+
+
+def _deletes_unmatched(result: RunResult) -> bool:
+    return any(file in result.plan.unmatched for file in result.deleted)
 
 
 def _distinct_targets(result: RunResult) -> int:
@@ -100,6 +110,15 @@ class ConsoleRenderer:
 
     def error(self, message: object) -> None:
         self._print(f"{self._paint('Error', RED)}: {message}")
+
+    def confirm_deletion(self, preview: RunResult) -> bool:
+        """List what would be deleted, and ask. On stderr, so that stdout stays the result."""
+        for file in preview.deleted:
+            print(f"  {file.relative.as_posix()}", file=sys.stderr)
+        if _deletes_unmatched(preview):
+            print(UNMATCHED_WARNING, file=sys.stderr)
+        print(f"Delete {len(preview.deleted)} files? [y/N] ", end="", file=sys.stderr, flush=True)
+        return sys.stdin.readline().strip().lower() in ("y", "yes")
 
     def unreadable(self, items: tuple[Unreadable, ...]) -> None:
         """Local files and folders that couldn't be read. The run carries on without them."""
@@ -155,6 +174,7 @@ class ConsoleRenderer:
         failed = {error.item for error in result.errors}
         kept = {upload.target for upload in result.kept}
         replaced = {upload.target for upload in result.replaced}
+        gone = "would be deleted" if result.dry_run else "deleted"
         duplicate_of = {duplicate.file: duplicate.of for duplicate in plan.duplicates}
         lines = []
 
@@ -172,6 +192,8 @@ class ConsoleRenderer:
                     lines.append(
                         f"{path}: valid for {targets}, which is incorrect on the device, kept"
                     )
+                elif file in result.deleted:
+                    lines.append(f"{path}: no match, {gone}")
                 else:
                     lines.append(f"{path}: no match, kept")
             for upload in uploads:
@@ -188,10 +210,14 @@ class ConsoleRenderer:
                 else:
                     outcome = "skipped"
                 lines.append(f"{path}: {outcome} -> {upload.target}")
+            if uploads and file in result.deleted:
+                lines.append(f"{path}: {gone}")
 
         return lines
 
     def _summary(self, result: RunResult) -> None:
+        if _deletes_unmatched(result) and result.dry_run:
+            self._print(UNMATCHED_WARNING)
         files = len(_files_analysed(result))
         total = self._paint(_distinct_targets(result), BLUE)
         if result.dry_run:
@@ -200,10 +226,14 @@ class ConsoleRenderer:
                 f"Dry run: {would}/{total} missing entries would be satisfied, "
                 f"{files} files analysed"
             )
+            if result.deleted:
+                self._print(f"Dry run: would delete {len(result.deleted)} local files")
             return
         done = self._paint(len(result.completed), GREEN)
         self._print(
             f"Final result: {done}/{total} missing entries satisfied, {files} files analysed"
         )
+        if result.deleted:
+            self._print(f"Deleted {len(result.deleted)} local files.")
         if result.completed:
             self._print(self._paint("*** PLEASE SCAN THE BIOS ON YOUR RECALBOX ***", MAGENTA))

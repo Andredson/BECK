@@ -1,22 +1,87 @@
-"""Apply a Plan through a Transport. It never deletes or renames a local file (DEC-02)."""
+"""Apply a Plan through a Transport. Only this module deletes local files, and only on request."""
 
 from pathlib import PurePosixPath
 
 from beck.errors import TransportError
-from beck.models import ItemError, Plan, PlannedUpload, RunResult
+from beck.models import ItemError, LocalFile, Plan, PlannedUpload, RunResult
 from beck.transports.base import Transport
 
 
+def _size_matches(upload: PlannedUpload, transport: Transport, errors: list[ItemError]) -> bool:
+    """Whether the file on the target has the local file's size. A failure counts as no."""
+    item = upload.target.as_posix()
+    try:
+        size = transport.size(upload.target)
+    except TransportError as e:
+        errors.append(ItemError(item=item, message=str(e)))
+        return False
+    if size != upload.source.size:
+        errors.append(
+            ItemError(
+                item=item,
+                message=f"{item} has {size} bytes on the target, not {upload.source.size}, "
+                f"so {upload.source.relative} wasn't deleted",
+            )
+        )
+        return False
+    return True
+
+
+def _files_to_move(
+    plan: Plan,
+    transport: Transport,
+    *,
+    dry_run: bool,
+    done: set[PlannedUpload],
+    errors: list[ItemError],
+) -> list[LocalFile]:
+    """Files uploaded to all their targets. In a real run, each remote size must match too."""
+    files = []
+    for file in dict.fromkeys(upload.source for upload in plan.uploads):
+        uploads = [upload for upload in plan.uploads if upload.source == file]
+        if not all(upload in done for upload in uploads):
+            continue
+        if dry_run or all(_size_matches(upload, transport, errors) for upload in uploads):
+            files.append(file)
+    return files
+
+
+def _files_to_clean(plan: Plan) -> list[LocalFile]:
+    """Files that matched nothing, except one that's valid for a target listed as incorrect."""
+    valid_for_incorrect = {md5 for entry in plan.incorrect for md5 in entry.md5s}
+    return [file for file in plan.unmatched if file.md5 not in valid_for_incorrect]
+
+
+def _delete(file: LocalFile, errors: list[ItemError]) -> bool:
+    try:
+        file.path.unlink()
+    except OSError as e:
+        item = file.relative.as_posix()
+        errors.append(ItemError(item=item, message=f"Couldn't delete {item}: {e.strerror}"))
+        return False
+    return True
+
+
 def execute(
-    plan: Plan, transport: Transport, *, dry_run: bool, overwrite: bool = False
+    plan: Plan,
+    transport: Transport,
+    *,
+    dry_run: bool,
+    overwrite: bool = False,
+    move: bool = False,
+    clean_unmatched: bool = False,
 ) -> RunResult:
-    """Create the folders, then upload. A failed item is recorded, and the run continues.
+    """Create the folders, upload, then delete what was asked. A failed item is recorded.
 
     A file already on the target is kept, unless ``overwrite`` asks to replace it (DEC-61).
 
-    A dry run only checks what's on the target, and every upload it would make counts as skipped.
-    An upload whose folder couldn't be created is skipped too. Only a TransportError counts as an
-    item failure: anything else is a bug, and stops the run.
+    ``move`` deletes a local file once it's uploaded to all its targets and each remote size
+    matches. ``clean_unmatched`` deletes local files that matched nothing, but not after any failure
+    in this run. Without these flags, nothing local is ever deleted or renamed (DEC-02).
+
+    A dry run only checks what's on the target: every upload it would make counts as skipped, and
+    ``deleted`` has what it would delete. An upload whose folder couldn't be created is skipped too.
+    Only a TransportError counts as an item failure: anything else is a bug, and stops the run.
     """
     errors: list[ItemError] = []
     failed_folders: set[PurePosixPath] = set()
@@ -51,6 +116,14 @@ def execute(
         except TransportError as e:
             errors.append(ItemError(item=upload.target.as_posix(), message=str(e)))
 
+    to_delete: list[LocalFile] = []
+    if move:
+        done = set(skipped if dry_run else completed)
+        to_delete += _files_to_move(plan, transport, dry_run=dry_run, done=done, errors=errors)
+    if clean_unmatched and not errors:
+        to_delete += _files_to_clean(plan)
+    deleted = [file for file in to_delete if dry_run or _delete(file, errors)]
+
     return RunResult(
         plan=plan,
         completed=tuple(completed),
@@ -59,4 +132,5 @@ def execute(
         dry_run=dry_run,
         kept=tuple(kept),
         replaced=tuple(replaced),
+        deleted=tuple(deleted),
     )

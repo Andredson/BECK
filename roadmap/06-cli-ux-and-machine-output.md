@@ -146,7 +146,12 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `feat(executor): apply the agreed policy for existing remote files`
 
 ### 06.6 — Safety flags: `--dry-run`, `--move`, `--clean-unmatched`, `--yes`
-- [ ] Done
+- [x] Done (2026-11-05: a read-only preview decides what would go, and the prompt or refusal comes **before any upload**, so answering no
+  changes nothing on either side. Beyond the list below, all erring towards keeping files: `--move` keeps a file with a target that was
+  already on the device, because nothing proves that copy is good; `--clean-unmatched` deletes nothing after any failure in the run, or
+  when the report lists nothing missing; a file that can't be deleted is recorded and exits with 3. A test checks on the source that only
+  `executor.py` deletes and nothing renames. Prompts go to stderr. The DEC-56 warning appears in the dry run and the prompt. Tested with
+  real files, and through a real Samba server. Checked by breaking each rule on purpose.)
 - **What:**
   - `--dry-run`: build and show the full plan, including what *would* be deleted, and change nothing.
   - `--move`: after a file has been uploaded to **all** of its targets **and** each remote size matches, delete

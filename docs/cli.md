@@ -3,8 +3,8 @@
 The reference for using BECK from the command line.
 
 **Status:** this is the design [stage 06](../roadmap/06-cli-ux-and-machine-output.md) is building, so most of it doesn't exist yet.
-Today, `beck check` and `beck report` work with the options under [Choosing what BECK works on](#choosing-what-beck-works-on), and
-`--version` and `--no-color` work. `beck scan` only says it isn't available yet. The rest arrives in later steps of the stage.
+Today, `beck check` and `beck report` work with the options under [Choosing what BECK works on](#choosing-what-beck-works-on), the
+[safety options](#safety) work except `--fail-if-missing`, and `--version` and `--no-color` work. `beck scan` only says it isn't available yet. The rest arrives in later steps of the stage.
 
 ```text
 beck [--version] [-v | -q] [--no-color] [--json] <command> [options]
@@ -95,7 +95,7 @@ With no target, BECK uses the settings in `config/config.yml`.
 
 Without `--move` or `--clean-unmatched`, BECK never deletes or renames a local file (DEC-02).
 
-With either of them, BECK lists the files and asks `Delete N files? [y/N]` on a terminal. Without a terminal, as in scripts, agents and
+With either of them, BECK lists the files and asks `Delete N files? [y/N]` on a terminal, on stderr. Without a terminal, as in scripts, agents and
 CI, deleting requires `--yes`, and otherwise BECK exits with 2. `--json` never prompts, so it requires `--yes` too. A dry run deletes
 nothing, even with these flags, and shows what would go. Every deletion is listed in the result.
 
@@ -104,7 +104,13 @@ These are never deleted:
 - duplicates: they're kept and reported;
 - files whose targets are already filled;
 - hidden files, because they aren't scanned;
-- a file that's valid for a target listed as `INCORRECT`, because it's the fix for that file.
+- a file that's valid for a target listed as `INCORRECT`, because it's the fix for that file;
+- with `--move`, a file with a target that was already on the device and kept, because nothing proves that copy is good, or a file with
+  any failed upload or a size that doesn't match;
+- with `--clean-unmatched`, anything at all if something failed in the run, or if the report lists nothing missing.
+
+BECK asks before uploading anything, so answering no leaves everything as it was, on both sides. Any answer but `y` or `yes` counts as
+no, and BECK exits with 2.
 
 > [!WARNING]
 > "Unmatched" only means that the **current report** doesn't ask for that file. After you upload your files and scan again on the

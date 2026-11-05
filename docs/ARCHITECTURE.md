@@ -95,8 +95,8 @@ These are the boundaries to keep when changing the code:
 3. **Only adapters know about devices.** Recalbox paths and report formats stay in `frontends/`, and SMB stays in
    `transports/`. Only `transports/smb.py` imports `pysmb`.
 4. **`executor` depends on the `Transport` Protocol**, never on a specific transport.
-5. **Never delete or rename a user's local file** without an explicit opt-in flag (DEC-02). Those flags arrive in stage
-   06.
+5. **Never delete or rename a user's local file** without an explicit opt-in flag (DEC-02). Only `executor.py` deletes, and nothing
+   renames, which a test checks on the source.
 6. **Secrets don't leave the transport.** `Transport.describe()` is for messages and never includes a password.
 7. **Output goes to its own stream.** Human output goes to stdout, and logs from `logging.getLogger("beck")` go to stderr.
 
