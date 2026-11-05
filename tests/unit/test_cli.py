@@ -662,6 +662,169 @@ def test_no_color_works_before_or_after_the_command(
     assert "\033[" not in capsys.readouterr().out
 
 
+# Choosing a target
+
+
+def test_target_url_is_used_instead_of_the_config(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write(app / "config" / "config.yml", ACCOUNT.encode())
+    data = write(app / "bios" / "copy.bin")
+    report(server, block("a.bin", md5_of(data), folder="ps1/"))
+
+    assert cli.main(["check", "--target", "smb://other-host:4450/bios"], base_dir=app) == 0
+
+    conn = server.connections[0]
+    assert conn.remote_name == "other-host"
+    assert server.files[("bios", "ps1/a.bin")] == data
+    assert "beck-test-password" not in "".join(capsys.readouterr())
+
+
+def test_the_password_in_the_config_never_goes_to_a_target_url(
+    server: FakeSMBServer, app: Path
+) -> None:
+    # Sending it to whatever host the flag names would leak it.
+    write(app / "config" / "config.yml", ACCOUNT.encode())
+    report(server, "MISSING BIOS REPORT\n")
+
+    assert cli.main(["check", "--target", "smb://beck-test-user@evil/bios"], base_dir=app) == 0
+
+    assert server.connections[0].username == "beck-test-user"
+    assert server.connections[0].password == ""
+
+
+def test_target_url_works_with_no_config_file(server: FakeSMBServer, tmp_path: Path) -> None:
+    (tmp_path / "bios").mkdir()
+    report(server, "MISSING BIOS REPORT\n")
+
+    assert cli.main(["check", "--target", "smb://host/bios"], base_dir=tmp_path) == 0
+
+
+def test_a_target_with_a_sub_path_reads_and_writes_inside_it(
+    server: FakeSMBServer, app: Path
+) -> None:
+    data = write(app / "bios" / "copy.bin")
+    server.shares = ("share",)
+    server.dirs.add(("share", "bios"))
+    server.files[("share", "bios/missing_bios_report.txt")] = block(
+        "a.bin", md5_of(data), folder="ps1/"
+    ).encode()
+
+    assert cli.main(["check", "--target", "smb://host/share/bios"], base_dir=app) == 0
+
+    assert server.files[("share", "bios/ps1/a.bin")] == data
+
+
+def test_a_password_in_the_target_exits_2_and_is_never_printed(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    url = "smb://beck:beck-test-password@host/bios"
+
+    assert cli.main(["check", "--target", url], base_dir=app) == 2
+
+    captured = capsys.readouterr()
+    assert "can't contain a password" in captured.out
+    assert "beck-test-password" not in captured.out + captured.err
+    assert server.connections == []
+
+
+def test_both_target_flags_exit_2(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    arguments = ["check", "--target", "smb://host/bios", "--target-dir", str(app)]
+
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(arguments, base_dir=app)
+
+    assert exit_info.value.code == 2
+    assert "not allowed with argument" in capsys.readouterr().err
+    assert server.connections == []
+
+
+def test_an_unknown_frontend_exits_2_and_lists_the_known_ones(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert cli.main(["check", "--frontend", "batocera"], base_dir=app) == 2
+
+    output = capsys.readouterr().out
+    assert "Unknown frontend 'batocera'" in output
+    assert "recalbox" in output
+    assert server.connections == []
+
+
+def test_the_known_frontend_can_be_named(server: FakeSMBServer, app: Path) -> None:
+    report(server, "MISSING BIOS REPORT\n")
+
+    assert cli.main(["check", "--frontend", "recalbox"], base_dir=app) == 0
+
+
+@pytest.fixture
+def device(tmp_path: Path) -> Path:
+    """A folder standing in for a mounted SD card."""
+    folder = tmp_path / "sdcard"
+    folder.mkdir()
+    return folder
+
+
+def test_target_dir_copies_files_to_a_folder_with_no_smb(
+    app: Path, device: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(cli, "SmbTransport", forbidden)
+    data = write(app / "bios" / "copy.bin")
+    write(
+        device / "missing_bios_report.txt", block("a.bin", md5_of(data), folder="ps1/x/").encode()
+    )
+    before = snapshot(app / "bios")
+
+    assert cli.main(["check", "--target-dir", str(device)], base_dir=app) == 0
+
+    assert (device / "ps1" / "x" / "a.bin").read_bytes() == data
+    assert snapshot(app / "bios") == before
+    assert (
+        "Final result: 1/1 missing entries satisfied, 1 files analysed" in capsys.readouterr().out
+    )
+
+
+def test_target_dir_with_no_report_is_exit_4(
+    app: Path, device: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert cli.main(["check", "--target-dir", str(device)], base_dir=app) == 4
+
+    assert f"not found on local folder {device.resolve()}" in capsys.readouterr().out
+
+
+def test_a_missing_target_dir_is_exit_3(
+    app: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    missing = tmp_path / "no-such-folder"
+
+    assert cli.main(["check", "--target-dir", str(missing)], base_dir=app) == 3
+
+    assert "doesn't exist" in capsys.readouterr().out
+
+
+def test_target_dir_needs_no_config_file(device: Path, tmp_path: Path) -> None:
+    write(device / "missing_bios_report.txt", b"MISSING BIOS REPORT\n")
+
+    assert cli.main(["check", "--target-dir", str(device)], base_dir=tmp_path) == 0
+
+
+def test_report_accepts_the_target_options(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        cli.main(["report", "--help"])
+
+    output = capsys.readouterr().out
+    assert "--target URL" in output
+    assert "--target-dir DIR" in output
+
+
+def test_scan_has_no_target_options(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["scan", "--target", "smb://host/bios"])
+
+    assert exit_info.value.code == 2
+
+
 # Every way out of cli.main, by exit code
 
 

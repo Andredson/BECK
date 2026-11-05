@@ -3,8 +3,8 @@
 The reference for using BECK from the command line.
 
 **Status:** this is the design [stage 06](../roadmap/06-cli-ux-and-machine-output.md) is building, so most of it doesn't exist yet.
-Today, `beck check` runs with the defaults below and reads its settings from `config/config.yml` in the current folder, and `--version`
-and `--no-color` work. `beck scan` and `beck report` only say they aren't available yet.
+Today, `beck check` runs with `--target`, `--target-dir` and `--frontend`, or reads its settings from `config/config.yml` in the
+current folder, and `--version` and `--no-color` work. `beck scan` and `beck report` only say they aren't available yet.
 
 ```text
 beck [--version] [-v | -q] [--no-color] [--json] <command> [options]
@@ -72,7 +72,7 @@ Colors follow `NO_COLOR`, then `FORCE_COLOR`, and otherwise appear only on a ter
 | Option | Commands | What it does |
 |---|---|---|
 | `--source DIR` | `check`, `scan` | Your folder of BIOS files. The default is `./bios`. Hidden files and folders are skipped. |
-| `--target URL` | `check`, `report` | An SMB target: `smb://[user@]host[:port]/share[/sub/path]`. The port defaults to 445. A URL with a password is refused. |
+| `--target URL` | `check`, `report` | An SMB target: `smb://[user@]host[:port]/share[/sub/path]`. The port defaults to 445. A URL with a password is refused, and the password in `config/config.yml` isn't used, so this means guest access until stage 07 adds passwords for targets. |
 | `--target-dir DIR` | `check`, `report` | A folder: a mounted SD card or USB drive, or the device itself. It can't be combined with `--target`. |
 | `--frontend NAME` | `check` | The kind of device. Only `recalbox`, for now. |
 | `--report-file FILE` | `check`, `report` | Reads a local copy of the report, not the one on the target. |

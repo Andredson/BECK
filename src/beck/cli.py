@@ -15,6 +15,9 @@ from beck.frontends import get_adapter
 from beck.hashing import scan
 from beck.matcher import plan
 from beck.output.console import LOGGER_NAME, ConsoleRenderer, configure_logging
+from beck.targets import URL_FORM, parse_smb_url
+from beck.transports.base import Transport
+from beck.transports.local import LocalTransport
 from beck.transports.smb import SmbTransport
 
 DESCRIPTION = "Match your BIOS files by MD5 and send them to the right folder on your Recalbox."
@@ -35,6 +38,7 @@ COMMANDS = {
 }
 
 SMB_SETTINGS = ("server", "port", "user", "passwd")
+DEFAULT_FRONTEND = "recalbox"
 
 
 def load_legacy_config(file: Path) -> dict[str, Any]:
@@ -59,18 +63,32 @@ def load_legacy_config(file: Path) -> dict[str, Any]:
     return settings
 
 
-def _run(base_dir: Path, renderer: ConsoleRenderer) -> int:
+def _open_target(args: argparse.Namespace, base_dir: Path) -> Transport:
+    """The transport for the chosen target. With none chosen, it comes from the config file."""
+    if args.target_dir is not None:
+        return LocalTransport(Path(args.target_dir))
+    if args.target is not None:
+        target = parse_smb_url(args.target)
+        # No password: the one in the config file belongs to its own server, and sending it to
+        # whatever host this flag names would leak it. Stage 07 adds passwords for targets.
+        return SmbTransport(
+            target.host, target.port, target.share, target.user, "", root=target.root
+        )
     settings = load_legacy_config(base_dir / "config" / "config.yml")
-    bios_dir = base_dir / "bios"
-    adapter = get_adapter("recalbox")
-
-    with SmbTransport(
+    return SmbTransport(
         host=settings["server"],
         port=settings["port"],
         share="bios",
         user=settings["user"],
         password=settings["passwd"],
-    ) as transport:
+    )
+
+
+def _run(args: argparse.Namespace, base_dir: Path, renderer: ConsoleRenderer) -> int:
+    bios_dir = base_dir / "bios"
+    adapter = get_adapter(args.frontend)
+
+    with _open_target(args, base_dir) as transport:
         if not transport.exists(adapter.report_path):
             raise ReportNotFoundError(
                 f"{adapter.report_path} not found on {transport.describe()}. "
@@ -114,6 +132,16 @@ def _add_global_options(parser: argparse.ArgumentParser, *, on_a_command: bool) 
     )
 
 
+def _add_target_options(parser: argparse.ArgumentParser) -> None:
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--target", metavar="URL", help=f"an SMB target: {URL_FORM}")
+    group.add_argument(
+        "--target-dir",
+        metavar="DIR",
+        help="a folder: a mounted SD card or USB drive, or the device itself",
+    )
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="beck",
@@ -133,6 +161,16 @@ def _build_parser() -> argparse.ArgumentParser:
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
         _add_global_options(command, on_a_command=True)
+        if name in ("check", "report"):
+            _add_target_options(command)
+        if name == "check":
+            command.add_argument(
+                "--frontend",
+                default=DEFAULT_FRONTEND,
+                metavar="NAME",
+                help=f"the kind of device (default: {DEFAULT_FRONTEND})",
+            )
+    parser.set_defaults(target=None, target_dir=None, frontend=DEFAULT_FRONTEND)
     return parser
 
 
@@ -151,7 +189,7 @@ def main(argv: list[str] | None = None, *, base_dir: Path | None = None) -> int:
     try:
         if args.command in ("scan", "report"):
             raise UsageError(f"beck {args.command} isn't available yet")
-        return _run(Path.cwd() if base_dir is None else base_dir, renderer)
+        return _run(args, Path.cwd() if base_dir is None else base_dir, renderer)
     except BeckError as error:
         renderer.error(error)
         return error.exit_code

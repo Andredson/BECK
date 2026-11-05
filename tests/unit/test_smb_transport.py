@@ -369,6 +369,39 @@ def test_makedirs_with_a_file_in_the_way_is_a_transport_error(server: FakeSMBSer
         opened.makedirs(PurePosixPath("a/b"))
 
 
+def test_a_root_folder_applies_to_every_operation(server: FakeSMBServer, tmp_path: Path) -> None:
+    # smb://recalbox/share/bios: the BIOS folder is a folder inside the share.
+    server.dirs.update({("bios", "share"), ("bios", "share/inner")})
+    server.files[("bios", "share/inner/report.txt")] = b"report"
+    transport = SmbTransport(
+        "beck-test-server", 445, "bios", "", "", root=PurePosixPath("share/inner")
+    )
+
+    with transport as opened:
+        assert opened.read_bytes(PurePosixPath("report.txt")) == b"report"
+        assert opened.size(PurePosixPath("report.txt")) == 6
+        assert opened.exists(PurePosixPath("report.txt"))
+        assert not opened.exists(PurePosixPath("share"))
+        opened.makedirs(PurePosixPath("ps1"))
+        opened.upload(local_file(tmp_path, b"data"), PurePosixPath("ps1/a.bin"))
+
+    assert server.files[("bios", "share/inner/ps1/a.bin")] == b"data"
+    assert ("bios", "ps1") not in server.dirs
+
+
+def test_makedirs_creates_a_missing_root_folder(server: FakeSMBServer) -> None:
+    with SmbTransport("beck-test-server", 445, "bios", "", "", root=PurePosixPath("a/b")) as opened:
+        opened.makedirs(PurePosixPath("c"))
+
+    assert ("bios", "a/b/c") in server.dirs
+
+
+def test_describe_shows_the_root_folder(server: FakeSMBServer) -> None:
+    transport = SmbTransport("beck-test-server", 445, "bios", "", "", root=PurePosixPath("a/b"))
+
+    assert transport.describe() == "SMB share bios/a/b on beck-test-server:445"
+
+
 def test_describe_never_includes_the_credentials(server: FakeSMBServer) -> None:
     with transport() as opened:
         description = opened.describe()

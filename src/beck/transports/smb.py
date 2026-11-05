@@ -12,6 +12,7 @@ from smb.smb_structs import OperationFailure
 from smb.SMBConnection import SMBConnection
 
 from beck.errors import TransportError
+from beck.models import SHARE_ROOT
 
 
 @contextmanager
@@ -39,7 +40,14 @@ class SmbTransport:
     """One connection to one share for the whole run. It connects once and always closes."""
 
     def __init__(
-        self, host: str, port: int, share: str, user: str, password: str, timeout: float = 30
+        self,
+        host: str,
+        port: int,
+        share: str,
+        user: str,
+        password: str,
+        timeout: float = 30,
+        root: PurePosixPath = SHARE_ROOT,
     ) -> None:
         self.host = host
         self.port = port
@@ -47,6 +55,7 @@ class SmbTransport:
         self.user = user
         self.password = password
         self.timeout = timeout
+        self.root = root  # the BIOS folder, relative to the share
         self._conn: Any = None
 
     def __enter__(self) -> Self:
@@ -93,14 +102,16 @@ class SmbTransport:
     def read_bytes(self, path: PurePosixPath) -> bytes:
         buffer = io.BytesIO()  # in memory: no local or temporary file is written (D6)
         with _reporting(f"reading {path} from share {self.share}"):
-            self._conn.retrieveFile(self.share, path.as_posix(), buffer, timeout=self.timeout)
+            self._conn.retrieveFile(
+                self.share, (self.root / path).as_posix(), buffer, timeout=self.timeout
+            )
         return buffer.getvalue()
 
     def exists(self, path: PurePosixPath) -> bool:
         # Walks down the listings, because pysmb raises the same exception for "not found" and for
         # a real failure such as "access denied". A failed listing stays an error here.
         parent = ""
-        for name in path.parts:
+        for name in (self.root / path).parts:
             if name not in {e.filename for e in self._list(parent)}:
                 return False
             parent = f"{parent}{name}/"
@@ -108,13 +119,15 @@ class SmbTransport:
 
     def size(self, path: PurePosixPath) -> int:
         with _reporting(f"getting the size of {path} on share {self.share}"):
-            attributes = self._conn.getAttributes(self.share, path.as_posix(), timeout=self.timeout)
+            attributes = self._conn.getAttributes(
+                self.share, (self.root / path).as_posix(), timeout=self.timeout
+            )
             return int(attributes.file_size)
 
     def makedirs(self, path: PurePosixPath) -> None:
         # createDirectory isn't recursive, so each missing level is created in order (D4).
         parent = ""
-        for name in path.parts:
+        for name in (self.root / path).parts:
             folder = f"{parent}{name}"
             if name not in self._list_dirs(parent):
                 with _reporting(f"creating folder {folder} on share {self.share}"):
@@ -127,9 +140,10 @@ class SmbTransport:
             local.open("rb") as file,  # closed before this returns (D7)
         ):
             written = self._conn.storeFile(
-                self.share, remote.as_posix(), file, timeout=self.timeout
+                self.share, (self.root / remote).as_posix(), file, timeout=self.timeout
             )
             return int(written)
 
     def describe(self) -> str:
-        return f"SMB share {self.share} on {self.host}:{self.port}"
+        where = self.share if self.root == SHARE_ROOT else f"{self.share}/{self.root}"
+        return f"SMB share {where} on {self.host}:{self.port}"

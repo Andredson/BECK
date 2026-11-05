@@ -274,6 +274,41 @@ def test_end_to_end_an_unreadable_file_doesnt_stop_the_upload(
     assert captured.err == ""
 
 
+def test_end_to_end_with_a_target_url_and_no_config(
+    samba: Samba, tmp_path: Path, folder: PurePosixPath, put_report: PutReport
+) -> None:
+    app = tmp_path / "no-config"
+    good = make_bios_file(app / "bios", "good.bin")
+    target = folder / "a.bin"
+    put_report(make_report_text([make_missing(target.as_posix(), good.md5)]))
+    url = f"smb://{samba.host}:{samba.port}/bios"
+
+    assert cli.main(["check", "--target", url], base_dir=app) == 0
+
+    with samba.guest() as transport:
+        assert transport.read_bytes(target) == good.path.read_bytes()
+
+
+def test_end_to_end_with_a_sub_path_in_the_target_url(
+    samba: Samba, tmp_path: Path, folder: PurePosixPath
+) -> None:
+    # Like smb://recalbox/share/bios: the report and the targets are inside a folder of the share.
+    app = tmp_path / "no-config"
+    good = make_bios_file(app / "bios", "good.bin")
+    report = tmp_path / "report.txt"
+    report.write_bytes(make_report_text([make_missing("ps1/a.bin", good.md5)]).encode())
+    with samba.guest() as transport:
+        transport.makedirs(folder)
+        transport.upload(report, folder / "missing_bios_report.txt")
+    url = f"smb://{samba.host}:{samba.port}/bios/{folder}"
+
+    assert cli.main(["check", "--target", url], base_dir=app) == 0
+
+    with samba.guest() as transport:
+        assert transport.read_bytes(folder / "ps1" / "a.bin") == good.path.read_bytes()
+        assert not transport.exists(PurePosixPath("ps1"))
+
+
 def test_end_to_end_running_again_gives_the_same_files(
     samba: Samba, app: Path, folder: PurePosixPath, put_report: PutReport
 ) -> None:

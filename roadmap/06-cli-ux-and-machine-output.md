@@ -96,7 +96,10 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `fix(hashing): report unreadable local files and keep going`
 
 ### 06.3 — Target selection and frontend flag
-- [ ] Done
+- [x] Done (2026-11-05: Beyond the list below: `SmbTransport` takes a root folder, because a target like `smb://recalbox/share/bios` is
+  real; checked read-only against the VM. With `--target`, **the password in `config.yml` isn't used**, because it would go to whatever
+  host the flag names, so `--target` means guest until 07.4 adds passwords for targets. A query, a fragment, `..` and backslashes are
+  refused, in encoded forms too, and errors never repeat the URL. Checked by breaking each rule on purpose.)
 - **What:** Parse `--target` URLs into an SMB target (`host`, `port` defaulting to 445, `share`, optional
   sub-path, optional user) and reject passwords inside URLs. `--target-dir` builds a `LocalTransport`; it is
   mutually exclusive with `--target`. `--frontend` chooses from the adapter registry (only `recalbox` for now).

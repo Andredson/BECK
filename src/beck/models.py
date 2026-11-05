@@ -10,6 +10,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 MD5 = re.compile(r"[0-9a-f]{32}")
+SHARE_ROOT = PurePosixPath(".")  # a target's BIOS folder, when it's the whole share
 
 
 def _check_md5(md5: str) -> None:
