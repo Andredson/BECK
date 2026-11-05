@@ -122,7 +122,9 @@ flowchart LR
 - **Commit message:** `build: package BECK as beck-bios with a beck console command`
 
 ### 04.4 — Error hierarchy and exit codes
-- [ ] Done
+- [x] Done (2026-11-04: added beside the legacy script's own `BeckError`, which stays until 04.13, so nothing uses these
+  yet. A test fails if a new error class has no pinned code. The base `BeckError` exits 1. Checked by changing a code on
+  purpose. `tests/unit/` starts here.)
 - **What:** `errors.py`: `BeckError(Exception)` with `exit_code: int`. Subclasses: `UsageError`/`ConfigError`
   (2), `TransportError` (3), `ReportNotFoundError`/`ReportParseError` (4). Anything else is unexpected (1). This
   matches the exit-code table that stage 06 publishes (DEC-23). Library code raises; only `cli.main` turns
