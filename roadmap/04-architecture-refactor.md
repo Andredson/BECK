@@ -263,7 +263,13 @@ flowchart LR
 - **Commit message:** `feat(core): add plan executor with dry-run and per-item error handling`
 
 ### 04.12 — Console output and logging
-- [ ] Done
+- [x] Done (2026-11-04: on the owner's files and the real report, with the fake server, the renderer's 394 lines match stage
+  03's as a set, and the files on the server are identical. **Order differs in two places:** `FOUND` lines, and the lines of
+  a file sent to several targets, are sorted by target. **Beyond stage 03:** `failed` and `skipped` lines, one `Error:` line
+  per failed item, and a dry-run summary, because a run can now continue after a failure. An empty `NO_COLOR` or
+  `FORCE_COLOR` counts as not set, as their conventions say, and `NO_COLOR` wins. Color now depends on the terminal, so
+  piped output has no escape codes. Windows color is tested with a fake `kernel32`, not on Windows (DEC-49). Nothing logs
+  yet. Checked by breaking each rule on purpose.)
 - **What:**
   - `output/console.py`: a `ConsoleRenderer` that renders a `RunResult` like today's output (colors, per-file
     lines, final summary). Color rules: `NO_COLOR` set → no color; `FORCE_COLOR` set → color; otherwise color
