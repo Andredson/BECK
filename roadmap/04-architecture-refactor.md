@@ -1,6 +1,6 @@
 # Stage 04 — Architecture refactor
 
-**Status:** Not started · **Depends on:** 03 · **Branch:** `stage/04-architecture` · **Effort:** L
+**Status:** In progress · **Depends on:** 03 · **Branch:** `stage/04-architecture` · **Effort:** L
 
 ## Goal
 Turn the single script into a small, typed, testable package, `beck`. It has a **pure core** (parse → match →
@@ -10,11 +10,10 @@ folder, DEC-04) and output. User-visible behavior stays the same as at the end o
 ## Why
 - Architecture 2/10, maintainability and portability are low ([assessment](00-assessment.md#scorecard)).
 - Later stages need clean seams: `--json` output (06), config precedence (07), more frontends (11).
-- DEC-26 switches the SMB library to `smbprotocol`. Doing that behind a `Transport` interface keeps the
-  change contained.
+- DEC-53 keeps `pysmb`. Putting it behind a `Transport` interface keeps any later library change contained.
 
 ## Decisions applied
-DEC-01, DEC-02, DEC-03, DEC-04, DEC-08, DEC-17, DEC-18, DEC-26, DEC-43.
+DEC-01, DEC-02, DEC-03, DEC-04, DEC-08, DEC-17, DEC-18, DEC-43, DEC-52, DEC-53.
 
 ## Target layout
 
@@ -36,7 +35,7 @@ src/beck/
 │   ├── __init__.py
 │   ├── base.py          # Transport Protocol (context manager)
 │   ├── local.py         # folder on disk: mounted SD/USB, on-device runs, tests
-│   └── smb.py           # smbprotocol (smbclient API)
+│   └── smb.py           # pysmb (DEC-53)
 └── output/
     ├── __init__.py
     └── console.py       # human output: colors, NO_COLOR, TTY detection
@@ -59,7 +58,11 @@ flowchart LR
 ## Steps
 
 ### 04.1 — Spike: smbprotocol against a real Recalbox (gate for DEC-26)
-- [ ] Done
+- [x] Done (2026-11-04: run on a Recalbox 10.1.1 VM, not a real device (DEC-52), and by the agent, at the owner's
+  request. [Results](../docs/spikes/smbprotocol.md): password login and every file operation passed, but guest login
+  failed with the library's defaults and needs three settings. The owner chose to **keep `pysmb`** (DEC-53), so
+  DEC-26 doesn't stand and this step's commit message differs from the one below. Steps 04.9, 07.7, 07's acceptance
+  criteria, 10's SBOM step and this stage's acceptance criteria were updated.)
 - **What:** Before rewriting the transport, prove that `smbprotocol`'s `smbclient` API works against the owner's
   Recalbox. The agent writes `docs/spikes/smbprotocol.md` containing a short script (not committed as code).
   The **owner runs it** and records the results:
@@ -177,21 +180,19 @@ flowchart LR
 - **Verify:** `uv run pytest tests/unit/test_local_transport.py -q`
 - **Commit message:** `feat(transports): add transport interface and local folder transport`
 
-### 04.9 — SMB transport on smbprotocol (D4, D11, D16)
+### 04.9 — SMB transport on pysmb (D4, D11, D16)
 - [ ] Done
-- **What:** `transports/smb.py`: `SmbTransport(host, port, share, user, password, timeout)` using
-  `smbclient.register_session(...)` once in `__enter__`, and UNC paths `\\host\share\<relative>`. It uses
-  `smbclient.makedirs(..., exist_ok=True)`, which is natively recursive (final D4), `smbclient.open_file`
-  with `shutil.copyfileobj` for uploads, and `smbclient.stat` for sizes. It cleans up the session in
-  `__exit__` (final D11). Direct TCP on 445 is the library's default (final D16). Library exceptions map to
-  `TransportError` with readable messages (auth failure, share not found, host unreachable, timeout).
-  Guest/empty credentials behave as verified in the 04.1 spike. Replace `pysmb` with `smbprotocol` in the
-  dependencies (`uv remove pysmb && uv add smbprotocol`).
-- **Files:** `src/beck/transports/smb.py`, `pyproject.toml`, `uv.lock`, `tests/unit/test_smb_transport.py`
-- **Done when:** Unit tests with a mocked `smbclient` module cover the call sequence and the error mapping.
+- **What:** `transports/smb.py`: `SmbTransport(host, port, share, user, password, timeout)` on `pysmb` (DEC-53),
+  carrying over stage 03's `SmbSession`. One `SMBConnection` opens in `__enter__`, with `is_direct_tcp` when the port is
+  445 (final D16), and closes in `__exit__` (final D11). Nested folders are created one level at a time, as in
+  `ensure_dir` (final D4). Uploads pass an open file object to `storeFile`, and sizes come from `getAttributes`. Library
+  exceptions map to `TransportError` with readable messages (auth failure, share not found, host unreachable, timeout).
+  Empty credentials log in as a guest. No dependency changes.
+- **Files:** `src/beck/transports/smb.py`, `tests/unit/test_smb_transport.py`
+- **Done when:** Unit tests with the fake from `tests/fakes.py` cover the call sequence and the error mapping.
   Real-server tests come in stage 05.
 - **Verify:** `uv run pytest tests/unit/test_smb_transport.py -q`
-- **Commit message:** `feat(transports)!: implement SMB transport on smbprotocol`
+- **Commit message:** `feat(transports): implement SMB transport on pysmb`
 
 ### 04.10 — Pure matcher
 - [ ] Done
@@ -279,7 +280,7 @@ flowchart LR
 ## Stage acceptance criteria
 - `uv run beck` behaves like the end of stage 03, and `python check_bios.py` still works through the shim.
 - No module except `cli.py` calls `sys.exit`; no core module imports a transport.
-- `mypy --strict` passes on `src/`; pysmb is gone; smbprotocol has been verified on a real device.
+- `mypy --strict` passes on `src/`; only `transports/smb.py` uses `pysmb` (DEC-53).
 
 ## Out of scope
 - New flags, `--json`, config precedence and TOML (stages 06–07); new frontends (stage 11).

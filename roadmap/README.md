@@ -15,7 +15,7 @@ executed **one step at a time**, by a human or an AI agent, in the order below. 
 | 01 | [Agent-ready repository](01-agent-ready-repo.md) | — | `stage/01-agent-ready-repo` | S | Done (2026-11-02) |
 | 02 | [Foundation tooling & CI](02-foundation-tooling-and-ci.md) | 01 | `stage/02-foundation` | M | Done (2026-11-03) |
 | 03 | [Critical fixes & data safety](03-critical-fixes-and-data-safety.md) | 02 | `stage/03-critical-fixes` | M | Done (2026-11-04) |
-| 04 | [Architecture refactor](04-architecture-refactor.md) | 03 | `stage/04-architecture` | L | Not started |
+| 04 | [Architecture refactor](04-architecture-refactor.md) | 03 | `stage/04-architecture` | L | In progress |
 | 05 | [Testing hardening](05-testing-hardening.md) | 04 | `stage/05-testing` | M | Not started |
 | 06 | [CLI, UX & machine-readable output](06-cli-ux-and-machine-output.md) | 05 | `stage/06-cli` | M | Not started |
 | 07 | [Configuration & security](07-configuration-and-security.md) | 06 | `stage/07-config-security` | M | Not started |
@@ -139,6 +139,7 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-45 | Dependency cooldown: `[tool.uv] exclude-newer = "14 days"`, so uv only resolves releases uploaded at least 14 days ago, for runtime and dev dependencies. Urgent fixes use a per-package `exclude-newer-package` override with a recorded reason. *(2026-11-02, step 02.2)* |
 | DEC-49 | **Supersedes the operating-system part of DEC-08.** CI runs on Linux only (`ubuntu-latest` × Python 3.11–3.14); Windows and macOS are removed from the test matrix, and later CI jobs (such as the stage 10 wheel smoke install) are Linux-only too. DEC-08's Python versions stand. *(2026-11-03, before merging stage 02)* |
 | DEC-50 | When a report entry lists two locations (`<path> or <path>`), BECK uses the **first** one. *(2026-11-04, step 03.4)* |
+| DEC-53 | **Supersedes DEC-26.** BECK keeps `pysmb` behind the `Transport` interface, instead of switching to `smbprotocol`. No SMB encryption. *(2026-11-04, step 04.1)* |
 
 ### CI/CD, security, and release
 
@@ -166,6 +167,7 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-31 | Code of conduct: a short custom section inside `CONTRIBUTING.md`. |
 | DEC-39 | Stage PRs are merged with a merge commit, so step commits stay on `main`. |
 | DEC-51 | Step 03.13 and stage 03's acceptance are signed off on a Recalbox 10.1.1 **VM**, not a real device. Later real-device checks (04.1, the stage 10 release check) still apply. *(2026-11-04, step 03.13)* |
+| DEC-52 | Step 04.1 runs on the Recalbox 10.1.1 **VM**, not a real device. The real-device run moves to the release check in step 10.11. *(2026-11-04, step 04.1)* |
 
 ## Verified facts behind some decisions (checked 2026-11-02)
 

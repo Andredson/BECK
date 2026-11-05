@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-02
-- **Decisions covered:** DEC-14, DEC-16, DEC-20, DEC-30, DEC-31, DEC-39, DEC-51
+- **Decisions covered:** DEC-14, DEC-16, DEC-20, DEC-30, DEC-31, DEC-39, DEC-51, DEC-52
 
 ## Context
 The roadmap is executed one step at a time, often by AI agents. The process has to keep each change small and
@@ -62,3 +62,14 @@ leaves the machine (see DEC-43 in [ADR-0002](0002-ai-agent-support.md)).
     from host port 4445, so BECK used NetBIOS mode there. Direct TCP worked against the VM only when forced by a
     throwaway test script, and BECK's own choice is covered by a test with the fake server.
   - This decision covers stage 03 only. Step 04.1 and the stage 10 release check still ask for a real device.
+
+## DEC-52 — Step 04.1 runs on a VM
+- **Date:** 2026-11-04 (step 04.1).
+- **Context:** Step 04.1 and DEC-26 asked for a real Recalbox, and DEC-51 covered stage 03 only.
+- **Decision:** Run step 04.1 on the Recalbox 10.1.1 VM. The real-device run moves to the release check in step 10.11.
+- **Alternatives considered:**
+  - *Run it on a real Recalbox* (recommended by the agent if a device was available): covers real hardware and port 445.
+    Not chosen. The owner gave no further reason.
+  - *Wait until a device is available*: keeps stage 04 blocked. Not chosen.
+- **Consequences:** The transport's first real-hardware run is late, so a problem found in step 10.11 means reworking
+  it close to release. The VM runs the same Recalbox software, so the main gap is real network conditions.

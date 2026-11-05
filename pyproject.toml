@@ -41,7 +41,7 @@ disallow_incomplete_defs = false
 disallow_untyped_calls = false
 
 [[tool.mypy.overrides]]
-# pysmb ships no type hints; it is replaced by smbprotocol in step 04.9.
+# pysmb ships no type hints; BECK keeps it (DEC-53).
 module = ["smb.*", "nmb.*"]
 ignore_missing_imports = true
 

@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-11-02
 - **Decisions covered:** DEC-07, DEC-08, DEC-17, DEC-18, DEC-19, DEC-24, DEC-26, DEC-27, DEC-28, DEC-29, DEC-36,
-  DEC-40, DEC-42, DEC-45, DEC-49
+  DEC-40, DEC-42, DEC-45, DEC-49, DEC-53
 
 ## Context
 At baseline the project had no tooling: no lockfile, tests, linters or packaging. The owner asked that every
@@ -56,6 +56,7 @@ dependencies**, even where a tool was recommended.
   the migration.
 
 ## DEC-26 — smbprotocol instead of pysmb
+- **Status:** Superseded by [DEC-53](#dec-53--keep-pysmb-not-smbprotocol).
 - **Decision:** Switch to `smbprotocol` and its high-level `smbclient` API in the stage 04 transport rewrite.
 - **Alternatives considered:** *Keep pysmb*: not chosen. It's already in use, has pure-Python dependencies and also
   speaks SMB1, but its lower-level API means writing our own helpers (e.g. recursive mkdir).
@@ -138,3 +139,22 @@ dependencies**, even where a tool was recommended.
   by asserting that the file is closed, and the portability score can't rise on CI evidence alone. The stage 10
   wheel smoke install runs on Linux only. To bring a platform back, add it to the `os` list in `ci.yml` and record
   a new DEC; `tests-passed` and the branch ruleset need no change.
+
+## DEC-53 — Keep pysmb, not smbprotocol
+- **Date:** 2026-11-04 (step 04.1).
+- **Status:** Accepted. Supersedes [DEC-26](#dec-26--smbprotocol-instead-of-pysmb).
+- **Context:** DEC-26 was gated on the [step 04.1 spike](../spikes/smbprotocol.md), which ran on a Recalbox 10.1.1 VM.
+  `smbprotocol` passed every file operation, but guest login, Recalbox's default, failed with the library's defaults.
+  It works only with a non-empty user name, `require_signing=False` and `require_secure_negotiate=False`.
+- **Decision:** Keep `pysmb` and put it behind the `Transport` interface in step 04.9, instead of switching.
+- **Alternatives considered:**
+  - *Keep DEC-26 and switch to `smbprotocol`, with the guest settings* (recommended by the agent): SMB 3.1.1, encryption
+    shown working for password accounts, native recursive `makedirs`. It adds `pyspnego` and `cryptography`, a 4.5 MiB
+    compiled package. Not chosen. The owner gave no further reason.
+- **Consequences:**
+  - No SMB encryption: `pysmb`'s source has no code for it, so step 07.7 documents why `smb.encrypt` is absent.
+  - BECK keeps its own nested-folder code from step 03.9, and `pysmb` still has no type hints, so its calls stay behind
+    `Any` and keep the mypy import override.
+  - Its dependencies stay: `pyasn1`, with the `.trivyignore` entries until the upgrade due from 2026-11-10, and `tqdm`.
+  - BECK's dependencies stay small, and guest login needs no special settings.
+  - Changing library later is contained, because only `transports/smb.py` will use `pysmb`.

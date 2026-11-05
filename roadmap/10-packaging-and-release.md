@@ -89,7 +89,7 @@ flowchart LR
 ### 10.5 — SBOM generation with Trivy (DEC-37)
 - [ ] Done
 - **What:** `trivy fs --format cyclonedx --output dist/beck-bios-<version>.cdx.json .`, using the pinned Trivy
-  from 02.13. Check that the SBOM lists the **runtime** dependencies from `uv.lock` (smbprotocol, platformdirs
+  from 02.13. Check that the SBOM lists the **runtime** dependencies from `uv.lock` (pysmb, platformdirs
   and their transitive dependencies). Note in `docs/releasing.md` how dev dependencies are treated
   (excluded, or included and labeled).
 - **Files:** `docs/releasing.md` (procedure); the workflow change comes in 10.6

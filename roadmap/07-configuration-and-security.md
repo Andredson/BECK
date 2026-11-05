@@ -13,7 +13,7 @@ remaining security gaps (path safety, upload integrity, documented threat model 
 - PyYAML is only used for a 4-key config file; Python 3.11+ reads TOML with the standard library (DEC-24).
 
 ## Decisions applied
-DEC-10, DEC-19, DEC-24, DEC-26, DEC-35, DEC-43.
+DEC-10, DEC-19, DEC-24, DEC-35, DEC-43, DEC-53.
 
 ## Configuration design (reference for all steps)
 
@@ -133,8 +133,7 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 - **What:**
   - After each upload, compare the remote size with the local size; a mismatch is an item error.
   - `--verify` additionally reads the remote file back and compares its MD5. It's slower, so it's off by default.
-  - Expose `smb.timeout`. Expose `smb.encrypt` (true/false) **only if** the 04.1 spike showed that Recalbox
-    supports SMB3 encryption; otherwise document why it's absent.
+  - Expose `smb.timeout`. Document why there's no `smb.encrypt`: `pysmb` has no SMB encryption (DEC-53).
 - **Files:** `src/beck/executor.py`, `src/beck/transports/smb.py`, `src/beck/config.py`, tests
 - **Done when:** Unit tests cover size and MD5 mismatches; the integration test checks `--verify` against Samba.
 - **Verify:** `uv run pytest -q -k "verify or integrity"`
@@ -177,7 +176,7 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 ## Stage acceptance criteria
 - A user can configure BECK entirely through `beck config init` plus env vars, from any working directory.
 - No password can be stored in the config file, appear in a URL, or be printed in any output mode.
-- PyYAML is removed; the only runtime dependencies are `smbprotocol` and `platformdirs`.
+- PyYAML is removed; the only runtime dependencies are `pysmb` and `platformdirs`.
 
 ## Out of scope
 - The OS keyring was offered and not chosen (DEC-10). SSH/SFTP (DEC-04).
