@@ -13,8 +13,9 @@ the consequences. The short form of every decision is a `DEC-NN` row in the
 | [0003](0003-tooling.md) | Tooling | Accepted | DEC-07, 08, 17, 18, 19, 24, 26, 27, 28, 29, 36, 40, 42, 45, 49, 53 |
 | [0004](0004-ci-security-release.md) | CI, security and release | Accepted | DEC-11, 25, 32, 33, 34, 35, 37, 38, 41, 48 |
 | [0005](0005-process-and-docs.md) | Process and documentation | Accepted | DEC-14, 16, 20, 30, 31, 39, 51, 52 |
+| [0006](0006-core-and-adapters.md) | Core and adapters | Accepted | None of its own (follows from DEC-02, 03, 04, 53) |
 
-Planned by the roadmap: `0006-core-and-adapters.md` (step 04.2) and `0007-cli-contract.md` (step 06.1).
+Planned by the roadmap: `0007-cli-contract.md` (step 06.1).
 
 ## Adding a decision
 

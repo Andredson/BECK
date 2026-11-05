@@ -80,7 +80,9 @@ flowchart LR
 - **Commit message:** `docs(spike): verify smbprotocol against a real Recalbox share`
 
 ### 04.2 — Architecture document and ADR
-- [ ] Done
+- [x] Done (2026-11-04: the layout and diagram match this file. The document also records the matching rules, exit
+  codes and how to extend BECK. ADR-0006 has no DEC of its own, because the structure follows from existing decisions and
+  this stage's plan. It says so, and that these options weren't offered to the owner as a separate choice.)
 - **What:** `docs/ARCHITECTURE.md` with the layout and diagram above, the responsibility of each module, the
   data flow, and the rules: the core (`models`, `hashing`, `matcher`) never does network I/O; `exit` only in
   `cli.py`; adapters are the only code that knows about Recalbox paths or SMB. Add

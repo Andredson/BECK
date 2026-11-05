@@ -33,6 +33,7 @@ CI (stage 02): lint, types, tests on Python 3.11–3.14, commit-message, secret 
 | `.editorconfig`, `.gitattributes` | Editor settings; LF line endings in the repository. |
 | `roadmap/` | The improvement plan: [index and decision log](roadmap/README.md), [assessment](roadmap/00-assessment.md), one file per stage. |
 | `docs/agents.md` | Which AI agents were tested loading this file, and how to test another one. |
+| `docs/ARCHITECTURE.md` | [The design stage 04 is building](docs/ARCHITECTURE.md): core and adapters, data flow, and the rules to keep. |
 | `docs/maintenance.md` | [Monthly maintenance routine](docs/maintenance.md): dependency upgrades, pin refreshes, security review (replaces an update bot, DEC-29). Follow it when asked to update dependencies, or when the weekly *Security* run or an expired `.trivyignore` entry fails. |
 | `.github/pull_request_template.md` | PR description template with the roadmap checklist. Fill it in when preparing a PR description for the human. |
 | `docs/adr/` | [Architecture Decision Records](docs/adr/README.md): the reasoning and rejected alternatives behind every DEC. Read the relevant ADR before proposing to change a decision. |
@@ -150,7 +151,7 @@ skill below, **read its whole `SKILL.md` before acting** and follow it.
   code. Also expected: type hints everywhere, `pathlib` for paths, no bare `except:`, and `sys.exit` only at the CLI
   boundary. `check_bios.py` has a relaxed mypy override until step 04.14, and no ruff ignores. Don't add new ones.
 - From stage 04: pure core (`models`, `hashing`, `matcher`) with I/O only in adapters (`frontends/`,
-  `transports/`, `output/`). See `docs/ARCHITECTURE.md` once it exists.
+  `transports/`, `output/`). See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design and its rules.
 - MD5 is used to **identify** files, not for security: `hashlib.md5(..., usedforsecurity=False)`.
 
 ## Testing
