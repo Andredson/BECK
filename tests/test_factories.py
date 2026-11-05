@@ -72,6 +72,12 @@ def test_a_rendered_report_parses_back_to_the_same_entries() -> None:
     assert adapter.parse_report(make_report_text(entries)) == entries
 
 
+def test_a_system_heading_appears_once_for_entries_in_a_row() -> None:
+    entries = [make_missing(name, A, system="PlayStation") for name in ("a.bin", "b.bin")]
+
+    assert make_report_text(entries).count("SYSTEM: PlayStation") == 1
+
+
 def test_every_real_entry_survives_rendering_and_parsing() -> None:
     real = adapter.parse_report(load_report(REAL_REPORT))
 
