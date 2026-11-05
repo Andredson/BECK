@@ -299,6 +299,45 @@ def test_real_report_shared_md5_and_repeated_target() -> None:
     assert set(filled(repeated)) == {"pcengine/gexpress.pce"}
 
 
+def test_an_incorrect_target_is_never_uploaded_to() -> None:
+    wrong = make_missing("two/b.bin", B, incorrect=True, current_md5=C)
+    valid = make_local_file("b.bin", B)
+
+    result = plan([wrong], [valid])
+
+    assert result == Plan(unmatched=(valid,), incorrect=(wrong,))
+
+
+def test_the_known_bad_file_is_not_uploaded_either() -> None:
+    wrong = make_missing("two/b.bin", B, incorrect=True, current_md5=C)
+    bad_dump = make_local_file("bad.bin", C)
+
+    result = plan([wrong], [bad_dump])
+
+    assert result.uploads == ()
+    assert result.unmatched == (bad_dump,)
+
+
+def test_an_incorrect_target_stays_kept_if_another_entry_lists_it_as_missing() -> None:
+    wrong = make_missing("x.bin", B, incorrect=True, system="one")
+    also = make_missing("x.bin", A, system="two")
+
+    result = plan([also, wrong], [make_local_file("copy.bin", A)])
+
+    assert result.uploads == ()
+    assert result.still_missing == ()
+    assert result.incorrect == (wrong,)
+
+
+def test_incorrect_entries_dont_stop_other_uploads() -> None:
+    wrong = make_missing("two/b.bin", B, incorrect=True)
+
+    result = plan([wrong, make_missing("a.bin", A)], [make_local_file("copy.bin", A)])
+
+    assert filled(result) == {"a.bin": "copy.bin"}
+    assert result.incorrect == (wrong,)
+
+
 def test_real_report_with_no_files_leaves_every_target_missing() -> None:
     report = RecalboxAdapter().parse_report(load_report(REAL_REPORT))
 

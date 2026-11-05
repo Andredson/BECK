@@ -285,8 +285,10 @@ def test_a_bad_byte_in_a_name_doesnt_crash() -> None:
 
 
 @pytest.mark.parametrize("text", ["", "\n", "\r\n\r\n", "   \n\t\n", "\ufeff"])
-def test_an_empty_file_has_no_entries(text: str) -> None:
-    assert adapter.parse_report(text) == []
+def test_an_empty_file_is_not_a_report_with_nothing_missing(text: str) -> None:
+    # Recalbox always writes the header, so an empty file means something went wrong.
+    with pytest.raises(ReportParseError, match="doesn't look like a report"):
+        adapter.parse_report(text)
 
 
 def test_a_real_header_with_nothing_missing_has_no_entries() -> None:
@@ -319,6 +321,159 @@ def test_a_block_doesnt_borrow_the_path_of_the_next_block() -> None:
 
     with pytest.raises(ReportParseError, match=r"No Path line in report block.*a\.bin"):
         adapter.parse_report(no_path + block())
+
+
+CURRENT = "C" * 32
+
+
+def incorrect_block(name: str = "b.bin", valid: str = OTHER_HASH) -> str:
+    # In the order of Recalbox's Bios::GenerateReport: Path, Notes, For, Current MD5, the list.
+    return (
+        f"  INCORRECT REQUIRED BIOS: {name}\n"
+        f"    Path: /recalbox/share/bios/two/{name}\n"
+        "    Notes: a note\n"
+        "    For: libretro/x\n"
+        f"    Current MD5: {CURRENT}\n"
+        f"    Possible MD5 List:\n      {valid}\n\n"
+    )
+
+
+def test_the_incorrect_fixture_marks_only_its_incorrect_block() -> None:
+    parsed = adapter.parse_report(load_report("recalbox-10.1.1/derived-incorrect"))
+
+    assert [entry.incorrect for entry in parsed] == [False, True, False]
+    assert parsed[1].current_md5 == "d0c70c0ffeec0ffeec0ffeec0ffee000"
+    assert parsed[1].current_md5 not in parsed[0].md5s | parsed[1].md5s | parsed[2].md5s
+    assert parsed[0].current_md5 is parsed[2].current_md5 is None
+
+
+def test_an_incorrect_block_is_its_own_entry() -> None:
+    entry = adapter.parse_report(f"SYSTEM: Two\n{incorrect_block()}")[0]
+
+    assert entry.incorrect is True
+    assert entry.name == "b.bin"
+    assert entry.target == PurePosixPath("two/b.bin")
+    assert entry.md5s == {OTHER_HASH.lower()}
+    assert entry.current_md5 == CURRENT.lower()
+    assert (entry.required, entry.system) == (True, "Two")
+
+
+def test_a_missing_block_is_not_incorrect() -> None:
+    entry = adapter.parse_report(block())[0]
+
+    assert entry.incorrect is False
+    assert entry.current_md5 is None
+
+
+def test_an_optional_incorrect_block() -> None:
+    text = incorrect_block().replace("INCORRECT REQUIRED", "INCORRECT OPTIONAL")
+
+    assert adapter.parse_report(text)[0].required is False
+
+
+def test_an_incorrect_block_does_not_merge_into_the_entry_above() -> None:
+    # The bug: the hashes of b.bin, and its wrong current hash, became candidates for a.bin.
+    above = block("  MISSING REQUIRED BIOS: a.bin", "    Path: /recalbox/share/bios/a.bin\n")
+
+    first, second = adapter.parse_report(above + incorrect_block())
+
+    assert first.md5s == {HASH.lower()}
+    assert first.target == PurePosixPath("a.bin")
+    assert second.name == "b.bin"
+
+
+def test_an_incorrect_block_does_not_merge_into_the_entry_below() -> None:
+    first, second = adapter.parse_report(incorrect_block() + block())
+
+    assert first.md5s == {OTHER_HASH.lower()}
+    assert second.md5s == {HASH.lower()}
+
+
+def test_a_report_with_only_incorrect_blocks_is_not_empty() -> None:
+    assert [entry.name for entry in adapter.parse_report(incorrect_block())] == ["b.bin"]
+
+
+def test_a_current_md5_is_never_a_candidate() -> None:
+    entry = adapter.parse_report(incorrect_block())[0]
+
+    assert CURRENT.lower() not in entry.md5s
+
+
+def test_a_hash_in_a_note_is_not_a_candidate() -> None:
+    text = (
+        "  MISSING REQUIRED BIOS: a.bin\n"
+        "    Path: /recalbox/share/bios/a.bin\n"
+        f"    Notes: replaces {OTHER_HASH}\n"
+        f"    Possible MD5 List:\n      {HASH}\n"
+    )
+
+    assert adapter.parse_report(text)[0].md5s == {HASH.lower()}
+
+
+def test_hashes_with_no_list_heading_are_an_error() -> None:
+    text = f"  MISSING REQUIRED BIOS: a.bin\n    Path: /recalbox/share/bios/a.bin\n      {HASH}\n"
+
+    with pytest.raises(ReportParseError, match="No MD5 value"):
+        adapter.parse_report(text)
+
+
+@pytest.mark.parametrize(
+    "heading",
+    [
+        "ABSENT REQUIRED BIOS: a.bin",
+        "MISSING BIOS: a.bin",
+        "MISSING MANDATORY BIOS: a.bin",
+        "INCORRECT BIOS: a.bin",
+        "MISSING: a.bin",
+        "MISSING REQUIRED FIRMWARE: a.bin",
+    ],
+)
+@pytest.mark.parametrize("with_a_known_block", [False, True], ids=["alone", "beside-a-known-one"])
+def test_a_changed_heading_is_an_error_not_nothing_missing(
+    heading: str, with_a_known_block: bool
+) -> None:
+    text = f"MISSING BIOS REPORT\n\n  {heading}\n    Path: /recalbox/share/bios/a.bin\n"
+    if with_a_known_block:
+        text += block()
+
+    with pytest.raises(ReportParseError) as error:
+        adapter.parse_report(text)
+
+    assert f"Unrecognized heading in the report: {heading}" in str(error.value)
+
+
+def test_a_changed_title_with_no_blocks_is_an_error() -> None:
+    with pytest.raises(ReportParseError, match="no MISSING BIOS REPORT title"):
+        adapter.parse_report("BIOS STATUS\nPlatform: x86_64\n")
+
+
+def test_a_changed_title_with_known_blocks_still_parses() -> None:
+    assert len(adapter.parse_report(f"BIOS STATUS\n\n{block()}")) == 1
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "MISSING BIOS REPORT\n\nSYSTEM: One\n---\n\n",
+        f"MISSING BIOS REPORT\n\nSYSTEM: One\n---\n\nSYSTEM: Two\n---\n\n{block()}",
+        f"MISSING BIOS REPORT\n\nSYSTEM: Two\n---\n\n{block()}SYSTEM: One\n---\n\n",
+    ],
+    ids=["only", "first", "last"],
+)
+def test_a_system_with_no_block_is_an_error(text: str) -> None:
+    with pytest.raises(ReportParseError, match="No BIOS block under: SYSTEM:"):
+        adapter.parse_report(text)
+
+
+def test_words_in_a_note_or_path_are_not_headings() -> None:
+    text = (
+        "  MISSING REQUIRED BIOS: a.bin\n"
+        "    Path: /recalbox/share/bios/a.bin\n"
+        "    Notes: MISSING BIOS files stop this core\n"
+        f"    Possible MD5 List:\n      {HASH}\n"
+    )
+
+    assert len(adapter.parse_report(text)) == 1
 
 
 def test_recalbox_report_location() -> None:

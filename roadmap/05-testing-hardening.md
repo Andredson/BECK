@@ -74,7 +74,17 @@ DEC-08, DEC-09, DEC-25, DEC-33, DEC-36, DEC-40.
 - **Commit message:** `test(core): cover matcher and executor edge cases`
 
 ### 05.3a — A report BECK can't recognize isn't "nothing missing"
-- [ ] Done
+- [x] Done (2026-11-05: Recalbox's public source shows the report is always written, and with nothing missing it's just the
+  header, so that stays a success. **This found a data bug, D17:** Recalbox can also write `INCORRECT` blocks, which BECK
+  didn't know, and they merged into the entry above. Beyond the list below:
+  - `INCORRECT` is its own kind of block; the owner chose to keep such a file and report it (DEC-54).
+  - Candidate MD5s come only from below `Possible MD5 List:`, so `Current MD5:` or a hash in a note can't become one.
+  - The title is only required when no block is found, so a changed title with known blocks still parses.
+  - An empty file is now an error, exit 4, because Recalbox always writes the header.
+
+  The block format comes from Recalbox's source, and the 10.1.1 binary has the same text, but **no real report with an
+  `INCORRECT` block has been seen yet**. `derived-incorrect` is built from real blocks in that format. Checked by breaking each
+  rule on purpose.)
 - **What:** Today, a report with no recognized block gives "No missing bios were found", even if its format changed in a new
   Recalbox version, which would mislead the user with no error (found in 05.2). `RecalboxAdapter.parse_report` raises
   `ReportParseError` when the text has content but doesn't look like a report: no `MISSING BIOS REPORT` title, or a line with

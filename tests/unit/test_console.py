@@ -279,6 +279,44 @@ def test_failed_and_skipped_uploads_are_shown() -> None:
     ]
 
 
+def test_incorrect_files_get_one_line_per_target() -> None:
+    entries = [
+        make_missing("two/b.bin", B, incorrect=True),
+        make_missing("a.bin", A, incorrect=True),
+        make_missing("two/b.bin", C, incorrect=True),
+    ]
+    stream = io.StringIO()
+
+    ConsoleRenderer(stream, {}).incorrect(entries)
+
+    assert stream.getvalue().splitlines() == [
+        "INCORRECT: a.bin is on the device with a wrong MD5, and was kept",
+        "INCORRECT: two/b.bin is on the device with a wrong MD5, and was kept",
+    ]
+
+
+def test_incorrect_label_is_painted_red() -> None:
+    stream = io.StringIO()
+
+    ConsoleRenderer(stream, {"FORCE_COLOR": "1"}).incorrect(
+        [make_missing("a.bin", A, incorrect=True)]
+    )
+
+    assert stream.getvalue().startswith("\033[91mINCORRECT:\033[0m a.bin")
+
+
+def test_a_local_file_that_fits_an_incorrect_target_says_so() -> None:
+    valid, junk = make_local_file("valid.bin", B), make_local_file("x", C)
+    wrong = make_missing("two/b.bin", B, incorrect=True)
+    plan = Plan(unmatched=(valid, junk), incorrect=(wrong,))
+
+    assert rendered(RunResult(plan=plan)) == [
+        "valid.bin: valid for two/b.bin, which is incorrect on the device, kept",
+        "x: no match, kept",
+        "Final result: 0/0 missing entries satisfied, 2 files analysed",
+    ]
+
+
 def test_a_dry_run_says_what_would_happen() -> None:
     planned = upload(make_local_file("copy.bin", A), "a.bin")
     plan = Plan(uploads=(planned,), still_missing=(make_missing("b.bin", B),))

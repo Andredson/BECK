@@ -9,7 +9,7 @@ from tests.conftest import REAL_REPORT, REPORT_NAMES, load_expected, load_report
 
 def test_there_are_real_and_derived_fixtures() -> None:
     assert REAL_REPORT in REPORT_NAMES
-    assert sum("derived-" in name for name in REPORT_NAMES) >= 4
+    assert sum("derived-" in name for name in REPORT_NAMES) >= 5
 
 
 @pytest.mark.parametrize("name", REPORT_NAMES)
@@ -17,7 +17,9 @@ def test_expected_file_matches_the_report(name: str) -> None:
     report = load_report(name)
     expected = load_expected(name)
 
-    assert len(expected) == len(re.findall(r"MISSING (?:REQUIRED|OPTIONAL) BIOS: ", report))
+    assert len(expected) == len(
+        re.findall(r"(?:MISSING|INCORRECT) (?:REQUIRED|OPTIONAL) BIOS: ", report)
+    )
     for entry in expected:
         assert set(entry) == {"name", "path", "relativePath", "hashes"}
         assert f"BIOS: {entry['name']}" in report

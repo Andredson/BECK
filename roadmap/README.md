@@ -139,6 +139,7 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-45 | Dependency cooldown: `[tool.uv] exclude-newer = "14 days"`, so uv only resolves releases uploaded at least 14 days ago, for runtime and dev dependencies. Urgent fixes use a per-package `exclude-newer-package` override with a recorded reason. *(2026-11-02, step 02.2)* |
 | DEC-49 | **Supersedes the operating-system part of DEC-08.** CI runs on Linux only (`ubuntu-latest` × Python 3.11–3.14); Windows and macOS are removed from the test matrix, and later CI jobs (such as the stage 10 wheel smoke install) are Linux-only too. DEC-08's Python versions stand. *(2026-11-03, before merging stage 02)* |
 | DEC-50 | When a report entry lists two locations (`<path> or <path>`), BECK uses the **first** one. *(2026-11-04, step 03.4)* |
+| DEC-54 | When a report lists a file as `INCORRECT` (on the device with a wrong hash), BECK **keeps the device's file and reports it**, and never uploads to that target, even with a valid local file. The general overwrite policy stays with step 06.5. *(2026-11-05, step 05.3a)* |
 | DEC-53 | **Supersedes DEC-26.** BECK keeps `pysmb` behind the `Transport` interface, instead of switching to `smbprotocol`. No SMB encryption. *(2026-11-04, step 04.1)* |
 
 ### CI/CD, security, and release

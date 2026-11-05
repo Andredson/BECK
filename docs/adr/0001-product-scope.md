@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-02
-- **Decisions covered:** DEC-01, DEC-02, DEC-03, DEC-04, DEC-09, DEC-10, DEC-12, DEC-13, DEC-15, DEC-50
+- **Decisions covered:** DEC-01, DEC-02, DEC-03, DEC-04, DEC-09, DEC-10, DEC-12, DEC-13, DEC-15, DEC-50, DEC-54
 
 ## Context
 At the baseline review ([assessment](../../roadmap/00-assessment.md)), BECK was a 243-line script with an overall
@@ -101,3 +101,19 @@ differed from the recommendation.
     suited to a later stage. Not chosen. The owner gave no further reason.
 - **Consequences:** Step 03.5 keeps only the first location. A file already at the second location could still be
   uploaded to the first.
+
+## DEC-54 — A file that's INCORRECT on the device is kept and reported
+- **Date:** 2026-11-05 (step 05.3a).
+- **Context:** Recalbox's source and its 10.1.1 binary show a second kind of report block, `INCORRECT REQUIRED|OPTIONAL BIOS`,
+  for a file that exists with a hash that isn't on the list, when `hashMatchMandatory` is true. It has a `Current MD5:` line.
+  BECK didn't know it: the block merged into the entry above, so valid files, and even the rejected file itself, uploaded
+  under the wrong name. Stopping that merge was a plain fix. What to do with the target itself was the owner's decision.
+- **Decision:** Keep the device's file, show it in the output and exit normally. Never upload to that target, even with a
+  valid local file, and even if another entry lists the same target as missing.
+- **Alternatives considered:**
+  - *Replace the wrong file with a valid one*: fixes it automatically, but loses the device's file with no backup, ahead of
+    step 06.5's policy. Not chosen.
+  - *Stop with an error*: impossible to miss, but one bad file blocks every other upload. Not chosen.
+  - The owner chose the option the agent recommended, and gave no further reason.
+- **Consequences:** The user replaces such a file by hand for now, and BECK names a local file that would fit. Step 06.5
+  decides whether a flag can replace these files. Step 06.7 adds them to the JSON output.

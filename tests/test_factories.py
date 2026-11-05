@@ -78,6 +78,15 @@ def test_a_system_heading_appears_once_for_entries_in_a_row() -> None:
     assert make_report_text(entries).count("SYSTEM: PlayStation") == 1
 
 
+def test_an_incorrect_entry_parses_back_the_same() -> None:
+    entries = [
+        make_missing("a.bin", A, system="One"),
+        make_missing("b.bin", B, system="One", incorrect=True, current_md5="c" * 32),
+    ]
+
+    assert adapter.parse_report(make_report_text(entries)) == entries
+
+
 def test_every_real_entry_survives_rendering_and_parsing() -> None:
     real = adapter.parse_report(load_report(REAL_REPORT))
 

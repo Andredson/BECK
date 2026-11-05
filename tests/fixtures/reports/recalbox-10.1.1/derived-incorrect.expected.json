@@ -1,0 +1,26 @@
+[
+  {
+    "name": "kick39106.A1200",
+    "path": "/recalbox/share/bios/amiga/bios/",
+    "relativePath": "amiga/bios/",
+    "hashes": [
+      "B7CC148386AA631136F510CD29E42FC3"
+    ]
+  },
+  {
+    "name": "kick40068.A1200",
+    "path": "/recalbox/share/bios/amiga/bios/",
+    "relativePath": "amiga/bios/",
+    "hashes": [
+      "646773759326FBAC3B2311FD8C8793EE"
+    ]
+  },
+  {
+    "name": "kick40068.A4000",
+    "path": "/recalbox/share/bios/amiga/bios/",
+    "relativePath": "amiga/bios/",
+    "hashes": [
+      "9BDEDDE6A4F33555B4A270C8CA53297D"
+    ]
+  }
+]

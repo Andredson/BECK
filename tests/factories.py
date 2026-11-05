@@ -38,12 +38,23 @@ def make_local_file(relative: str, md5: str, size: int = 1) -> LocalFile:
 
 
 def make_missing(
-    target: str, *md5s: str, required: bool | None = True, system: str | None = None
+    target: str,
+    *md5s: str,
+    required: bool | None = True,
+    system: str | None = None,
+    incorrect: bool = False,
+    current_md5: str | None = None,
 ) -> MissingBios:
     """A report entry. Its name is the target's last part, which is what the model requires."""
     path = PurePosixPath(target)
     return MissingBios(
-        name=path.name, target=path, md5s=frozenset(md5s), required=required, system=system
+        name=path.name,
+        target=path,
+        md5s=frozenset(md5s),
+        required=required,
+        system=system,
+        incorrect=incorrect,
+        current_md5=current_md5,
     )
 
 
@@ -64,9 +75,10 @@ def make_report_text(entries: Iterable[MissingBios]) -> str:
             current_system = entry.system
         kind = "OPTIONAL" if entry.required is False else "REQUIRED"
         lines += [
-            f"  MISSING {kind} BIOS: {entry.name}",
+            f"  {'INCORRECT' if entry.incorrect else 'MISSING'} {kind} BIOS: {entry.name}",
             f"    Path: {BIOS_ROOT}{entry.target}",
             "    For: libretro/beck-test",
+            *([f"    Current MD5: {entry.current_md5}"] if entry.current_md5 else []),
             "    Possible MD5 List:",
             *(f"      {md5.upper()}" for md5 in sorted(entry.md5s)),
             "",

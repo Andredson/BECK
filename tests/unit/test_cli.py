@@ -263,6 +263,86 @@ def test_no_missing_bios_says_so_and_closes(
     assert server.connections[0].closed
 
 
+def incorrect(name: str, *md5s: str) -> str:
+    return (
+        block(name, *md5s, folder="two/")
+        .replace("MISSING REQUIRED", "INCORRECT REQUIRED")
+        .replace("    Possible", f"    Current MD5: {'C' * 32}\n    Possible")
+    )
+
+
+def test_an_incorrect_file_is_reported_kept_and_exits_normally(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # DEC-54: the device's file stays, even with a valid local file.
+    valid = write(app / "bios" / "b.bin")
+    server.dirs.add(("bios", "two"))
+    server.files[("bios", "two/b.bin")] = b"the wrong file on the device"
+    report(server, incorrect("b.bin", md5_of(valid)))
+
+    assert run(app) == 0
+
+    assert server.files[("bios", "two/b.bin")] == b"the wrong file on the device"
+    assert server.connections[0].calls.count("storeFile") == 0
+    output = capsys.readouterr().out
+    assert "INCORRECT: two/b.bin is on the device with a wrong MD5, and was kept" in output
+    assert "No missing bios" not in output
+    # Nothing else to do, so it stops here instead of counting 0 missing and scanning.
+    assert "There are" not in output
+    assert "Final result" not in output
+
+
+def test_incorrect_files_are_reported_beside_normal_uploads(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    good, valid = write(app / "bios" / "good.bin"), write(app / "bios" / "valid.bin")
+    report(server, block("a.bin", md5_of(good)) + incorrect("b.bin", md5_of(valid)))
+
+    assert run(app) == 0
+
+    assert server.files[("bios", "a.bin")] == good
+    assert ("bios", "two/b.bin") not in server.files
+    output = capsys.readouterr().out
+    assert "There are 1 missing bios" in output
+    assert "INCORRECT: two/b.bin" in output
+    assert "valid.bin: valid for two/b.bin, which is incorrect on the device, kept" in output
+    assert "Final result: 1/1 missing entries satisfied, 2 files analysed" in output
+
+
+def test_an_incorrect_file_is_reported_even_with_no_local_files(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    report(server, block("a.bin", "0" * 32) + incorrect("b.bin", "1" * 32))
+
+    assert run(app) == 0
+
+    output = capsys.readouterr().out
+    assert "INCORRECT: two/b.bin" in output
+    assert "No BIOS files found" in output
+
+
+@pytest.mark.parametrize(
+    ("text", "message"),
+    [
+        ("BIOS STATUS\n", "doesn't look like a report"),
+        ("", "doesn't look like a report"),
+        ("MISSING BIOS REPORT\n\n  ABSENT REQUIRED BIOS: a.bin\n", "Unrecognized heading"),
+        ("MISSING BIOS REPORT\n\nSYSTEM: One\n---\n", "No BIOS block under"),
+    ],
+    ids=["changed-title", "empty-file", "changed-heading", "system-with-no-block"],
+)
+def test_an_unrecognized_report_is_exit_4_not_nothing_missing(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str], text: str, message: str
+) -> None:
+    report(server, text)
+
+    assert run(app) == 4
+
+    output = capsys.readouterr().out
+    assert message in output
+    assert "No missing bios" not in output
+
+
 def test_a_missing_report_is_exit_4_and_says_what_to_do(
     server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

@@ -24,16 +24,22 @@ def _check_relative_file(path: PurePosixPath) -> None:
 
 @dataclass(frozen=True, slots=True)
 class MissingBios:
-    """One entry of a missing-BIOS report."""
+    """One entry of a missing-BIOS report: a file that's missing, or on the device but incorrect."""
 
     name: str
     target: PurePosixPath
     md5s: frozenset[str]
     required: bool | None = None  # None: the report doesn't say
     system: str | None = None
+    incorrect: bool = False  # the file is on the device, but with a hash that isn't on the list
+    current_md5: str | None = None  # the hash of the file on the device, if the report gives it
 
     def __post_init__(self) -> None:
         _check_relative_file(self.target)
+        if self.current_md5 is not None:
+            if not self.incorrect:
+                raise ValueError(f"{self.name} has a current MD5 but isn't incorrect")
+            _check_md5(self.current_md5)
         if self.target.name != self.name:
             raise ValueError(f"Target {self.target} doesn't end in {self.name}")
         if not self.md5s:
@@ -68,6 +74,10 @@ class PlannedUpload:
 
     def __post_init__(self) -> None:
         _check_relative_file(self.target)
+        if self.entry.incorrect:
+            raise ValueError(
+                f"{self.target} is incorrect on the device, and isn't replaced (DEC-54)"
+            )
         if self.target != self.entry.target:
             raise ValueError(f"Target {self.target} isn't the entry's {self.entry.target}")
         if self.source.md5 not in self.entry.md5s:
@@ -95,6 +105,7 @@ class Plan:
     unmatched: tuple[LocalFile, ...] = ()
     already_filled: tuple[LocalFile, ...] = ()  # matched, but other files fill all its targets
     still_missing: tuple[MissingBios, ...] = ()
+    incorrect: tuple[MissingBios, ...] = ()  # on the device with a wrong hash, and kept (DEC-54)
 
     def __post_init__(self) -> None:
         fields: dict[str, list[Any]] = {
@@ -104,6 +115,7 @@ class Plan:
             "unmatched": sorted(self.unmatched, key=lambda f: f.relative.as_posix()),
             "already_filled": sorted(self.already_filled, key=lambda f: f.relative.as_posix()),
             "still_missing": sorted(self.still_missing, key=lambda e: e.target),
+            "incorrect": sorted(self.incorrect, key=lambda e: e.target),
         }
         for name, value in fields.items():
             object.__setattr__(self, name, tuple(value))  # the only write: this class is frozen

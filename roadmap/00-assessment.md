@@ -95,6 +95,10 @@ the VM's Samba with `port: 445`, with only the TCP port number redirected; real 
 | D15 | The Python floor is 3.10 (needed for `match`), which reached end-of-life in October 2026. | README | Users on an unsupported interpreter. | [02.1](02-foundation-tooling-and-ci.md#021--add-pyprojecttoml-and-uvlock-d15) + [03.1](03-critical-fixes-and-data-safety.md#031--fix-readme-commands-and-add-the-legal-notice-d13-d15) |
 | D16 | *(Suspected; verify on a device.)* Port 445 is used without `is_direct_tcp=True` in pysmb's `SMBConnection`, so it relies on Samba accepting a NetBIOS session request on the direct-TCP port. | 48-51 | May fail against stricter SMB servers. | [03.3](03-critical-fixes-and-data-safety.md#033--smb-session-seam-one-connection-in-memory-reads-closed-handles-d6-d7-d11-d16) (interim), [04.9](04-architecture-refactor.md#049--smb-transport-on-pysmb-d4-d11-d16) (final) |
 
+**Found later:** D17, a report's `INCORRECT` blocks merged into the entry above, so a valid file, or even the rejected file,
+uploaded under the wrong name, and a report with only those blocks read as "nothing missing". It was in the parser from the
+start, and fixed in [05.3a](05-testing-hardening.md#053a--a-report-beck-cant-recognize-isnt-nothing-missing) (DEC-54).
+
 ### Hygiene findings (not numbered, fixed in [03.12](03-critical-fixes-and-data-safety.md#0312--cleanup-messages-imports-exceptions-typos-d12))
 - `import json` is unused, and so are `ITALIC`, `UNDERLINE`, `BLINK`, `BLACK` and `WHITE`.
 - Bare `except:` at lines 31 and 225; `exit()` (the `site` builtin) instead of `sys.exit()` or exceptions.
