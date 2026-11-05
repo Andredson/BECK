@@ -2,12 +2,14 @@
 
 import argparse
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-from beck.errors import BeckError, ConfigError, ReportNotFoundError, TransportError
+from beck import __version__
+from beck.errors import BeckError, ConfigError, ReportNotFoundError, TransportError, UsageError
 from beck.executor import execute
 from beck.frontends import get_adapter
 from beck.hashing import scan
@@ -16,6 +18,21 @@ from beck.output.console import LOGGER_NAME, ConsoleRenderer, configure_logging
 from beck.transports.smb import SmbTransport
 
 DESCRIPTION = "Match your BIOS files by MD5 and send them to the right folder on your Recalbox."
+
+EXAMPLES = """\
+examples:
+  beck check                  copy the matching files to your device
+  beck scan                   list your local files and their MD5s
+  beck report                 list what your device is missing
+
+See docs/cli.md for every option, the exit codes, and what gets deleted.
+"""
+
+COMMANDS = {
+    "check": ("Copy your matching BIOS files to the device.", "example:\n  beck check\n"),
+    "scan": ("List your local BIOS files with their MD5s.", "example:\n  beck scan\n"),
+    "report": ("List the BIOS files the device reports as missing.", "example:\n  beck report\n"),
+}
 
 SMB_SETTINGS = ("server", "port", "user", "passwd")
 
@@ -82,16 +99,57 @@ def _run(base_dir: Path, renderer: ConsoleRenderer) -> int:
     return TransportError.exit_code if result.errors else 0
 
 
+def _add_global_options(parser: argparse.ArgumentParser, *, on_a_command: bool) -> None:
+    """Options that work before or after the command.
+
+    On a command, the default must be SUPPRESS. Otherwise, argparse sets it after reading the part
+    before the command, so ``beck --no-color check`` would lose the flag.
+    """
+    parser.add_argument(
+        "--no-color",
+        action="store_true",
+        default=argparse.SUPPRESS if on_a_command else False,
+        help="don't use colors, the same as setting NO_COLOR",
+    )
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="beck",
+        description=DESCRIPTION,
+        epilog=EXAMPLES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("--version", action="version", version=f"beck {__version__}")
+    _add_global_options(parser, on_a_command=False)
+    commands = parser.add_subparsers(dest="command", title="commands", metavar="<command>")
+    for name, (summary, example) in COMMANDS.items():
+        command = commands.add_parser(
+            name,
+            help=summary,
+            description=summary,
+            epilog=example,
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+        _add_global_options(command, on_a_command=True)
+    return parser
+
+
 def main(argv: list[str] | None = None, *, base_dir: Path | None = None) -> int:
     """Run BECK and return its exit code. Settings and files are found under ``base_dir``.
 
     With no ``base_dir``, that's the current directory: an installed tool has no folder of its own.
     """
-    argparse.ArgumentParser(prog="beck", description=DESCRIPTION).parse_args(argv)
-    configure_logging()
-    renderer = ConsoleRenderer()
+    args = _build_parser().parse_args(argv)
+    logger = configure_logging()
+    environ = {**os.environ, "NO_COLOR": "1"} if args.no_color else None
+    renderer = ConsoleRenderer(environ=environ)
+    if args.command is None:
+        logger.warning("Hint: use 'beck check'. Running beck with no command is going away.")
 
     try:
+        if args.command in ("scan", "report"):
+            raise UsageError(f"beck {args.command} isn't available yet")
         return _run(Path.cwd() if base_dir is None else base_dir, renderer)
     except BeckError as error:
         renderer.error(error)

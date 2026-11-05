@@ -85,7 +85,7 @@ uv lock --check && uv run ruff check . && uv run ruff format --check . && uv run
   ```
 
 - **Updating dependencies or pins** follows [docs/maintenance.md](docs/maintenance.md).
-- `uv run python check_bios.py` and `uv run beck` connect to a **real Recalbox** over SMB and upload files to it. Don't run them unless the human explicitly asks you to in this session.
+- `uv run python check_bios.py`, `uv run beck` and `uv run beck check` connect to a **real Recalbox** over SMB and upload files to it. Don't run them unless the human explicitly asks you to in this session.
 
 ## Working on the roadmap (protocol)
 

@@ -15,6 +15,7 @@ from typing import Any, NoReturn
 import pytest
 from smb.smb_structs import OperationFailure
 
+import beck
 from beck import cli
 from beck.errors import ConfigError
 from tests.conftest import REAL_REPORT, load_report
@@ -72,7 +73,7 @@ def report(server: FakeSMBServer, text: str | bytes) -> None:
 
 
 def run(app: Path) -> int:
-    return cli.main([], base_dir=app)
+    return cli.main(["check"], base_dir=app)
 
 
 # Settings
@@ -150,7 +151,7 @@ def test_with_no_base_dir_it_uses_the_current_folder(
     data = write(app / "bios" / "copy.bin")
     report(server, block("scph5501.bin", md5_of(data)))
 
-    assert cli.main([]) == 0
+    assert cli.main(["check"]) == 0
 
     assert server.files[("bios", "scph5501.bin")] == data
 
@@ -550,6 +551,117 @@ def test_a_summary_counts_targets_and_files(
     assert "2/3 missing entries satisfied, 1 files analysed" in capsys.readouterr().out
 
 
+# Commands and global options
+
+
+@pytest.mark.parametrize("command", ["check", "scan", "report"])
+def test_each_command_has_help(command: str, capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main([command, "--help"])
+
+    assert exit_info.value.code == 0
+    output = capsys.readouterr().out
+    assert f"usage: beck {command}" in output
+    assert "example:" in output
+    assert cli.COMMANDS[command][0] in output
+
+
+def test_help_lists_the_commands_and_examples(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        cli.main(["--help"])
+
+    output = capsys.readouterr().out
+    for command in ("check", "scan", "report"):
+        assert f"  {command} " in output
+    assert "examples:" in output
+    assert "docs/cli.md" in output
+
+
+def test_version(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["--version"])
+
+    assert exit_info.value.code == 0
+    assert capsys.readouterr().out == f"beck {beck.__version__}\n"
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ["--no-such-flag"],
+        ["check", "--no-such-flag"],
+        ["scan", "--no-such-flag"],
+        ["no-such-command"],
+    ],
+    ids=["global", "on-check", "on-scan", "command"],
+)
+def test_unknown_arguments_exit_2_and_run_nothing(
+    arguments: list[str], server: FakeSMBServer, capsys: pytest.CaptureFixture[str]
+) -> None:
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(arguments)
+
+    assert exit_info.value.code == 2
+    assert "usage: beck" in capsys.readouterr().err
+    assert server.connections == []
+
+
+def test_no_command_works_as_check_with_a_hint_on_stderr(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    data = write(app / "bios" / "copy.bin")
+    report(server, block("a.bin", md5_of(data)))
+
+    assert cli.main([], base_dir=app) == 0
+
+    assert server.files[("bios", "a.bin")] == data
+    captured = capsys.readouterr()
+    assert "Hint: use 'beck check'" in captured.err
+    assert "Hint" not in captured.out
+
+
+def test_beck_check_has_no_hint(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    report(server, "MISSING BIOS REPORT\n")
+
+    assert run(app) == 0
+
+    assert capsys.readouterr().err == ""
+
+
+@pytest.mark.parametrize("command", ["scan", "report"])
+def test_commands_still_to_come_say_so_and_exit_2(
+    command: str, server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert cli.main([command], base_dir=app) == 2
+
+    assert f"beck {command} isn't available yet" in capsys.readouterr().out
+    assert server.connections == []
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [["check", "--no-color"], ["--no-color", "check"], ["--no-color"]],
+    ids=["after", "before", "no-command"],
+)
+def test_no_color_works_before_or_after_the_command(
+    arguments: list[str],
+    server: FakeSMBServer,
+    app: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("NO_COLOR")
+    monkeypatch.setenv("FORCE_COLOR", "1")
+    data = write(app / "bios" / "copy.bin")
+    report(server, block("a.bin", md5_of(data)))
+
+    assert cli.main(arguments, base_dir=app) == 0
+
+    assert "\033[" not in capsys.readouterr().out
+
+
 # Every way out of cli.main, by exit code
 
 
@@ -560,7 +672,7 @@ def test_exit_0_a_normal_run(
     write(app / "bios" / "junk.bin")
     report(server, block("a.bin", md5_of(file), folder="ps1/") + block("b.bin", "0" * 32))
 
-    assert cli.main([], base_dir=app) == 0
+    assert cli.main(["check"], base_dir=app) == 0
 
     output = capsys.readouterr().out
     for line in (
@@ -581,7 +693,7 @@ def test_exit_0_nothing_matched_has_no_scan_message(
     write(app / "bios" / "junk.bin")
     report(server, block("a.bin", "0" * 32))
 
-    assert cli.main([], base_dir=app) == 0
+    assert cli.main(["check"], base_dir=app) == 0
 
     output = capsys.readouterr().out
     assert "Final result: 0/1 missing entries satisfied, 1 files analysed" in output
@@ -626,7 +738,7 @@ def test_exit_2_config_error(
     else:
         write(app / "config" / "config.yml", config.encode())
 
-    assert cli.main([], base_dir=app) == 2
+    assert cli.main(["check"], base_dir=app) == 2
 
     assert message in capsys.readouterr().out
     assert server.connections == []
@@ -651,7 +763,7 @@ def test_exit_3_one_failed_upload_after_the_others_finish(
 
     monkeypatch.setattr(FakeSMBConnection, "storeFile", fail_for_b)
 
-    assert cli.main([], base_dir=app) == 3
+    assert cli.main(["check"], base_dir=app) == 3
 
     assert server.files[("bios", "a.bin")] == good
     output = capsys.readouterr().out
@@ -681,7 +793,10 @@ def test_python_dash_m_beck_help_runs_as_a_process(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize(
     "command",
-    [[sys.executable, "-m", "beck"], [str(Path(sys.executable).with_name("beck"))]],
+    [
+        [sys.executable, "-m", "beck", "check"],
+        [str(Path(sys.executable).with_name("beck")), "check"],
+    ],
     ids=["python-m", "console-script"],
 )
 def test_the_exit_code_reaches_the_operating_system(tmp_path: Path, command: list[str]) -> None:

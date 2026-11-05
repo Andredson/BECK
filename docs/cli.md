@@ -3,8 +3,8 @@
 The reference for using BECK from the command line.
 
 **Status:** this is the design [stage 06](../roadmap/06-cli-ux-and-machine-output.md) is building, so most of it doesn't exist yet.
-Today, `beck` takes no options: it behaves like `beck check` with the defaults below, and reads its settings from
-`config/config.yml` in the current folder.
+Today, `beck check` runs with the defaults below and reads its settings from `config/config.yml` in the current folder, and `--version`
+and `--no-color` work. `beck scan` and `beck report` only say they aren't available yet.
 
 ```text
 beck [--version] [-v | -q] [--no-color] [--json] <command> [options]

@@ -63,7 +63,11 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `docs(cli): specify commands, flags and exit codes`
 
 ### 06.2 — Subcommand skeleton with argparse
-- [ ] Done
+- [x] Done (2026-11-05: `check` runs as before, and `scan` and `report` say they aren't available until 06.11, with exit 2. Different
+  from the list below: global options go through a helper rather than one parent parser, because argparse would overwrite an option
+  given before the command with the command's default. Only `--no-color` exists so far, moved up from 06.10 to prove that this works;
+  `--json`, `-v` and `-q` come in their own steps, because accepting a flag that does nothing would mislead. `check_bios.py` runs
+  `beck check`, so it shows only its own notice. Checked by breaking each rule on purpose.)
 - **What:** Build the parser in `cli.py` with `argparse` subparsers. Global options go on a parent parser so they
   work before or after the subcommand. `--version` prints `beck <version>`. Help text includes examples
   (`epilog` with `RawDescriptionHelpFormatter`). Bare `beck` with no command keeps working as `beck check` for
@@ -205,7 +209,7 @@ beck config  init | show | path                     # added in stage 07
 ### 06.10 — Verbosity, logging and color flags
 - [ ] Done
 - **What:** `-v` sets debug logs on stderr (connection steps, timings, plan details; **never** credentials).
-  `-q` prints only errors and the final summary. `--no-color` is equivalent to `NO_COLOR`. Hashing many files
+  `-q` prints only errors and the final summary. `--no-color` already exists (06.2). Hashing many files
   shows a simple progress counter on stderr, on a TTY only.
 - **Files:** `src/beck/cli.py`, `src/beck/output/console.py`, `tests/unit/test_console.py`
 - **Done when:** Tests check that `-v` output never contains the configured password (use a sentinel value).

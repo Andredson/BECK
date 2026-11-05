@@ -65,7 +65,7 @@ If you never edited it, `git pull` removes it; create it again as described in [
 2. From the repository folder, run:
 
    ```sh
-   uv run beck                       # with pip: python check_bios.py
+   uv run beck check                 # with pip: python check_bios.py
    ```
 
    `check_bios.py` still works and prints a notice that it's deprecated.

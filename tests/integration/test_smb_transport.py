@@ -239,7 +239,7 @@ def test_end_to_end_files_arrive_under_the_right_names_and_folders(
     put_report(make_report_text(entries))
     before = snapshot(bios)
 
-    assert cli.main([], base_dir=app) == 0
+    assert cli.main(["check"], base_dir=app) == 0
 
     assert snapshot(bios) == before
     with samba.guest() as transport:
@@ -260,8 +260,8 @@ def test_end_to_end_running_again_gives_the_same_files(
     target = folder / "ps1" / "a.bin"
     put_report(make_report_text([make_missing(target.as_posix(), file.md5)]))
 
-    assert cli.main([], base_dir=app) == 0
-    assert cli.main([], base_dir=app) == 0
+    assert cli.main(["check"], base_dir=app) == 0
+    assert cli.main(["check"], base_dir=app) == 0
 
     with samba.guest() as transport:
         assert transport.read_bytes(target) == file.path.read_bytes()
@@ -284,7 +284,7 @@ def test_end_to_end_an_incorrect_file_is_kept(
     wrong = make_missing(target.as_posix(), valid.md5, incorrect=True, current_md5="c" * 32)
     put_report(make_report_text([wrong]))
 
-    assert cli.main([], base_dir=app) == 0
+    assert cli.main(["check"], base_dir=app) == 0
 
     with samba.guest() as transport:
         assert transport.read_bytes(target) == b"the wrong file"
@@ -314,7 +314,7 @@ def test_end_to_end_an_incorrect_file_is_kept_beside_normal_uploads(
         )
     )
 
-    assert cli.main([], base_dir=app) == 0
+    assert cli.main(["check"], base_dir=app) == 0
 
     with samba.guest() as transport:
         assert transport.read_bytes(kept) == b"the wrong file"
@@ -329,7 +329,7 @@ def test_end_to_end_nothing_missing(
 ) -> None:
     put_report(make_report_text([]))
 
-    assert cli.main([], base_dir=app) == 0
+    assert cli.main(["check"], base_dir=app) == 0
     assert "No missing bios were found" in capsys.readouterr().out
 
 
@@ -338,12 +338,12 @@ def test_end_to_end_an_unrecognized_report_is_exit_4(
 ) -> None:
     put_report("A FORMAT BECK DOESN'T KNOW\r\n")
 
-    assert cli.main([], base_dir=app) == ReportParseError.exit_code
+    assert cli.main(["check"], base_dir=app) == ReportParseError.exit_code
     assert "doesn't look like a report" in capsys.readouterr().out
 
 
 def test_end_to_end_no_report_is_exit_4(app: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    assert cli.main([], base_dir=app) == 4
+    assert cli.main(["check"], base_dir=app) == 4
 
     assert "Generate the report on the device first" in capsys.readouterr().out
 
@@ -354,7 +354,7 @@ def test_end_to_end_wrong_password_is_exit_3_with_no_traceback(
     config = samba.config(user="beck", password=BAD_CREDENTIAL)
     (app / "config" / "config.yml").write_text(config, encoding="utf-8")
 
-    assert cli.main([], base_dir=app) == 3
+    assert cli.main(["check"], base_dir=app) == 3
 
     captured = capsys.readouterr()
     assert "refused the login" in captured.out
@@ -368,7 +368,7 @@ def test_end_to_end_unreachable_server_is_exit_3_with_no_traceback(
     config = f'smb: {{user: "", passwd: "", server: "{samba.host}", port: 1}}\n'
     (app / "config" / "config.yml").write_text(config, encoding="utf-8")
 
-    assert cli.main([], base_dir=app) == 3
+    assert cli.main(["check"], base_dir=app) == 3
 
     captured = capsys.readouterr()
     assert "Error connecting to SMB server" in captured.out
@@ -376,4 +376,4 @@ def test_end_to_end_unreachable_server_is_exit_3_with_no_traceback(
 
 
 def test_end_to_end_a_missing_config_is_exit_2(tmp_path: Path) -> None:
-    assert cli.main([], base_dir=tmp_path) == ConfigError.exit_code
+    assert cli.main(["check"], base_dir=tmp_path) == ConfigError.exit_code

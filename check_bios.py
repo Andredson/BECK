@@ -10,4 +10,4 @@ if __name__ == "__main__":
     from beck.cli import main
 
     print("check_bios.py is deprecated: install BECK and use the beck command.", file=sys.stderr)
-    sys.exit(main(base_dir=ROOT))
+    sys.exit(main(["check", *sys.argv[1:]], base_dir=ROOT))
