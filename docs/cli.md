@@ -10,8 +10,8 @@ Today, `beck check` and `beck report` work with the options under [Choosing what
 beck [--version] [-v | -q] [--no-color] [--json] <command> [options]
 
 beck check   [--source DIR] [--target URL | --target-dir DIR] [--frontend recalbox]
-             [--report-file FILE] [--dry-run] [--move] [--clean-unmatched] [--yes]
-             [--fail-if-missing]
+             [--report-file FILE] [--overwrite] [--dry-run] [--move] [--clean-unmatched]
+             [--yes] [--fail-if-missing]
 beck scan    [--source DIR]
 beck report  [--target URL | --target-dir DIR | --report-file FILE]
 ```
@@ -84,6 +84,7 @@ With no target, BECK uses the settings in `config/config.yml`.
 
 | Option | What it does |
 |---|---|
+| `--overwrite` | Replaces files already on the device, including ones the report calls `INCORRECT`. There's no backup of what it replaces. See [Files already on the device](#files-already-on-the-device). |
 | `--dry-run` | Shows the full plan, including what would be deleted, and changes nothing, locally or on the device. |
 | `--move` | Deletes a local file once it's uploaded to **all** its targets and each remote size matches. If any upload of that file failed, the file stays. |
 | `--clean-unmatched` | Deletes local files that matched nothing. Read the warning below first. |
@@ -112,10 +113,15 @@ These are never deleted:
 
 ## Files already on the device
 
-- **Listed as `INCORRECT` by the report:** the file is on the device with a wrong hash. BECK keeps it and reports it, and never uploads
-  to that target, even if you have a valid copy (DEC-54). It tells you which local file would fit, so that you can replace it yourself.
-- **Listed as missing, but the file is there:** this can happen if the report is out of date. What BECK does here is the decision in
-  [step 06.5](../roadmap/06-cli-ux-and-machine-output.md#065--owner-decision-remote-files-that-already-exist). Today it replaces the file.
+BECK keeps them unless you pass `--overwrite` (DEC-61):
+
+- **Listed as missing, but the file is there:** this usually means the report is out of date, so the file may be fine. BECK reports
+  `already on the device, kept`. Generate a new report, or use `--overwrite` to replace it.
+- **Listed as `INCORRECT` by the report:** the file is on the device with a wrong hash. BECK reports it and tells you which local file
+  would fit (DEC-54). `--overwrite` replaces it with that file, if you have one.
+
+`--overwrite` reports `replaced`, not `copied`, so you can see what it overwrote. BECK keeps no copy of the old file, and a failed
+upload can leave the old file damaged. Names that differ only in case count as the same file on SMB, as they do for Samba.
 
 ## Exit codes
 

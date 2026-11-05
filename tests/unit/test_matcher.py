@@ -338,6 +338,40 @@ def test_incorrect_entries_dont_stop_other_uploads() -> None:
     assert result.incorrect == (wrong,)
 
 
+def test_replace_incorrect_fills_a_target_with_a_valid_file() -> None:
+    # DEC-61: only with --overwrite. By default, the target is kept (above).
+    wrong = make_missing("two/b.bin", B, incorrect=True, current_md5=C)
+    valid = make_local_file("valid.bin", B)
+
+    result = plan([wrong], [valid], replace_incorrect=True)
+
+    assert filled(result) == {"two/b.bin": "valid.bin"}
+    assert not (result.incorrect or result.unmatched or result.still_missing)
+
+
+def test_replace_incorrect_leaves_a_target_with_no_valid_file_as_incorrect() -> None:
+    wrong = make_missing("two/b.bin", B, incorrect=True, current_md5=C)
+    bad_dump = make_local_file("bad.bin", C)
+
+    result = plan([wrong], [bad_dump], replace_incorrect=True)
+
+    assert result.uploads == ()
+    assert result.incorrect == (wrong,)
+    assert result.still_missing == ()
+    assert result.unmatched == (bad_dump,)
+
+
+def test_replace_incorrect_still_fills_ordinary_targets() -> None:
+    wrong = make_missing("two/b.bin", B, incorrect=True)
+    report = [wrong, make_missing("a.bin", A), make_missing("gone.bin", C)]
+
+    result = plan(report, [make_local_file("copy.bin", A)], replace_incorrect=True)
+
+    assert filled(result) == {"a.bin": "copy.bin"}
+    assert [e.name for e in result.still_missing] == ["gone.bin"]
+    assert result.incorrect == (wrong,)
+
+
 def test_real_report_with_no_files_leaves_every_target_missing() -> None:
     report = RecalboxAdapter().parse_report(load_report(REAL_REPORT))
 

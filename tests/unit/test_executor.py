@@ -43,11 +43,13 @@ def source_state(planned: Plan) -> dict[Path, tuple[int, bytes]]:
     }
 
 
-def run(plan_to_run: Plan, target: Path, *, dry_run: bool = False) -> RunResult:
+def run(
+    plan_to_run: Plan, target: Path, *, dry_run: bool = False, overwrite: bool = False
+) -> RunResult:
     """Execute a plan, and check that every local file is untouched in every scenario (DEC-02)."""
     before = source_state(plan_to_run)
     with LocalTransport(target) as transport:
-        result = execute(plan_to_run, transport, dry_run=dry_run)
+        result = execute(plan_to_run, transport, dry_run=dry_run, overwrite=overwrite)
     assert source_state(plan_to_run) == before
     return result
 
@@ -106,11 +108,13 @@ def test_dry_run_changes_nothing_and_skips_every_upload(source: Path, target: Pa
 
     assert (snapshot(target), snapshot(source)) == before
     assert not (target / "ps1").exists()
-    assert result == RunResult(plan=built, skipped=built.uploads, dry_run=True)
+    assert targets(result.skipped) == ["ps1/a.bin"]
+    assert targets(result.kept) == ["existing.bin"]
+    assert result.dry_run is True
 
 
 class Untouchable:
-    """A Transport whose every method fails the test, except opening and closing."""
+    """A Transport that fails the test if anything but opening, closing and checking is called."""
 
     def __enter__(self) -> Self:
         return self
@@ -122,7 +126,7 @@ class Untouchable:
         raise AssertionError("a dry run read a file")
 
     def exists(self, path: PurePosixPath) -> bool:
-        raise AssertionError("a dry run checked a file")
+        return False  # reading is allowed: a dry run has to know what it would replace
 
     def size(self, path: PurePosixPath) -> int:
         raise AssertionError("a dry run checked a size")
@@ -137,26 +141,104 @@ class Untouchable:
         raise AssertionError("a dry run has nothing to describe")
 
 
-def test_dry_run_calls_no_transport_method(source: Path) -> None:
+def test_dry_run_only_checks_what_is_there(source: Path) -> None:
     file = make_bios_file(source, "copy.bin")
     built = plan([make_missing("ps1/a.bin", file.md5)], scan(source).files)
 
     assert execute(built, Untouchable(), dry_run=True).skipped == built.uploads
 
 
-def test_running_again_gives_the_same_result_and_files(source: Path, target: Path) -> None:
+def test_running_again_keeps_the_files_and_changes_nothing(source: Path, target: Path) -> None:
     file = make_bios_file(source, "copy.bin")
     make_bios_file(source, "junk.bin")
     report = [make_missing("a.bin", file.md5), make_missing("ps1/x/b.bin", file.md5)]
     built = plan(report, scan(source).files)
 
     first = run(built, target)
-    files_after_first = {name: state[2] for name, state in snapshot(target).items()}
+    after_first = snapshot(target)
     second = run(built, target)
 
-    assert second == first
-    assert not second.errors
-    assert {name: state[2] for name, state in snapshot(target).items()} == files_after_first
+    assert targets(first.completed) == ["a.bin", "ps1/x/b.bin"]
+    assert targets(second.kept) == ["a.bin", "ps1/x/b.bin"]
+    assert not (second.completed or second.errors)
+    assert snapshot(target) == after_first  # no file was even rewritten
+
+
+def test_a_file_already_on_the_target_is_kept(source: Path, target: Path) -> None:
+    # DEC-61: the report may be out of date, so that file may be fine.
+    file = make_bios_file(source, "copy.bin")
+    (target / "a.bin").write_bytes(b"old content")
+
+    result = run(plan([make_missing("a.bin", file.md5)], scan(source).files), target)
+
+    assert (target / "a.bin").read_bytes() == b"old content"
+    assert targets(result.kept) == ["a.bin"]
+    assert not (result.completed or result.replaced or result.errors)
+
+
+def test_overwrite_replaces_a_file_already_on_the_target(source: Path, target: Path) -> None:
+    file = make_bios_file(source, "copy.bin")
+    new = make_bios_file(source, "new.bin")
+    (target / "a.bin").write_bytes(b"old content")
+    report = [make_missing("a.bin", file.md5), make_missing("b.bin", new.md5)]
+
+    result = run(plan(report, scan(source).files), target, overwrite=True)
+
+    assert (target / "a.bin").read_bytes() == file.path.read_bytes()
+    assert targets(result.completed) == ["a.bin", "b.bin"]
+    assert targets(result.replaced) == ["a.bin"]  # b.bin was new
+    assert result.kept == ()
+
+
+def test_only_the_files_already_there_are_kept(source: Path, target: Path) -> None:
+    there, new = make_bios_file(source, "there.bin"), make_bios_file(source, "new.bin")
+    (target / "a.bin").write_bytes(b"old content")
+    report = [make_missing("a.bin", there.md5), make_missing("b.bin", new.md5)]
+
+    result = run(plan(report, scan(source).files), target)
+
+    assert targets(result.kept) == ["a.bin"]
+    assert targets(result.completed) == ["b.bin"]
+    assert (target / "b.bin").read_bytes() == new.path.read_bytes()
+
+
+@pytest.mark.parametrize("overwrite", [False, True])
+def test_a_dry_run_reports_existing_files_and_changes_nothing(
+    source: Path, target: Path, overwrite: bool
+) -> None:
+    file = make_bios_file(source, "copy.bin")
+    (target / "a.bin").write_bytes(b"old content")
+    report = [make_missing("a.bin", file.md5), make_missing("new/b.bin", file.md5)]
+    before = snapshot(target)
+
+    result = run(plan(report, scan(source).files), target, dry_run=True, overwrite=overwrite)
+
+    assert snapshot(target) == before
+    assert not (target / "new").exists()
+    assert result.completed == ()
+    assert targets(result.kept) == ([] if overwrite else ["a.bin"])
+    assert targets(result.replaced) == (["a.bin"] if overwrite else [])
+    assert targets(result.skipped) == (["a.bin", "new/b.bin"] if overwrite else ["new/b.bin"])
+
+
+def test_a_failure_while_checking_a_target_is_recorded_and_the_run_continues(
+    source: Path, tmp_path: Path
+) -> None:
+    class Flaky(LocalTransport):
+        def exists(self, path: PurePosixPath) -> bool:
+            if path.name == "a.bin":
+                raise TransportError("listing failed")
+            return super().exists(path)
+
+    first, second = make_bios_file(source, "1.bin"), make_bios_file(source, "2.bin")
+    report = [make_missing("a.bin", first.md5), make_missing("b.bin", second.md5)]
+    built = plan(report, scan(source).files)
+
+    with Flaky(tmp_path) as transport:
+        result = execute(built, transport, dry_run=False)
+
+    assert [(e.item, e.message) for e in result.errors] == [("a.bin", "listing failed")]
+    assert targets(result.completed) == ["b.bin"]
 
 
 def test_a_dry_run_after_a_real_run_changes_nothing(source: Path, target: Path) -> None:
@@ -215,10 +297,12 @@ def test_a_read_only_target_file_is_recorded_and_kept(
     existing.chmod(0o444)
     restore_permissions.append(existing)
 
-    result = run(plan([make_missing("a.bin", file.md5)], scan(source).files), target)
+    built = plan([make_missing("a.bin", file.md5)], scan(source).files)
+    result = run(built, target, overwrite=True)
 
     assert [error.item for error in result.errors] == ["a.bin"]
     assert existing.read_bytes() == b"old content"
+    assert result.replaced == ()
 
 
 @needs_permissions
@@ -268,7 +352,7 @@ def test_a_failed_upload_is_recorded_and_the_run_continues(source: Path, target:
     ]
     (target / "b.bin").mkdir()  # uploading over a folder fails
 
-    result = run(plan(report, scan(source).files), target)
+    result = run(plan(report, scan(source).files), target, overwrite=True)
 
     assert targets(result.completed) == ["a.bin", "z.bin"]
     assert [error.item for error in result.errors] == ["b.bin"]
@@ -315,15 +399,6 @@ def test_an_unexpected_error_is_not_swallowed(source: Path, tmp_path: Path) -> N
 
     with Broken(tmp_path) as transport, pytest.raises(RuntimeError, match="a bug in BECK"):
         execute(built, transport, dry_run=False)
-
-
-def test_an_existing_remote_file_is_replaced_as_in_stage_03(source: Path, target: Path) -> None:
-    file = make_bios_file(source, "copy.bin")
-    (target / "a.bin").write_bytes(b"old content")
-
-    run(plan([make_missing("a.bin", file.md5)], scan(source).files), target)
-
-    assert (target / "a.bin").read_bytes() == file.path.read_bytes()
 
 
 @pytest.mark.parametrize("dry_run", [False, True])

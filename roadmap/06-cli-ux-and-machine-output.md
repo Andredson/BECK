@@ -124,8 +124,10 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `feat(cli): add --source and offline --report-file options`
 
 ### 06.5 — Owner decision: remote files that already exist
-- [ ] Done
-- **Blocked by:** an owner decision (record a new DEC first).
+- [x] Done (2026-11-05: the owner chose option 2, and that `--overwrite` also replaces `INCORRECT` files (DEC-61). The executor checks the
+  target, because the matcher does no I/O, and a dry run checks it too, which is read-only. Beyond the list below: `--overwrite` reports
+  `replaced`, not `copied`. On SMB, `exists` and `makedirs` ignore case, because Samba treats `A.BIN` and `a.bin` as one file, so the check
+  would otherwise miss a file the upload then overwrites. Tested against a real Samba server. Checked by breaking each rule on purpose.)
 - **What:** If the target path already exists on the device, BECK overwrites it silently today. **Corrected in 06.1:** Recalbox's
   source shows that a bad dump is reported as `INCORRECT` (DEC-54), or not at all when `hashMatchMandatory` is false, while `MISSING`
   means the file wasn't found. So a `MISSING` entry whose file exists mostly means **the report is out of date**, and the file may be
@@ -181,7 +183,7 @@ beck config  init | show | path                     # added in stage 07
   - Top-level fields: `schema_version` (1), `beck_version`, `command`, `ok` (bool), `dry_run`, `frontend`,
     `target` (URL **without** credentials), `summary` {`missing_entries`, `satisfied`, `still_missing`,
     `files_scanned`, `uploaded`, `duplicates`, `unmatched`, `deleted`, `errors`}, `uploads[]` {`source`,
-    `target`, `md5`, `status`: planned|uploaded|failed|skipped, `error`}, `incorrect[]` {`name`, `target`, `current_md5`, `md5s`}, `still_missing[]` {`name`, `target`,
+    `target`, `md5`, `status`: planned|uploaded|replaced|kept|failed|skipped, `error`}, `incorrect[]` {`name`, `target`, `current_md5`, `md5s`}, `still_missing[]` {`name`, `target`,
     `md5s`, `required`}, `duplicates[]`, `unmatched[]`, `deleted[]`, `errors[]` {`code`, `message`, `item`}.
   - Errors that stop a run (config, connection, report) still print a valid document with `ok: false` and the
     matching exit code.
@@ -239,7 +241,7 @@ beck config  init | show | path                     # added in stage 07
 - **What:** Add a **"Using BECK as a tool"** section to AGENTS.md:
   - always run `beck --json check --dry-run …` first and show the plan to the human;
   - parse stdout as JSON and branch on the exit code;
-  - never add `--yes`, `--move` or `--clean-unmatched` without the human's explicit approval in this session;
+  - never add `--yes`, `--overwrite`, `--move` or `--clean-unmatched` without the human's explicit approval in this session;
   - never pass passwords on the command line.
 
   Link `docs/json-output.md` and `docs/cli.md`.

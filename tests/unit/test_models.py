@@ -130,15 +130,6 @@ def test_a_current_md5_must_be_a_valid_md5() -> None:
         )
 
 
-def test_an_upload_can_never_go_to_an_incorrect_entry() -> None:
-    entry = MissingBios(
-        name="a.bin", target=PurePosixPath("a.bin"), md5s=frozenset({MD5_A}), incorrect=True
-    )
-
-    with pytest.raises(ValueError, match="isn't replaced"):
-        PlannedUpload(source=local(), target=entry.target, entry=entry)
-
-
 def test_plan_is_empty_by_default() -> None:
     plan = Plan()
 

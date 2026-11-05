@@ -129,21 +129,28 @@ def _run_check(args: argparse.Namespace, base_dir: Path, renderer: ConsoleRender
         if not entries:
             renderer.nothing_missing()
             return 0
-        renderer.incorrect([entry for entry in entries if entry.incorrect])
-        missing = {entry.target for entry in entries if not entry.incorrect}
-        if not missing:
+        incorrect = [entry for entry in entries if entry.incorrect]
+        if not args.overwrite:
+            renderer.incorrect(incorrect)
+        to_fill = {e.target for e in entries if args.overwrite or not e.incorrect}
+        if not to_fill:
             return 0
-        renderer.missing_count(len(missing))
+        renderer.missing_count(len(to_fill))
 
         scanned = scan(source)
         renderer.unreadable(scanned.unreadable)
         if not scanned.files:
+            if args.overwrite:
+                renderer.incorrect(incorrect)
             renderer.no_files(source)
             return 0
         renderer.files_found(len(scanned.files))
 
-        result = execute(plan(entries, scanned.files), transport, dry_run=False)
+        built = plan(entries, scanned.files, replace_incorrect=args.overwrite)
+        result = execute(built, transport, dry_run=False, overwrite=args.overwrite)
 
+    if args.overwrite:
+        renderer.incorrect(list(result.plan.incorrect))
     renderer.result(result)
     return TransportError.exit_code if result.errors else 0
 
@@ -212,6 +219,11 @@ def _build_parser() -> argparse.ArgumentParser:
             group = _add_target_options(command)
             command.add_argument("--report-file", metavar="FILE", help=REPORT_FILE_HELP)
             command.add_argument(
+                "--overwrite",
+                action="store_true",
+                help="replace files already on the device, even ones the report calls INCORRECT",
+            )
+            command.add_argument(
                 "--frontend",
                 default=DEFAULT_FRONTEND,
                 metavar="NAME",
@@ -221,7 +233,12 @@ def _build_parser() -> argparse.ArgumentParser:
             group = _add_target_options(command)
             group.add_argument("--report-file", metavar="FILE", help=REPORT_FILE_HELP)
     parser.set_defaults(
-        target=None, target_dir=None, frontend=DEFAULT_FRONTEND, source=None, report_file=None
+        target=None,
+        target_dir=None,
+        frontend=DEFAULT_FRONTEND,
+        source=None,
+        report_file=None,
+        overwrite=False,
     )
     return parser
 

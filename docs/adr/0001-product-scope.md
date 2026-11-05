@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-02
-- **Decisions covered:** DEC-01, DEC-02, DEC-03, DEC-04, DEC-09, DEC-10, DEC-12, DEC-13, DEC-15, DEC-50, DEC-54, DEC-56, DEC-57, DEC-58, DEC-60
+- **Decisions covered:** DEC-01, DEC-02, DEC-03, DEC-04, DEC-09, DEC-10, DEC-12, DEC-13, DEC-15, DEC-50, DEC-54, DEC-56, DEC-57, DEC-58, DEC-60, DEC-61
 
 ## Context
 At the baseline review ([assessment](../../roadmap/00-assessment.md)), BECK was a 243-line script with an overall
@@ -103,6 +103,7 @@ differed from the recommendation.
   uploaded to the first.
 
 ## DEC-54 — A file that's INCORRECT on the device is kept and reported
+- **Status:** Accepted. [DEC-61](#dec-61--files-on-the-device-are-kept-unless---overwrite-is-passed) adds the flag that can replace these files.
 - **Date:** 2026-11-05 (step 05.3a).
 - **Context:** Recalbox's source and its 10.1.1 binary show a second kind of report block, `INCORRECT REQUIRED|OPTIONAL BIOS`,
   for a file that exists with a hash that isn't on the list, when `hashMatchMandatory` is true. It has a `Current MD5:` line.
@@ -182,3 +183,19 @@ differed from the recommendation.
 - **Consequences:** 232 files and about 42 MB on the VM. It leaves out 70 of the 232 targets in the real report, such as `neogeo.zip`,
   `atarist/tos.img` and the Amiga `kick*.A500` files, so it isn't a complete backup, and it copies `.rom` and `.bin` files that aren't
   BIOS files. The command's help and output must say so.
+
+## DEC-61 — Files on the device are kept unless `--overwrite` is passed
+- **Date:** 2026-11-05 (step 06.5).
+- **Context:** BECK overwrote a file on the device with no warning. Recalbox reports a bad dump as `INCORRECT`, and `MISSING` means the
+  file wasn't found, so a `MISSING` entry whose file exists usually means the report is out of date, and the file may be fine.
+- **Decision:** Keep a file already on the device and report it. `--overwrite` replaces it, and that includes files listed as
+  `INCORRECT`, which DEC-54 left open.
+- **Alternatives considered:**
+  - *Overwrite, as before*: simple, but silently replaces a possibly good file. Not chosen.
+  - *Rename the old file to `<name>.beck-backup-<timestamp>`, then upload*: nothing is lost, but backups pile up in the BIOS folder.
+    Not chosen.
+  - *Skip by default, with `--overwrite` and `--backup`*: more flexible, and more to build. Not chosen.
+  - The owner chose the option the agent recommended, and gave no further reason.
+- **Consequences:** A re-run with an unchanged report changes nothing. `--overwrite` keeps no backup, and a failed upload can damage the
+  old file. Each upload now checks the target first, which adds folder listings. On SMB, names that differ only in case count as the same
+  file, as they do for Samba, or the check would miss a file that the upload then overwrites.

@@ -225,6 +225,24 @@ def test_exists_walks_down_each_level(server: FakeSMBServer) -> None:
         assert not opened.exists(PurePosixPath(".."))
 
 
+def test_exists_ignores_case_because_samba_does(server: FakeSMBServer) -> None:
+    # Otherwise, a file differing only in case reads as absent, and the upload overwrites it.
+    server.dirs.add(("bios", "Mupen64plus"))
+    server.files[("bios", "Mupen64plus/IPL.n64")] = b""
+
+    with transport() as opened:
+        assert opened.exists(PurePosixPath("mupen64PLUS/ipl.N64"))
+
+
+def test_makedirs_ignores_case_because_samba_does(server: FakeSMBServer) -> None:
+    server.dirs.add(("bios", "Mupen64plus"))
+
+    with transport() as opened:
+        opened.makedirs(PurePosixPath("mupen64plus"))
+
+    assert only_connection(server).calls.count("createDirectory") == 0
+
+
 def test_a_name_at_another_level_does_not_count_as_existing(server: FakeSMBServer) -> None:
     server.dirs.update({("bios", "a"), ("bios", "b")})
 

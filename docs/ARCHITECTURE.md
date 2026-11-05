@@ -80,8 +80,9 @@ flowchart LR
 - A target goes first to a local file with its exact name, if that file's MD5 is on the target's list. Other targets go
   to the first file by path.
 - Identical local files upload once, and the others are listed as duplicates.
-- A file that's `INCORRECT` on the device is never replaced (DEC-54): its target goes in `Plan.incorrect`, and a local file
-  that fits it stays unmatched.
+- A file that's `INCORRECT` on the device is kept (DEC-54): its target goes in `Plan.incorrect`, and a local file that fits it stays
+  unmatched. `--overwrite` makes these targets normal ones (DEC-61).
+- A file already on the target is kept, and `--overwrite` replaces it (DEC-61). The executor checks this, because the matcher does no I/O.
 - The plan doesn't depend on input order.
 
 ## Rules

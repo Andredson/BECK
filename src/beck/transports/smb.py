@@ -28,6 +28,12 @@ def _reporting(action: str) -> Iterator[None]:
         raise TransportError(f"Error {action}: {e}") from e
 
 
+def _same_name(name: str, names: list[str]) -> str | None:
+    """A file's real name, ignoring case as Samba does: uploading A.BIN would overwrite a.bin."""
+    wanted = name.casefold()
+    return next((candidate for candidate in names if candidate.casefold() == wanted), None)
+
+
 def client_name() -> str:
     """The name BECK gives itself on the connection: this computer's host name, or "BECK"."""
     try:
@@ -112,9 +118,10 @@ class SmbTransport:
         # a real failure such as "access denied". A failed listing stays an error here.
         parent = ""
         for name in (self.root / path).parts:
-            if name not in {e.filename for e in self._list(parent)}:
+            actual = _same_name(name, [e.filename for e in self._list(parent)])
+            if actual is None:
                 return False
-            parent = f"{parent}{name}/"
+            parent = f"{parent}{actual}/"
         return True
 
     def size(self, path: PurePosixPath) -> int:
@@ -128,11 +135,12 @@ class SmbTransport:
         # createDirectory isn't recursive, so each missing level is created in order (D4).
         parent = ""
         for name in (self.root / path).parts:
-            folder = f"{parent}{name}"
-            if name not in self._list_dirs(parent):
-                with _reporting(f"creating folder {folder} on share {self.share}"):
-                    self._conn.createDirectory(self.share, folder, timeout=self.timeout)
-            parent = f"{folder}/"
+            actual = _same_name(name, self._list_dirs(parent))
+            if actual is None:
+                actual = name
+                with _reporting(f"creating folder {parent}{name} on share {self.share}"):
+                    self._conn.createDirectory(self.share, f"{parent}{name}", timeout=self.timeout)
+            parent = f"{parent}{actual}/"
 
     def upload(self, local: Path, remote: PurePosixPath) -> int:
         with (

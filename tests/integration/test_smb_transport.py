@@ -327,8 +327,12 @@ def test_report_reads_a_real_server_and_writes_nothing(
     assert "  a.bin (required)" in capsys.readouterr().out
 
 
-def test_end_to_end_running_again_gives_the_same_files(
-    samba: Samba, app: Path, folder: PurePosixPath, put_report: PutReport
+def test_end_to_end_running_again_keeps_the_file(
+    samba: Samba,
+    app: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     file = make_bios_file(app / "bios", "copy.bin")
     target = folder / "ps1" / "a.bin"
@@ -339,6 +343,62 @@ def test_end_to_end_running_again_gives_the_same_files(
 
     with samba.guest() as transport:
         assert transport.read_bytes(target) == file.path.read_bytes()
+    assert f"copy.bin: already on the device, kept -> {target}" in capsys.readouterr().out
+
+
+def test_end_to_end_a_name_differing_only_in_case_counts_as_there(
+    samba: Samba,
+    app: Path,
+    folder: PurePosixPath,
+    tmp_path: Path,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # Samba treats A.BIN and a.bin as one file, so uploading would overwrite it.
+    file = make_bios_file(app / "bios", "copy.bin")
+    with samba.guest() as transport:
+        transport.makedirs(folder)
+        transport.upload(local_file(tmp_path, b"already here"), folder / "a.bin")
+    put_report(make_report_text([make_missing(f"{folder}/A.BIN", file.md5)]))
+
+    assert cli.main(["check"], base_dir=app) == 0
+
+    with samba.guest() as transport:
+        assert transport.read_bytes(folder / "a.bin") == b"already here"
+    assert "already on the device, kept" in capsys.readouterr().out
+
+
+def test_end_to_end_overwrite_replaces_files(
+    samba: Samba,
+    app: Path,
+    folder: PurePosixPath,
+    tmp_path: Path,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    stale, bad = make_bios_file(app / "bios", "stale.bin"), make_bios_file(app / "bios", "bad.bin")
+    stale_target, bad_target = folder / "stale.bin", folder / "bad.bin"
+    with samba.guest() as transport:
+        transport.makedirs(folder)
+        transport.upload(local_file(tmp_path, b"an old file"), stale_target)
+        transport.upload(local_file(tmp_path, b"a bad dump"), bad_target)
+    put_report(
+        make_report_text(
+            [
+                make_missing(stale_target.as_posix(), stale.md5),
+                make_missing(bad_target.as_posix(), bad.md5, incorrect=True, current_md5="c" * 32),
+            ]
+        )
+    )
+
+    assert cli.main(["check", "--overwrite"], base_dir=app) == 0
+
+    with samba.guest() as transport:
+        assert transport.read_bytes(stale_target) == stale.path.read_bytes()
+        assert transport.read_bytes(bad_target) == bad.path.read_bytes()
+    output = capsys.readouterr().out
+    assert f"stale.bin: replaced -> {stale_target}" in output
+    assert f"bad.bin: replaced -> {bad_target}" in output
 
 
 def test_end_to_end_an_incorrect_file_is_kept(

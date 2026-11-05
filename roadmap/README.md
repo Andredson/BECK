@@ -147,6 +147,7 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-58 | **Supersedes the definition in DEC-57.** `beck export` copies **every file** under the target's BIOS root, not only `.rom` and `.bin` files. *(2026-11-05, step 11.12)* |
 | DEC-59 | CLI rules: `--clean-unmatched` never deletes a file valid for an `INCORRECT` target; a required `INCORRECT` file counts for `--fail-if-missing`; a transport error (3) beats `--fail-if-missing` (5); an unreadable local file doesn't change the exit code. *(2026-11-05, step 06.1)* |
 | DEC-60 | **Supersedes DEC-58.** `beck export` copies only `.rom` and `.bin` files, in any case, under the target's BIOS root, as DEC-57 said. *(2026-11-05, step 11.12)* |
+| DEC-61 | A file already on the device is **kept and reported**, and `--overwrite` replaces it, including files listed as `INCORRECT` (the flag DEC-54 left open). *(2026-11-05, step 06.5)* |
 
 ### CI/CD, security, and release
 

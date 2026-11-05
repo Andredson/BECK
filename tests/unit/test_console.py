@@ -317,6 +317,55 @@ def test_a_local_file_that_fits_an_incorrect_target_says_so() -> None:
     ]
 
 
+def test_a_file_already_on_the_device_is_shown_as_kept_with_a_hint() -> None:
+    kept = upload(make_local_file("a.bin", A), "x/a.bin")
+    copied = upload(make_local_file("b.bin", B), "y/b.bin")
+    plan = Plan(uploads=(kept, copied))
+
+    assert rendered(RunResult(plan=plan, completed=(copied,), kept=(kept,))) == [
+        "FOUND: b.bin -> y/b.bin",
+        "a.bin: already on the device, kept -> x/a.bin",
+        "b.bin: copied -> y/b.bin",
+        "1 files were already on the device, and were kept. If the report is out of date, generate "
+        "a new one. To replace them, use --overwrite.",
+        "Final result: 1/2 missing entries satisfied, 2 files analysed",
+        "*** PLEASE SCAN THE BIOS ON YOUR RECALBOX ***",
+    ]
+
+
+def test_a_replaced_file_says_replaced() -> None:
+    swapped = upload(make_local_file("a.bin", A), "x/a.bin")
+    plan = Plan(uploads=(swapped,))
+
+    lines = rendered(RunResult(plan=plan, completed=(swapped,), replaced=(swapped,)))
+
+    assert "a.bin: replaced -> x/a.bin" in lines
+
+
+def test_a_replacement_that_failed_says_failed() -> None:
+    swapped = upload(make_local_file("a.bin", A), "x/a.bin")
+    plan = Plan(uploads=(swapped,))
+    result = RunResult(plan=plan, errors=(ItemError(item="x/a.bin", message="boom"),))
+
+    assert "a.bin: failed -> x/a.bin" in rendered(result)
+
+
+def test_a_dry_run_says_what_it_would_replace_and_keep() -> None:
+    new = upload(make_local_file("new.bin", A), "new.bin")
+    swapped = upload(make_local_file("swap.bin", B), "swap.bin")
+    kept = upload(make_local_file("kept.bin", C), "kept.bin")
+    plan = Plan(uploads=(new, swapped, kept))
+    result = RunResult(
+        plan=plan, skipped=(new, swapped), kept=(kept,), replaced=(swapped,), dry_run=True
+    )
+
+    lines = rendered(result)
+
+    assert "new.bin: would copy -> new.bin" in lines
+    assert "swap.bin: would replace -> swap.bin" in lines
+    assert "kept.bin: already on the device, kept -> kept.bin" in lines
+
+
 def test_a_dry_run_says_what_would_happen() -> None:
     planned = upload(make_local_file("copy.bin", A), "a.bin")
     plan = Plan(uploads=(planned,), still_missing=(make_missing("b.bin", B),))

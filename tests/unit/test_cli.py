@@ -333,6 +333,86 @@ def test_incorrect_files_are_reported_beside_normal_uploads(
     assert "Final result: 1/1 missing entries satisfied, 2 files analysed" in output
 
 
+def test_overwrite_replaces_an_incorrect_file_with_a_valid_one(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # DEC-61: the explicit opt-in that DEC-54 left open.
+    valid = write(app / "bios" / "valid.bin")
+    server.dirs.add(("bios", "two"))
+    server.files[("bios", "two/b.bin")] = b"the wrong file"
+    report(server, incorrect("b.bin", md5_of(valid)))
+
+    assert cli.main(["check", "--overwrite"], base_dir=app) == 0
+
+    assert server.files[("bios", "two/b.bin")] == valid
+    output = capsys.readouterr().out
+    assert "valid.bin: replaced -> two/b.bin" in output
+    assert "INCORRECT:" not in output
+    assert "Final result: 1/1 missing entries satisfied, 1 files analysed" in output
+    assert "PLEASE SCAN" in output
+
+
+def test_overwrite_still_keeps_an_incorrect_file_with_no_valid_copy(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write(app / "bios" / "junk.bin")
+    server.dirs.add(("bios", "two"))
+    server.files[("bios", "two/b.bin")] = b"the wrong file"
+    report(server, incorrect("b.bin", "0" * 32))
+
+    assert cli.main(["check", "--overwrite"], base_dir=app) == 0
+
+    assert server.files[("bios", "two/b.bin")] == b"the wrong file"
+    assert (
+        "INCORRECT: two/b.bin is on the device with a wrong MD5, and was kept"
+        in capsys.readouterr().out
+    )
+
+
+def test_overwrite_with_no_local_files_still_reports_incorrect_files(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    report(server, incorrect("b.bin", "0" * 32))
+
+    assert cli.main(["check", "--overwrite"], base_dir=app) == 0
+
+    output = capsys.readouterr().out
+    assert "INCORRECT: two/b.bin" in output
+    assert "No BIOS files found" in output
+
+
+def test_a_file_already_on_the_device_is_kept_and_exits_0(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # A stale report: MISSING means Recalbox didn't find it, but it's there now.
+    data = write(app / "bios" / "copy.bin")
+    server.files[("bios", "a.bin")] = b"already here"
+    report(server, block("a.bin", md5_of(data)))
+
+    assert run(app) == 0
+
+    assert server.files[("bios", "a.bin")] == b"already here"
+    assert server.connections[0].calls.count("storeFile") == 0
+    output = capsys.readouterr().out
+    assert "copy.bin: already on the device, kept -> a.bin" in output
+    assert "use --overwrite" in output
+    assert "Final result: 0/1 missing entries satisfied" in output
+    assert "PLEASE SCAN" not in output
+
+
+def test_overwrite_replaces_a_file_already_on_the_device(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    data = write(app / "bios" / "copy.bin")
+    server.files[("bios", "a.bin")] = b"already here"
+    report(server, block("a.bin", md5_of(data)))
+
+    assert cli.main(["check", "--overwrite"], base_dir=app) == 0
+
+    assert server.files[("bios", "a.bin")] == data
+    assert "copy.bin: replaced -> a.bin" in capsys.readouterr().out
+
+
 def test_an_incorrect_file_is_reported_even_with_no_local_files(
     server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

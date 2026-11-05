@@ -8,7 +8,7 @@ the consequences. The short form of every decision is a `DEC-NN` row in the
 
 | ADR | Title | Status | Decisions |
 |---|---|---|---|
-| [0001](0001-product-scope.md) | Product scope | Accepted | DEC-01, 02, 03, 04, 09, 10, 12, 13, 15, 50, 54, 56, 57, 58, 60 |
+| [0001](0001-product-scope.md) | Product scope | Accepted | DEC-01, 02, 03, 04, 09, 10, 12, 13, 15, 50, 54, 56, 57, 58, 60, 61 |
 | [0002](0002-ai-agent-support.md) | AI-agent support | Accepted | DEC-05, 06, 21, 22, 23, 43, 44, 46, 47 |
 | [0003](0003-tooling.md) | Tooling | Accepted | DEC-07, 08, 17, 18, 19, 24, 26, 27, 28, 29, 36, 40, 42, 45, 49, 53, 55 |
 | [0004](0004-ci-security-release.md) | CI, security and release | Accepted | DEC-11, 25, 32, 33, 34, 35, 37, 38, 41, 48 |

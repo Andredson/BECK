@@ -91,10 +91,6 @@ class PlannedUpload:
 
     def __post_init__(self) -> None:
         _check_relative_file(self.target)
-        if self.entry.incorrect:
-            raise ValueError(
-                f"{self.target} is incorrect on the device, and isn't replaced (DEC-54)"
-            )
         if self.target != self.entry.target:
             raise ValueError(f"Target {self.target} isn't the entry's {self.entry.target}")
         if self.source.md5 not in self.entry.md5s:
@@ -122,7 +118,7 @@ class Plan:
     unmatched: tuple[LocalFile, ...] = ()
     already_filled: tuple[LocalFile, ...] = ()  # matched, but other files fill all its targets
     still_missing: tuple[MissingBios, ...] = ()
-    incorrect: tuple[MissingBios, ...] = ()  # on the device with a wrong hash, and kept (DEC-54)
+    incorrect: tuple[MissingBios, ...] = ()  # on the device with a wrong hash, and being kept
 
     def __post_init__(self) -> None:
         fields: dict[str, list[Any]] = {
@@ -155,3 +151,5 @@ class RunResult:
     skipped: tuple[PlannedUpload, ...] = ()
     errors: tuple[ItemError, ...] = ()
     dry_run: bool = False
+    kept: tuple[PlannedUpload, ...] = ()  # already on the target, so not uploaded (DEC-61)
+    replaced: tuple[PlannedUpload, ...] = ()  # uploads that overwrite a file on the target

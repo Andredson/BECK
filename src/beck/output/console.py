@@ -142,12 +142,19 @@ class ConsoleRenderer:
             self._print(line)
         for error in result.errors:
             self.error(error.message)
+        if result.kept:
+            self._print(
+                f"{len(result.kept)} files were already on the device, and were kept. If the "
+                "report is out of date, generate a new one. To replace them, use --overwrite."
+            )
         self._summary(result)
 
     def _file_lines(self, result: RunResult) -> list[str]:
         plan = result.plan
         completed = {upload.target for upload in result.completed}
         failed = {error.item for error in result.errors}
+        kept = {upload.target for upload in result.kept}
+        replaced = {upload.target for upload in result.replaced}
         duplicate_of = {duplicate.file: duplicate.of for duplicate in plan.duplicates}
         lines = []
 
@@ -168,8 +175,12 @@ class ConsoleRenderer:
                 else:
                     lines.append(f"{path}: no match, kept")
             for upload in uploads:
-                if result.dry_run:
-                    outcome = "would copy"
+                if upload.target in kept:
+                    outcome = "already on the device, kept"
+                elif result.dry_run:
+                    outcome = "would replace" if upload.target in replaced else "would copy"
+                elif upload.target in replaced and upload.target in completed:
+                    outcome = "replaced"
                 elif upload.target in completed:
                     outcome = "copied"
                 elif upload.target.as_posix() in failed:
