@@ -152,28 +152,28 @@ Each feature below is independent and goes through the same sub-steps, using the
 - [ ] Done
 - **Requested by the owner (2026-11-05):** a way to get the BIOS files on the target system and copy them to the machine running BECK,
   for example as a backup or to move to another device. It's the opposite direction to `check`. The owner decided how it works
-  (DEC-57, DEC-58), so this feature's research and decision sub-steps are done.
+  (DEC-57, DEC-60), so this feature's research and decision sub-steps are done.
 - **What:** A read-only command, `beck export DIR`:
-  - **What it copies:** every file anywhere under the target's BIOS root, whatever its type (DEC-58), including hidden files. It keeps
-    the target's folder layout under `DIR`. On the Recalbox 10.1.1 VM, that's 3,108 files and 317 MB.
+  - **What it copies:** every `.rom` or `.bin` file, in any case, anywhere under the target's BIOS root (DEC-60). It keeps the target's
+    folder layout under `DIR`. On the Recalbox 10.1.1 VM, that's 232 of the 3,108 files, and about 42 MB.
   - **If the local file exists:** skip it and report it. It never overwrites.
   - **What it never does:** change or delete anything on the target.
   - It supports `--target`, `--target-dir`, `--dry-run` and `--json`. One failed file is recorded and the run continues.
   - New `Transport` operations, on both SMB and local targets, to list files recursively and to download them, with the same path
     checks as uploads. A downloaded file's size is compared with the target's.
   - **pysmb's timeout covers a whole file** (see 04.9), so check it with large files on a slow network.
-- **Say what it copies.** Most of a Recalbox share isn't BIOS files: it's emulator settings, images and shaders, plus BECK's own input,
-  the report. The command's help and `docs/cli.md` must say that it copies everything, and `--dry-run` should show the file count and
-  total size first.
+- **Say what's left out.** The rule doesn't cover every BIOS file (DEC-60): in the real Recalbox 10.1.1 report, 70 of 232 targets aren't
+  `.rom` or `.bin`, such as `neogeo.zip`, `atarist/tos.img` and the Amiga `kick*.A500` files. It also copies `.rom` and `.bin` files that
+  aren't BIOS files. The command's help and `docs/cli.md` must say so, and its output should say how many other files it left.
 - **Legal wording:** this is copying from the user's own device, not downloading from the internet, so it's in line with the project's
   rules. But the README's legal notice and AGENTS.md say BECK never downloads BIOS files, so reword them in the same change.
 - **Repository safety:** exported files are real BIOS files. If `DIR` is inside a git repository, warn, and don't count on anything
   but `bios/` being ignored. Tests use random bytes only.
 - **Files:** `src/beck/transports/`, `src/beck/cli.py`, `src/beck/output/`, `docs/cli.md`, `docs/schemas/`, `README.md`, `AGENTS.md`, tests
-- **Done when:** Unit and Samba integration tests cover a full export of mixed file types, hidden files, nested folders, a dry run, an
-  existing local file and a failed file, with the target unchanged afterwards. The owner has run it against a device or the VM.
+- **Done when:** Unit and Samba integration tests cover a full export, mixed-case extensions, nested folders, other file types left
+  alone, a dry run, an existing local file and a failed file, with the target unchanged afterwards. The owner has run it against a device or the VM.
 - **Verify:** `uv run pytest -q`, and the integration tests with the Samba test server.
-- **Commit message:** `feat(cli): add an export command that copies the target's BIOS folder`
+- **Commit message:** `feat(cli): add an export command that copies BIOS files from the target`
 
 ## Stage acceptance criteria
 - Every chosen feature went through research → decision → implementation → docs, with fixtures from real data.
