@@ -71,6 +71,20 @@ beck config  init | show | path                     # added in stage 07
 - **Verify:** `uv run beck --help && uv run beck check --help && uv run pytest tests/unit/test_cli.py -q`
 - **Commit message:** `feat(cli): add check, scan and report subcommands`
 
+### 06.2a — A local file BECK can't read doesn't stop the run
+- [ ] Done
+- **What:** Today, a broken symlink or an unreadable file in the source folder ends in a traceback and exit 1, before anything
+  is uploaded (found in 04.6, and the reason error handling stayed at 7/10). `hashing.scan` records the file and its reason,
+  and carries on with the others. Only regular files, or symlinks to them, get hashed, because opening a named pipe would hang
+  forever. `check` and `scan` print one line per such file, and it's an item in the JSON `errors[]` (06.7). The exit code stays
+  0, unless another rule in the table applies: the run completed, and the file couldn't have been matched anyway.
+- **Files:** `src/beck/hashing.py`, `src/beck/models.py`, `src/beck/cli.py`, `src/beck/output/console.py`,
+  `tests/unit/test_hashing.py`, `tests/unit/test_cli.py`
+- **Done when:** Tests cover a broken symlink, a file with no read permission and a named pipe, each beside a good file that still
+  uploads, with no traceback.
+- **Verify:** `uv run pytest tests/unit/test_hashing.py tests/unit/test_cli.py -q`
+- **Commit message:** `fix(hashing): report unreadable local files and keep going`
+
 ### 06.3 — Target selection and frontend flag
 - [ ] Done
 - **What:** Parse `--target` URLs into an SMB target (`host`, `port` defaulting to 445, `share`, optional
