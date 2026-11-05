@@ -126,7 +126,15 @@ DEC-08, DEC-09, DEC-25, DEC-33, DEC-36, DEC-40, DEC-55.
 - **Commit message:** `test(integration): add minimal Samba server image for SMB tests`
 
 ### 05.5 — SMB integration tests (DEC-33)
-- [ ] Done
+- [x] Done (2026-11-05: 25 tests against the Samba container, skipped cleanly without the variables, except one that needs no
+  server. Beyond the list below:
+  - **A guard against real devices:** the tests first read the `readonly` share's seeded file, and refuse any other server.
+    Checked against the Recalbox VM: refused, with its files unchanged.
+  - **Direct TCP on port 445** is tested with real SMB, with only the TCP port number redirected, which also closes that gap in
+    CI.
+  - End-to-end tests cover an `INCORRECT` file, an unrecognized report, a missing report, and running twice.
+  - Tests share the report at the root of the `bios` share, so they run one at a time; each uses its own folder for targets.
+  Checked by breaking the code on purpose, and tests leave nothing on the server. Not covered: real hardware (DEC-52).)
 - **What:** `tests/integration/test_smb_transport.py`, marked `@pytest.mark.integration`, **skipped** unless
   `BECK_TEST_SMB_HOST` / `BECK_TEST_SMB_PORT` are set. Each test works in a unique sub-folder (uuid) so tests
   don't interfere. Scenarios:

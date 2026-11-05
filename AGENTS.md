@@ -58,6 +58,13 @@ uv run python scripts/check_repo_hygiene.py   # no BIOS files, large files or tr
 uv build                                      # build the wheel and sdist into dist/ (ignored by git)
 ```
 
+Integration tests need the [Samba test server](tests/integration/samba/README.md), and are skipped without it:
+
+```sh
+podman build -t beck-samba tests/integration/samba && podman run -d --rm -p 127.0.0.1:4450:445 --name beck-samba beck-samba
+BECK_TEST_SMB_HOST=127.0.0.1 BECK_TEST_SMB_PORT=4450 uv run pytest -m integration
+```
+
 Before committing, this must pass; it's what the `quality` and `tests` CI jobs run:
 
 ```sh
@@ -167,7 +174,8 @@ skill below, **read its whole `SKILL.md` before acting** and follow it.
   fails any real socket connection) and work in `tmp_path`, never in the repository folder.
 - Every bug fix ships with a regression test. From stage 05: ≥ 90 % branch coverage on the
   package, plus integration tests against the Samba container (marked `integration`).
-- Tests never touch the network (except the local Samba container) and never use real BIOS content.
+- Tests never touch the network (except the local Samba container) and never use real BIOS content. The integration tests
+  refuse any server without the test server's seeded file, so that they can't write to a real device.
 
 ## Commits and pull requests
 

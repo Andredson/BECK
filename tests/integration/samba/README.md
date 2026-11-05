@@ -14,6 +14,16 @@ podman run -d --rm -p 127.0.0.1:4450:445 --name beck-samba beck-samba
 
 Stop it with `podman stop beck-samba`. It keeps nothing: every run starts empty.
 
+## Run the tests
+
+```sh
+BECK_TEST_SMB_HOST=127.0.0.1 BECK_TEST_SMB_PORT=4450 uv run pytest -m integration
+```
+
+Without those variables, they're skipped. They write to the server, so they first check for the `readonly` share and its
+`seeded.txt`, and refuse any other server. **Never point them at a real Recalbox.** Tests run one at a time, because the
+end-to-end ones share the report at the root of the `bios` share.
+
 ## Shares
 
 | Share | Who | Used for |
