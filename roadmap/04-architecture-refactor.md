@@ -169,7 +169,12 @@ flowchart LR
 - **Commit message:** `refactor(core): move hashing and scanning into beck.hashing`
 
 ### 04.7 — Frontend adapter interface and Recalbox adapter
-- [ ] Done
+- [x] Done (2026-11-04: all six fixtures parse to their expected entries, and the real report gives 238 entries, 232 targets,
+  123 required, 115 optional and 64 systems. The parser was copied, because `check_bios.py` must keep working until 04.13.
+  **One stricter rule than stage 03:** an unsafe location or name (`..`, `//etc`, a `/` in the name) is now a
+  `ReportParseError` that stops the run, instead of going to the upload. Step 07.6 can make it a per-item error. Checked
+  by breaking each rule on purpose; the one break no test catches is removing the CRLF normalization, because each
+  captured value is stripped anyway. The line stays, as 03.5 specifies, and the real CRLF report guards the result.)
 - **What:**
   - `frontends/base.py`: a `FrontendAdapter` Protocol with `name: str`, `report_path: PurePosixPath`,
     `parse_report(text: str) -> list[MissingBios]`.
