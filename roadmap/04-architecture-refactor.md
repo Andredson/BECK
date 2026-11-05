@@ -243,7 +243,12 @@ flowchart LR
 - **Commit message:** `refactor(core): extract a pure matcher that builds an upload plan`
 
 ### 04.11 — Executor with dry-run support
-- [ ] Done
+- [x] Done (2026-11-04: tested on `LocalTransport` and through `SmbTransport` on the fake server. Decisions the list below
+  leaves open: an upload whose folder couldn't be created is `skipped`, with one error for the folder, so a dead folder
+  doesn't cost a timeout per file; in a dry run, every upload is `skipped`; only `TransportError` is an item failure, and
+  anything else stops the run as a bug. The owner's files were replayed through the whole pipeline into a temporary folder:
+  152 of 152 targets matched by MD5. **For 04.12:** results arrive only after the run, so `FOUND` lines can't print live as
+  they do in stage 03. Checked by breaking each rule on purpose.)
 - **What:** `executor.execute(plan, transport, *, dry_run: bool) -> RunResult`:
   - It creates the directories, then uploads. A failure on one item is recorded in `errors` and the run
     **continues** with the other items (previously any error stopped the run).
