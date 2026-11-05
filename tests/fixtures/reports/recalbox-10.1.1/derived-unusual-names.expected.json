@@ -1,0 +1,50 @@
+[
+  {
+    "name": "kick40060.CD32.ext",
+    "path": "/recalbox/share/bios/amiga/bios/",
+    "relativePath": "amiga/bios/",
+    "hashes": [
+      "BB72565701B1B6FAECE07D68EA5DA639"
+    ]
+  },
+  {
+    "name": "7800 BIOS (U).rom",
+    "path": "/recalbox/share/bios/atari7800/",
+    "relativePath": "atari7800/",
+    "hashes": [
+      "0763F1FFB006DDBE32E52D497EE848AE"
+    ]
+  },
+  {
+    "name": "JiffyDOS_1541-II.bin",
+    "path": "/recalbox/share/bios/vice/",
+    "relativePath": "vice/",
+    "hashes": [
+      "1B1E985EA5325A1F46EB7FD9681707BF"
+    ]
+  },
+  {
+    "name": "scpu-dos-1.4.bin",
+    "path": "/recalbox/share/bios/vice/SCPU64/",
+    "relativePath": "vice/SCPU64/",
+    "hashes": [
+      "CDA2FCD2E1F0412029383E51DD472095"
+    ]
+  },
+  {
+    "name": "panafz1j-norsa.bin",
+    "path": "/recalbox/share/bios/3do/",
+    "relativePath": "3do/",
+    "hashes": [
+      "F6C71DE7470D16ABE4F71B1444883DC8"
+    ]
+  },
+  {
+    "name": "mpr-18811-mx.ic1",
+    "path": "/recalbox/share/bios/saturn/",
+    "relativePath": "saturn/",
+    "hashes": [
+      "255113BA943C92A54FACD25A10FD780C"
+    ]
+  }
+]

@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-02
-- **Decisions covered:** DEC-14, DEC-16, DEC-20, DEC-30, DEC-31, DEC-39
+- **Decisions covered:** DEC-14, DEC-16, DEC-20, DEC-30, DEC-31, DEC-39, DEC-51
 
 ## Context
 The roadmap is executed one step at a time, often by AI agents. The process has to keep each change small and
@@ -47,3 +47,18 @@ leaves the machine (see DEC-43 in [ADR-0002](0002-ai-agent-support.md)).
   Conventional title* (one changelog line per stage, contradicting one commit per step): not chosen.
 - **Consequences:** `main` has one merge commit per stage marking where it landed. git-cliff reads the step commits.
   Squash and rebase merging are disabled in repository settings (step 02.16).
+
+## DEC-51 — Stage 03 signed off on a VM
+- **Date:** 2026-11-04 (step 03.13).
+- **Context:** Step 03.13 and stage 03's acceptance criteria asked for an end-to-end check on a real Recalbox. The
+  owner ran Recalbox 10.1.1 x86_64 in a QEMU VM instead, and BECK ran against it with the owner's own files and the
+  VM's real report and Samba server.
+- **Decision:** Accept the VM run as the sign-off for step 03.13 and stage 03.
+- **Alternatives considered:**
+  - *Run the checks on a real Recalbox* (recommended by the agent): the only way to test real hardware. Not chosen.
+    The owner gave no further reason.
+- **Consequences:**
+  - Not verified: real hardware, and BECK choosing direct TCP by itself on port 445. The VM's SMB port was forwarded
+    from host port 4445, so BECK used NetBIOS mode there. Direct TCP worked against the VM only when forced by a
+    throwaway test script, and BECK's own choice is covered by a test with the fake server.
+  - This decision covers stage 03 only. Step 04.1 and the stage 10 release check still ask for a real device.

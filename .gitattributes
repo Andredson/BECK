@@ -9,6 +9,9 @@
 *.zip binary
 *.7z binary
 
+# Report fixtures stay byte-exact: real Recalbox reports use CRLF, and the parser must handle it.
+tests/fixtures/reports/**/*.txt -text
+
 # Images (e.g. optional screenshots in docs/user-guide, step 08.2).
 *.png binary
 *.jpg binary

@@ -1,256 +1,351 @@
 import hashlib
+import io
 import os
 import re
 import socket
-import tempfile
+import sys
+from pathlib import Path
+from typing import Any
 
 import yaml
 from smb.SMBConnection import SMBConnection
 
 RESET = "\033[0m"
-BOLD = "\033[1m"
-ITALIC = "\033[3m"
-UNDERLINE = "\033[4m"
-BLINK = "\033[5m"
-
-BLACK = "\033[30m"
 RED = "\033[91m"
 GREEN = "\033[92m"
-YELLOW = "\033[93m"
 BLUE = "\033[94m"
 MAGENTA = "\033[35m"
 CYAN = "\033[36m"
-WHITE = "\033[37m"
+
+# Found from the script's location, so BECK works from any working directory.
+BASE_DIR = Path(__file__).resolve().parent
+CONFIG_PATH = BASE_DIR / "config" / "config.yml"
+BIOS_DIR = BASE_DIR / "bios"
+
+RECALBOX_BIOS_ROOT = "/recalbox/share/bios/"
+
+# How a missing-BIOS report is laid out; see tests/fixtures/reports/ for real examples.
+BLOCK_HEADING = re.compile(
+    r"^[ \t]*MISSING (?:REQUIRED|OPTIONAL) BIOS\b:?[ \t]*(.*)$", re.MULTILINE
+)
+PATH_LINE = re.compile(r"^[ \t]*Path:[ \t]*(.+)$", re.MULTILINE)
+MD5 = re.compile(r"\b[a-fA-F0-9]{32}\b")
 
 
-def load_configs(file):
-    with open(file) as l:
-        data = yaml.safe_load(l)
-        try:
-            configs = data["smb"]
-        except:
-            print(f"{RED}Error{RESET}: trying to get server name and credencials")
-            exit(1)
+def load_configs(file: Path) -> dict[str, Any]:
+    try:
+        with file.open(encoding="utf-8") as config_file:
+            data = yaml.safe_load(config_file)
+    except FileNotFoundError as e:
+        raise BeckError(
+            f"{file} not found. Copy config/config.example.yml to config/config.yml and fill it in."
+        ) from e
+
+    try:
+        configs: dict[str, Any] = data["smb"]
+    except (KeyError, TypeError) as e:
+        raise BeckError(f"{file} has no smb section with the server name and credentials") from e
 
     return configs
 
 
-def smb_connect(share: str, folder: str, operation: str, file=None) -> str:
-    configs = load_configs("config/config.yml")
+class BeckError(Exception):
+    """An error with a message for the user. Only main() prints it and exits."""
 
-    response = ""
-    server = configs["server"]
-    port = configs["port"]
-    username = configs["user"]
-    password = configs["passwd"]
-    hostname = socket.gethostbyname(socket.gethostname())
 
-    conn = SMBConnection(username, password, hostname, server, use_ntlm_v2=True)
+class ReportParseError(BeckError):
+    """The missing-BIOS report has a block BECK can't read."""
 
+
+def client_name() -> str:
+    """The name BECK gives itself on the SMB connection: this computer's host name, or "BECK"."""
     try:
-        conn.connect(server, port)
-    except Exception as e:
-        print(f"{RED}Error connecting to SMB server {server}:{RESET} {e}")
-        exit(1)
+        return socket.gethostname() or "BECK"
+    except OSError:
+        return "BECK"
 
-    try:
-        shares = conn.listShares()
-    except Exception as e:
-        print(f"{RED}Error listing shares of the {server} SMB server:{RESET} {e}")
-        exit(1)
 
-    found = False
+class SmbSession:
+    """One SMB connection to one share for the whole run.
 
-    for s in shares:
-        if s.name == share:
-            found = True
+    It connects once, checks the share once and always closes. pysmb raises many unrelated
+    exception types, so each operation turns any failure into a BeckError.
+    """
 
-    if not found:
-        print(
-            f"The specified share {RED}({share}){RESET} dosent exist in the server {RED}{server}{RESET}."
+    def __init__(self, server: str, port: int, user: str, password: str, share: str) -> None:
+        self.server = server
+        self.port = port
+        self.user = user
+        self.password = password
+        self.share = share
+        self._conn: Any = None
+
+    def __enter__(self) -> "SmbSession":
+        # Port 445 is SMB over plain TCP; port 139 needs a NetBIOS session first (defect D16).
+        conn = SMBConnection(
+            self.user,
+            self.password,
+            client_name(),
+            self.server,
+            use_ntlm_v2=True,
+            is_direct_tcp=self.port == 445,
         )
-        exit(1)
+        try:
+            self._open(conn)
+        except BaseException:
+            conn.close()  # __exit__ doesn't run when __enter__ fails
+            raise
+        self._conn = conn
+        return self
 
-    match operation:
-        case "r":
-            try:
-                f = tempfile.NamedTemporaryFile()
-                conn.retrieveFile(share, f"{folder}{file}", f)
-                f.seek(0)
-                f = f.read()
-                report = f.decode("utf-8")
-                f = open("test.txt", "w")
-                f.write(report)
-                f.close()
-                f = open("test.txt")
-                report = f.read()
-                os.remove("test.txt")
-                response = report
+    def __exit__(self, *exc: object) -> None:
+        self._conn.close()
 
-            except Exception as e:
-                print(f"Error reading {RED}{file}{RESET}: {YELLOW}{e}{RESET}")
-                exit(1)
+    def _open(self, conn: Any) -> None:
+        try:
+            logged_in = conn.connect(self.server, self.port)
+        except Exception as e:
+            raise BeckError(f"Error connecting to SMB server {self.server}: {e}") from e
+        if not logged_in:
+            raise BeckError(
+                f"SMB server {self.server} refused the login: check user and passwd in the config"
+            )
+        try:
+            shares = conn.listShares()
+        except Exception as e:
+            raise BeckError(f"Error listing the shares of SMB server {self.server}: {e}") from e
+        if not any(s.name == self.share for s in shares):
+            raise BeckError(f"The share {self.share} doesn't exist on SMB server {self.server}")
 
-            return response
+    def read_text(self, path: str) -> str:
+        """Read a remote text file into memory; no local or temporary file is written (D6)."""
+        buffer = io.BytesIO()
+        try:
+            self._conn.retrieveFile(self.share, path, buffer)
+        except Exception as e:
+            raise BeckError(f"Error reading {path} from share {self.share}: {e}") from e
+        return buffer.getvalue().decode("utf-8", errors="replace")
 
-        case "w":
-            try:
-                file_content = open(file, "rb")
-                conn.storeFile(share, folder, file_content)
-                os.remove(file)
+    def upload(self, local: Path, remote: str) -> None:
+        """Copy a local file to the share; the local file is closed before this returns (D7)."""
+        try:
+            with local.open("rb") as file:
+                self._conn.storeFile(self.share, remote, file)
+        except Exception as e:
+            raise BeckError(
+                f"Error uploading {local} to {remote} on share {self.share}: {e}"
+            ) from e
 
-            except Exception as e:
-                print(f"Error writing {RED}{file}{RESET}: {YELLOW}{e}{RESET}")
-                exit(1)
+    def list_dirs(self, path: str) -> list[str]:
+        """Names of the folders directly inside a remote folder ("" is the share root)."""
+        try:
+            entries = self._conn.listPath(self.share, path)
+        except Exception as e:
+            raise BeckError(f"Error listing folder {path!r} on share {self.share}: {e}") from e
+        return [e.filename for e in entries if e.isDirectory and e.filename not in (".", "..")]
 
-            return None
+    def make_dir(self, path: str) -> None:
+        try:
+            self._conn.createDirectory(self.share, path)
+        except Exception as e:
+            raise BeckError(f"Error creating folder {path} on share {self.share}: {e}") from e
 
-        case "cd":
-            try:
-                conn.createDirectory(share, folder)
-
-            except Exception as e:
-                print(f"Error creating directory {RED}{file}{RESET}: {YELLOW}{e}{RESET}")
-                exit(1)
-
-        case "ld":
-            try:
-                folder_names = []
-                response = conn.listPath(share, folder)
-
-                for item in response:
-                    if item.isDirectory and item.filename not in [".", ".."]:
-                        folder_names.append(item.filename)
-
-                response = folder_names
-
-            except Exception as e:
-                print(f"Error creating directory {RED}{file}{RESET}: {YELLOW}{e}{RESET}")
-                exit(1)
-
-            return response
-
-        case _:
-            print(f"Invalid operation for function: {RED}smb_connect{RESET}")
-            exit(1)
+    def ensure_dir(self, path: str) -> None:
+        """Create each missing level of a remote folder, in order ("" is the share root)."""
+        parent = ""
+        for name in filter(None, path.split("/")):
+            folder = f"{parent}{name}"
+            if name not in self.list_dirs(parent):
+                self.make_dir(folder)
+            parent = f"{folder}/"
 
 
-def get_missing_bios():
-    missing_regex = r"(MISSING (O|R)(.*\n[^\n].*)+)"
-    path_file_regex = r"(?<=Path: )\/(?:[^\/\s]+\/)+(?=[^\/\s]+)"
-    # relative_path_file_regex = r"(?<=Path: \/recalbox\/share\/bios\/)(?:[^\/]+\/)+(?=[^\/]+)"
-    file_regex = r"([a-zA-Z0-9_]+\.[a-zA-Z0-9]+)"
-    md5_regex = r"([a-fA-F0-9]{32})"
+def parse_report(text: str) -> list[dict[str, Any]]:
+    """Turn a missing-BIOS report into one entry per ``MISSING ... BIOS`` block, in report order.
 
-    report = smb_connect("bios", "", "r", "missing_bios_report.txt")
-    itens = re.findall(missing_regex, report)
-
+    Pure: no I/O. Each entry has ``name``, ``path`` (folder, with a trailing slash),
+    ``relativePath`` (the folder inside the ``bios`` share) and ``hashes`` (lowercase).
+    """
+    text = text.replace("\r\n", "\n")
+    headings = list(BLOCK_HEADING.finditer(text))
     missing = []
 
-    if len(itens) > 0:
-        print(f"There are {MAGENTA}{len(itens)}{RESET} missing bios in your RECALBOX")
-        for item in itens:
-            item = str(item)
-            name = re.search(file_regex, item)
-            path = re.search(path_file_regex, item)
-            relative_path = path.group(0).replace("/recalbox/share/bios/", "")
-            hashs = set(re.findall(md5_regex, item))
-            missing.append(
-                {
-                    "name": name.group(0),
-                    "path": path.group(0),
-                    "relativePath": relative_path,
-                    "hashs": list(hashs),
-                }
-            )
-    else:
-        print(f"{CYAN}No missing bios were found in your RECALBOX!{RESET}")
-        exit()
+    for heading, following in zip(headings, [*headings[1:], None], strict=False):
+        block = text[heading.end() : following.start() if following else len(text)]
+        first_line = heading.group(0).strip()
+        name = heading.group(1).strip()
+        location = PATH_LINE.search(block)
+        hashes = list(dict.fromkeys(md5.lower() for md5 in MD5.findall(block)))
+
+        if not name:
+            raise ReportParseError(f"No file name in report block: {first_line}")
+        if location is None:
+            raise ReportParseError(f"No Path line in report block: {first_line}")
+        if not hashes:
+            raise ReportParseError(f"No MD5 value in report block: {first_line}")
+
+        # A Path line can list two locations ("<path> or <path>"): use the first (DEC-50).
+        first_path = location.group(1).split(" or ")[0].strip()
+        if not first_path.startswith(RECALBOX_BIOS_ROOT):
+            raise ReportParseError(f"Path is outside {RECALBOX_BIOS_ROOT}: {first_line}")
+        folder = f"{first_path.rpartition('/')[0]}/"
+        missing.append(
+            {
+                "name": name,
+                "path": folder,
+                "relativePath": folder.removeprefix(RECALBOX_BIOS_ROOT),
+                "hashes": hashes,
+            }
+        )
 
     return missing
 
 
-def get_possible_bios(folder_path):
+def get_missing_bios(session: SmbSession) -> list[dict[str, Any]]:
+    missing = parse_report(session.read_text("missing_bios_report.txt"))
 
+    if not missing:
+        print(f"{CYAN}No missing bios were found in your RECALBOX!{RESET}")
+        return []
+
+    print(f"There are {MAGENTA}{count_targets(missing)}{RESET} missing bios in your RECALBOX")
+    return missing
+
+
+def file_md5(path: Path) -> str:
+    """A file's MD5 in lowercase, read in chunks. MD5 identifies files; it isn't for security."""
+    with path.open("rb") as f:
+        return hashlib.file_digest(f, lambda: hashlib.md5(usedforsecurity=False)).hexdigest()
+
+
+def get_possible_bios(folder_path: Path) -> list[dict[str, str]]:
+    """Every non-hidden file under a folder, with its path relative to that folder, and its MD5."""
     bios = []
 
-    for root, _, files in os.walk(folder_path):
-        if len(files) > 0:
-            print(
-                f"There are {MAGENTA}{len(files)}{RESET} possible bios to be analysed in your system"
+    for root, dirs, files in os.walk(folder_path):
+        dirs[:] = [name for name in dirs if not name.startswith(".")]  # don't enter hidden folders
+        for filename in files:
+            if filename.startswith("."):
+                continue
+            file_path = Path(root, filename)
+            bios.append(
+                {
+                    "name": filename,
+                    "path": file_path.relative_to(folder_path).as_posix(),
+                    "hash": file_md5(file_path),
+                }
             )
-            for filename in files:
-                file_path = os.path.join(root, filename)
-                with open(file_path, "rb") as f:
-                    file_data = f.read()
-                    file_md5 = hashlib.md5(file_data).hexdigest()
-                    bios.append({"name": filename, "hash": file_md5.upper()})
+
+    if not bios:
+        print(f"{CYAN}No BIOS files found in {folder_path}{RESET}")
+        return []
+
+    print(f"There are {MAGENTA}{len(bios)}{RESET} possible bios to be analysed in your system")
+    return sorted(bios, key=lambda item: item["path"])
+
+
+def remote_target(entry: dict[str, Any]) -> str:
+    """Where a report entry's file goes on the share. Different entries can share one target."""
+    return f"{entry['relativePath']}{entry['name']}"
+
+
+def count_targets(report: list[dict[str, Any]]) -> int:
+    return len({remote_target(entry) for entry in report})
+
+
+def plan_uploads(
+    bios: list[dict[str, str]], entries_by_md5: dict[str, list[dict[str, Any]]]
+) -> tuple[dict[str, dict[str, str]], dict[str, tuple[dict[str, str], dict[str, Any]]]]:
+    """Choose which file uploads for each MD5, and which file fills each target.
+
+    Different files can match one target, because a report entry can list many MD5s. A file already
+    named like a target gets that target first: otherwise ``falcon.img``, which sorts earlier, would
+    take the place of the user's real ``tos.img``. Remaining targets go to the first file by path.
+
+    Returns the file chosen per MD5, and the ``(file, entry)`` chosen per target.
+    """
+
+    def named_like_a_target(item: dict[str, str]) -> bool:
+        return any(entry["name"] == item["name"] for entry in entries_by_md5[item["hash"]])
+
+    matching = [item for item in bios if item["hash"] in entries_by_md5]
+    chosen: dict[str, dict[str, str]] = {}
+    for item in sorted(matching, key=lambda item: (not named_like_a_target(item), item["path"])):
+        chosen.setdefault(item["hash"], item)
+
+    in_path_order = sorted(chosen.values(), key=lambda item: item["path"])
+    targets: dict[str, tuple[dict[str, str], dict[str, Any]]] = {}
+    for own_name_only in (True, False):
+        for item in in_path_order:
+            for entry in entries_by_md5[item["hash"]]:
+                if entry["name"] == item["name"] or not own_name_only:
+                    targets.setdefault(remote_target(entry), (item, entry))
+
+    return chosen, targets
+
+
+def validate_bios(
+    bios: list[dict[str, str]], report: list[dict[str, Any]], session: SmbSession
+) -> int:
+    """Upload each matching local file to its targets; return how many targets were filled.
+
+    A file is uploaded straight from its own path, under each target's name. Identical copies and
+    files for an already filled target are skipped (see plan_uploads). No local file is ever deleted
+    or renamed (DEC-02).
+    """
+    entries_by_md5: dict[str, list[dict[str, Any]]] = {}
+    for entry in report:
+        for md5 in entry["hashes"]:
+            entries_by_md5.setdefault(md5, []).append(entry)
+
+    chosen, targets = plan_uploads(bios, entries_by_md5)
+    copied: dict[str, list[str]] = {}
+
+    for target, (item, entry) in targets.items():
+        session.ensure_dir(entry["relativePath"])
+        session.upload(BIOS_DIR / item["path"], target)
+        copied.setdefault(item["path"], []).append(target)
+        print(f"{GREEN}FOUND:{RESET} {entry['name']} -> {target}")
+
+    for item in sorted(bios, key=lambda item: item["path"]):
+        path = item["path"]
+        if item["hash"] not in entries_by_md5:
+            print(f"{path}: no match, kept")
+        elif chosen[item["hash"]] is not item:
+            print(f"{path}: duplicate of {chosen[item['hash']]['path']}, kept")
+        elif path in copied:
+            for target in copied[path]:
+                print(f"{path}: copied -> {target}")
         else:
-            print(f"{CYAN}No bios were found to analyse in your system!{RESET}")
-            exit()
-    return bios
+            print(f"{path}: target already filled, kept")
+
+    return len(targets)
 
 
-def validate_bios(bios, report):
+def main() -> None:
+    try:
+        configs = load_configs(CONFIG_PATH)
+        with SmbSession(
+            server=configs["server"],
+            port=configs["port"],
+            user=configs["user"],
+            password=configs["passwd"],
+            share="bios",
+        ) as session:
+            report = get_missing_bios(session)
+            if not report:
+                return
+            bios = get_possible_bios(BIOS_DIR)
+            if not bios:
+                return
+            validated_bios = validate_bios(bios, report, session)
+    except BeckError as error:
+        print(f"{RED}Error{RESET}: {error}")
+        sys.exit(1)
 
-    script_path = f"{os.path.dirname(__file__)}/bios/"
-    bios_found = 0
-
-    for item in bios:
-        found = False
-        for sums in report:
-            for sum in sums["hashs"]:
-                if sum == item["hash"]:
-                    found = True
-                    if item["name"] != sums["name"]:
-                        try:
-                            os.rename(
-                                f"{script_path}{item['name']}",
-                                f"{script_path}{sums['name']}",
-                            )
-                        except Exception as e:
-                            print(f"Error renaming {RED}{item['name']}{RESET}: {YELLOW}{e}{RESET}")
-                            exit(1)
-                    if not sums["relativePath"] == "":
-                        directories = smb_connect("bios", "", "ld")
-                        dir_exist = False
-                        path = sums["relativePath"][:-1]
-                        for dir in directories:
-                            if dir == path:
-                                dir_exist = True
-                                break
-
-                        if not dir_exist:
-                            smb_connect("bios", sums["relativePath"], "cd")
-
-                    smb_connect(
-                        "bios",
-                        f"{sums['relativePath']}{sums['name']}",
-                        "w",
-                        f"{script_path}{sums['name']}",
-                    )
-                    bios_found += 1
-                    print(f"{GREEN}FOUND:{RESET} {sums['name']}")
-
-        if not found:
-            try:
-                os.remove(f"bios/{item['name']}")
-                print(f"File {YELLOW}{item['name']}{RESET} removed.")
-            except:
-                print(f"Failed to remove the file: {RED}{item['name']}{RESET}")
-                exit(1)
-
-    return bios_found
-
-
-def main():
-
-    report = get_missing_bios()
-    bios = get_possible_bios("./bios")
-    # Create a validation for duplicated md5sum of files
-    validated_bios = validate_bios(bios, report)
     print(
-        f"Final result of {GREEN}bios found{RESET}/{BLUE}files analysed{RESET}: ({GREEN}{validated_bios}{RESET}/{BLUE}{len(bios)}{RESET})"
+        f"Final result: {GREEN}{validated_bios}{RESET}/{BLUE}{count_targets(report)}{RESET} "
+        f"missing entries satisfied, {len(bios)} files analysed"
     )
 
     if validated_bios > 0:

@@ -1,0 +1,37 @@
+==============================================================
+MISSING BIOS REPORT
+Platform: x86_64
+Generated on 2026/Nov./04 16:48:14+0100
+==============================================================
+
+SYSTEM: Nintendo DS
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: firmware.bin
+    Path: /recalbox/share/bios/nds/firmware.bin
+    For: libretro/melonds,libretro/desmume
+    Possible MD5 List:
+      145eaef5bd3037cbc247c213bb3da1b3
+      e45033d9b0fa6b0de071292bba7c9d13
+      3ad72b2c9a736b24953f2d391da4bfcc
+
+SYSTEM: Sega Dreamcast
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: dc_boot.bin
+    Path: /recalbox/share/bios/dc/dc_boot.bin
+    For: libretro/flycast,reicast
+    Possible MD5 List:
+      e10c53c2f8b90bab96ead2d368858623
+      d552d8b577faa079e580659cd3517f86
+      d407fcf70b56acb84b8c77c93b0e5327
+
+SYSTEM: Sony Playstation
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: scph5501.bin
+    Path: /recalbox/share/bios/scph5501.bin
+    For: libretro/pcsx_rearmed,libretro/mednafen_psx,libretro/mednafen_psx_hw,libretro/swanstation,duckstation
+    Possible MD5 List:
+      490f666e1afb15b7362b406ed1cea246
+

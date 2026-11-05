@@ -23,10 +23,8 @@ MAX_BYTES = 1024 * 1024
 BIOS_EXTENSIONS = frozenset({".bin", ".rom", ".img", ".zip", ".7z", ".pup", ".chd", ".iso"})
 CONFIG_NAMES = frozenset({"config.yml", "config.yaml", "config.toml"})
 
-# Temporary exceptions. Each entry says which roadmap step removes it.
-ALLOWED: dict[str, str] = {
-    "config/config.yml": "tracked until step 03.2 untracks it and ships config.example.yml",
-}
+# Temporary exceptions. Each entry says which roadmap step removes it. Empty since step 03.2.
+ALLOWED: dict[str, str] = {}
 
 
 def find_problems(entries: Iterable[tuple[str, int]]) -> list[str]:

@@ -1,0 +1,42 @@
+==============================================================
+MISSING BIOS REPORT
+Platform: x86_64
+Generated on 2026/Nov./04 16:48:14+0100
+==============================================================
+
+SYSTEM: Amiga 1200 (AGA)
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: kick39106.A1200
+    Path: /recalbox/share/bios/amiga/bios/kick39106.A1200
+    For: amiberry
+    Possible MD5 List:
+      B7CC148386AA631136F510CD29E42FC3
+
+SYSTEM: Magnavox Odyssey²
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: o2rom.bin
+    Path: /recalbox/share/bios/o2em/o2rom.bin
+    For: libretro/o2em
+    Possible MD5 List:
+      562D5EBF9E030A40D6FABFC2F33139FD
+
+SYSTEM: Nintendo Pokémon Mini
+---------------------------------------------
+
+  MISSING OPTIONAL BIOS: bios.min
+    Path: /recalbox/share/bios/pokemini/bios.min
+    For: libretro/pokemini
+    Possible MD5 List:
+      1E4FB124A3A886865ACB574F388C803D
+
+SYSTEM: Sony Playstation
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: scph5500.bin
+    Path: /recalbox/share/bios/scph5500.bin
+    For: libretro/mednafen_psx,libretro/mednafen_psx_hw,libretro/swanstation,duckstation
+    Possible MD5 List:
+      8DD7D5296A650FAC7319BCE665A6A53C
+

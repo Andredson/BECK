@@ -27,21 +27,6 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM", "RET", "PTH", "RUF", "S"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"] # assert is how pytest works
-# Legacy script: temporary ignores. Each one names the step in
-# roadmap/03-critical-fixes-and-data-safety.md that removes it; 03.12 removes whatever is left.
-"check_bios.py" = [
-    "SIM115", # open() without a context manager                     -> 03.3
-    "S324",   # MD5 flagged as insecure; fix is usedforsecurity=False -> 03.6
-    "SIM201", # `not x == ""` in validate_bios                       -> 03.8
-    "PTH104", # os.rename                                            -> 03.11
-    "PTH107", # os.remove                                            -> 03.11
-    "PTH118", # os.path.join                                         -> 03.11
-    "PTH120", # os.path.dirname                                      -> 03.11
-    "PTH123", # builtin open() instead of Path.open()                -> 03.11
-    "E501",   # long message lines                                   -> 03.12
-    "E722",   # bare except                                          -> 03.12
-    "E741",   # ambiguous variable name `l`                          -> 03.12
-]
 
 [tool.mypy]
 python_version = "3.11"
@@ -54,15 +39,6 @@ module = ["check_bios"]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
 disallow_untyped_calls = false
-# Errors inside code that stage 03 rewrites. Each code names the step that removes it;
-# 03.12 deletes whatever is left of this list.
-disable_error_code = [
-    "return",        # smb_connect is annotated `-> str` but returns str/None/list -> 03.3
-    "return-value",  # same                                                     -> 03.3
-    "no-any-return", # same                                                     -> 03.3
-    "assignment",    # variables `f`/`response` reused for different types       -> 03.3
-    "union-attr",    # `.group()` on a possibly-None regex match (defect D10)    -> 03.5
-]
 
 [[tool.mypy.overrides]]
 # pysmb ships no type hints; it is replaced by smbprotocol in step 04.9.

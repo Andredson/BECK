@@ -1,0 +1,51 @@
+[
+  {
+    "name": "kick39106.A1200",
+    "path": "/recalbox/share/bios/amiga/bios/",
+    "relativePath": "amiga/bios/",
+    "hashes": [
+      "B7CC148386AA631136F510CD29E42FC3"
+    ]
+  },
+  {
+    "name": "scpu-dos-2.04.bin",
+    "path": "/recalbox/share/bios/vice/SCPU64/",
+    "relativePath": "vice/SCPU64/",
+    "hashes": [
+      "B2869F8678B8B274227F35AAD26BA509"
+    ]
+  },
+  {
+    "name": "IPL.bin",
+    "path": "/recalbox/share/bios/gamecube/EUR/",
+    "relativePath": "gamecube/EUR/",
+    "hashes": [
+      "0CDDA509E2DA83C85BFE423DD87346CC"
+    ]
+  },
+  {
+    "name": "IPL.bin",
+    "path": "/recalbox/share/bios/gamecube/JAP/",
+    "relativePath": "gamecube/JAP/",
+    "hashes": [
+      "FC924A7C879B661ABC37CEC4F018FDF3"
+    ]
+  },
+  {
+    "name": "IPL.bin",
+    "path": "/recalbox/share/bios/gamecube/USA/",
+    "relativePath": "gamecube/USA/",
+    "hashes": [
+      "339848A0B7C2124CF155276C1E79CBD0"
+    ]
+  },
+  {
+    "name": "scph1001.bin",
+    "path": "/recalbox/share/bios/",
+    "relativePath": "",
+    "hashes": [
+      "DC2B9BF8DA62EC93E868CFD29F0D067D",
+      "924E392ED05558FFDB115408C263DCCF"
+    ]
+  }
+]

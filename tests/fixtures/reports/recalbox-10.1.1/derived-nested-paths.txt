@@ -1,0 +1,60 @@
+==============================================================
+MISSING BIOS REPORT
+Platform: x86_64
+Generated on 2026/Nov./04 16:48:14+0100
+==============================================================
+
+SYSTEM: Amiga 1200 (AGA)
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: kick39106.A1200
+    Path: /recalbox/share/bios/amiga/bios/kick39106.A1200
+    For: amiberry
+    Possible MD5 List:
+      B7CC148386AA631136F510CD29E42FC3
+
+SYSTEM: Commodore 64
+---------------------------------------------
+
+  MISSING OPTIONAL BIOS: scpu-dos-2.04.bin
+    Path: /recalbox/share/bios/vice/SCPU64/scpu-dos-2.04.bin
+    Notes: 2.04 SuperCPU dos from SuperCPU128
+    For: libretro/xscpu64
+    Possible MD5 List:
+      B2869F8678B8B274227F35AAD26BA509
+
+SYSTEM: Nintendo Gamecube
+---------------------------------------------
+
+  MISSING OPTIONAL BIOS: IPL.bin
+    Path: /recalbox/share/bios/gamecube/EUR/IPL.bin
+    Notes: Only required if you want the European Gamecube menu and the boot animation
+    For: libretro/dolphin,dolphin
+    Possible MD5 List:
+      0CDDA509E2DA83C85BFE423DD87346CC
+
+  MISSING OPTIONAL BIOS: IPL.bin
+    Path: /recalbox/share/bios/gamecube/JAP/IPL.bin
+    Notes: Only required if you want the Japanese Gamecube menu and the boot animation
+    For: libretro/dolphin,dolphin
+    Possible MD5 List:
+      FC924A7C879B661ABC37CEC4F018FDF3
+
+  MISSING OPTIONAL BIOS: IPL.bin
+    Path: /recalbox/share/bios/gamecube/USA/IPL.bin
+    Notes: Only required if you want the US Gamecube menu and the boot animation
+    For: libretro/dolphin,dolphin
+    Possible MD5 List:
+      339848A0B7C2124CF155276C1E79CBD0
+
+SYSTEM: Sony Playstation
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: scph1001.bin
+    Path: /recalbox/share/bios/scph1001.bin
+    Notes: Recommended for better compatibility.
+    For: libretro/pcsx_rearmed
+    Possible MD5 List:
+      DC2B9BF8DA62EC93E868CFD29F0D067D
+      924E392ED05558FFDB115408C263DCCF
+
