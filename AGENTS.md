@@ -50,7 +50,7 @@ Prerequisite: [uv](https://docs.astral.sh/uv/getting-started/installation/). It 
 uv sync                                       # create .venv with runtime and dev dependencies from uv.lock
 uv run ruff format .                          # format the code (CI runs `uv run ruff format --check .`)
 uv run ruff check .                           # lint, including the S security rules (DEC-32)
-uv run mypy                                   # type-check: strict, with a relaxed override for check_bios.py until step 04.14
+uv run mypy                                   # type-check: strict everywhere
 uv run pytest                                 # tests; they never touch the network or a device
 uv run python scripts/check_repo_hygiene.py   # no BIOS files, large files or tracked config files
 ```
@@ -150,7 +150,7 @@ skill below, **read its whole `SKILL.md` before acting** and follow it.
 - Keep changes minimal and focused on the current step.
 - Enforced by CI: `ruff format` and `ruff check` (including the `S` security rules), and `mypy` strict for new
   code. Also expected: type hints everywhere, `pathlib` for paths, no bare `except:`, and `sys.exit` only at the CLI
-  boundary. `check_bios.py` has a relaxed mypy override until step 04.14, and no ruff ignores. Don't add new ones.
+  boundary. There are no ruff or mypy exemptions for BECK's own code, only the mypy import override for `pysmb`. Don't add new ones.
 - From stage 04: pure core (`models`, `hashing`, `matcher`) with I/O only in adapters (`frontends/`,
   `transports/`, `output/`). See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design and its rules.
 - MD5 is used to **identify** files, not for security: `hashlib.md5(..., usedforsecurity=False)`.

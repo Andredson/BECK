@@ -313,7 +313,12 @@ flowchart LR
 - **Commit message:** `refactor(cli): route all behavior through the beck package`
 
 ### 04.14 — Remove legacy code; strict typing everywhere
-- [ ] Done
+- [x] Done (2026-11-04: an untyped function now fails `mypy` in `src`, `scripts` and the shim. Different from the list below:
+  mypy keeps checking `scripts/` and `check_bios.py` too, which is stricter than `src` and `tests` alone. The commit message
+  differs, because the legacy functions already went in 04.13, so this commit only changes settings. **For the changelog
+  (stage 10):** the breaking changes are in `40856f1` (04.13), whose message has no `!`: exit codes 2, 3 and 4 instead of
+  always 1, and `beck` finding files in the current folder. That pushed commit can't be rewritten, so the release notes must
+  say so.)
 - **What:** The legacy functions went in 04.13, so only the settings are left. Remove the mypy relaxed
   override and the `pythonpath = ["."]` pytest setting. Point mypy `files` at `src` and `tests`. Coverage
   `source = ["beck"]`. `pysmb` stays (DEC-53), so its import override stays, and no dependency changes.

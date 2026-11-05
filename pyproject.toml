@@ -43,26 +43,18 @@ strict = true
 files = ["src", "check_bios.py", "tests", "scripts"]
 
 [[tool.mypy.overrides]]
-# Legacy script: untyped functions allowed until stage 04 (step 04.14 removes this override).
-module = ["check_bios"]
-disallow_untyped_defs = false
-disallow_incomplete_defs = false
-disallow_untyped_calls = false
-
-[[tool.mypy.overrides]]
 # pysmb ships no type hints; BECK keeps it (DEC-53).
 module = ["smb.*", "nmb.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
 addopts = "-ra --strict-markers --strict-config"
 markers = ["integration: needs the Samba test container (stage 05)"]
 
 [tool.coverage.run]
 branch = true
-source = ["beck", "check_bios"]
+source = ["beck"]
 
 # Commit-message rule checked in CI by `cz check` (DEC-38). Commitizen is used only for checking:
 # versions come from `uv version --bump` (DEC-18) and the changelog from git-cliff (DEC-20).
