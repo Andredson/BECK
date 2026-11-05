@@ -51,8 +51,8 @@ beck config  init | show | path                     # added in stage 07
 ### 06.1 — CLI design document
 - [x] Done (2026-11-05: the document says at the top that it's a design still being built. Beyond the design block above, it records:
   a file valid for an `INCORRECT` target is never deleted; a warning that `--clean-unmatched` deletes good files after a rescan; a
-  required `INCORRECT` file counts for `--fail-if-missing`; a transport error beats `--fail-if-missing`. These are proposals until the
-  owner confirms them. Step 06.5's premise was corrected.)
+  required `INCORRECT` file counts for `--fail-if-missing`; a transport error beats `--fail-if-missing`; an unreadable local file doesn't
+  change the exit code. The owner confirmed these (DEC-59). Step 06.5's premise was corrected.)
 - **What:** `docs/cli.md`, the hand-written user reference: the design block and exit-code table above, one
   example per command, and the safety semantics (what each destructive flag deletes and when it asks for
   confirmation). Add `docs/adr/0007-cli-contract.md` describing the exit codes and the JSON compatibility

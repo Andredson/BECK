@@ -144,6 +144,8 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-55 | **Supersedes the Docker part of DEC-40.** The project uses **Podman only**, locally and in CI, and the test server is built from a `Containerfile`. *(2026-11-05, step 05.4)* |
 | DEC-56 | `--clean-unmatched` stays as DEC-02 planned it, with a prominent warning that files stop matching after a rescan. *(2026-11-05, step 06.1)* |
 | DEC-57 | A `beck export DIR` command (11.12), not a flag, copies every `.rom` or `.bin` file under the target's BIOS root to this machine, and skips any file that already exists locally. *(2026-11-05, step 11.12)* |
+| DEC-58 | **Supersedes the definition in DEC-57.** `beck export` copies **every file** under the target's BIOS root, not only `.rom` and `.bin` files. *(2026-11-05, step 11.12)* |
+| DEC-59 | CLI rules: `--clean-unmatched` never deletes a file valid for an `INCORRECT` target; a required `INCORRECT` file counts for `--fail-if-missing`; a transport error (3) beats `--fail-if-missing` (5); an unreadable local file doesn't change the exit code. *(2026-11-05, step 06.1)* |
 
 ### CI/CD, security, and release
 

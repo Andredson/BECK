@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-02
-- **Decisions covered:** DEC-01, DEC-02, DEC-03, DEC-04, DEC-09, DEC-10, DEC-12, DEC-13, DEC-15, DEC-50, DEC-54, DEC-56, DEC-57
+- **Decisions covered:** DEC-01, DEC-02, DEC-03, DEC-04, DEC-09, DEC-10, DEC-12, DEC-13, DEC-15, DEC-50, DEC-54, DEC-56, DEC-57, DEC-58
 
 ## Context
 At the baseline review ([assessment](../../roadmap/00-assessment.md)), BECK was a 243-line script with an overall
@@ -133,6 +133,7 @@ differed from the recommendation.
 
 ## DEC-57 — Exporting BIOS files from the target
 - **Date:** 2026-11-05 (step 11.12).
+- **Status:** The definition of a BIOS file is superseded by [DEC-58](#dec-58--export-copies-every-file). The command, and skipping existing files, stand.
 - **Context:** The owner asked for a way to copy the BIOS files on a target to the machine running BECK. A report only lists what's
   missing, so it can't say which files on the device are BIOS files. On a Recalbox 10.1.1 VM, the `bios` share has 3,108 files (317 MB),
   mostly `.ini`, `.png` and shaders.
@@ -151,3 +152,17 @@ differed from the recommendation.
   `atarist/tos.img` and the Amiga `kick*.A500` files. It also copies `.rom` and `.bin` files that aren't BIOS files. So it isn't a
   complete backup of a device's BIOS files, and its help and output must say so. The owner gave these rules without further reason, after
   seeing the file counts for the whole share. This entry's 70-of-232 figure was measured just afterwards.
+
+## DEC-58 — Export copies every file
+- **Date:** 2026-11-05 (step 11.12).
+- **Status:** Accepted. Supersedes the definition of a BIOS file in [DEC-57](#dec-57--exporting-bios-files-from-the-target).
+- **Context:** Under DEC-57, only `.rom` and `.bin` files counted. That left out 70 of the 232 targets in the real Recalbox 10.1.1
+  report, such as `neogeo.zip` and `atarist/tos.img`. The agent showed the owner those figures.
+- **Decision:** Every file under the target's BIOS root counts, whatever its type.
+- **Alternatives considered:**
+  - *Keep `.rom` and `.bin` only* (DEC-57): small, but not a complete backup. Not chosen.
+  - *Add `.zip` and `.img`* (mentioned by the agent): covers more, but still not everything. Not chosen.
+  - The owner gave no further reason.
+- **Consequences:** Export is a complete copy of the folder: 3,108 files and 317 MB on the VM, most of it emulator settings, images and
+  shaders. So the help must say what it copies, and `--dry-run` shows the size first. Hidden files are included, which is the agent's
+  reading of "all the files".

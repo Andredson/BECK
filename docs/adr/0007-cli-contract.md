@@ -2,8 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-05
-- **Decisions covered:** none of its own. It describes the public contract that follows from DEC-02, DEC-05, DEC-17, DEC-23 and
-  DEC-54 (rows in the [decision log](../../roadmap/README.md#decision-log)).
+- **Decisions covered:** DEC-59. The rest of the contract follows from DEC-02, DEC-05, DEC-17, DEC-23 and DEC-54 (rows in the
+  [decision log](../../roadmap/README.md#decision-log)).
 
 ## Context
 BECK is meant to be driven by people, scripts and AI agents. The last two can't read human output reliably, so what they depend on has
@@ -46,3 +46,15 @@ The one-document-on-stdout rule and the `--json` no-prompt rule came from the ro
 - **Harder:** the output can't change freely, and a mistake in schema v1 stays until v2.
 - **Roadmap:** steps 06.2–06.12 build this, and stage 09's skills copy the exit-code table, with a test keeping them equal.
 - **Revisit if:** the output needs a change that can't be made by adding fields.
+
+## DEC-59 — Four CLI rules
+- **Date:** 2026-11-05 (step 06.1).
+- **Context:** Writing [docs/cli.md](../cli.md) showed cases the roadmap didn't cover. The agent proposed these rules, and the owner
+  confirmed all four.
+- **Decision:**
+  - `--clean-unmatched` never deletes a file valid for an `INCORRECT` target, because that file is the fix for the one on the device.
+  - A required `INCORRECT` file counts for `--fail-if-missing`, because the device still can't use it.
+  - A transport error (3) beats `--fail-if-missing` (5), because the run didn't do all it could.
+  - A local file that can't be read doesn't change the exit code, because the run completed and that file couldn't have matched.
+- **Alternatives considered:** none were offered separately. The owner gave no further reason.
+- **Consequences:** Steps 06.2a, 06.6 and 06.9 implement them.
