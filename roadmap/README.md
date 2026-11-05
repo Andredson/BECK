@@ -165,6 +165,7 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-30 | Documentation is Markdown in the repository; no docs website. |
 | DEC-31 | Code of conduct: a short custom section inside `CONTRIBUTING.md`. |
 | DEC-39 | Stage PRs are merged with a merge commit, so step commits stay on `main`. |
+| DEC-51 | Step 03.13 and stage 03's acceptance are signed off on a Recalbox 10.1.1 **VM**, not a real device. Later real-device checks (04.1, the stage 10 release check) still apply. *(2026-11-04, step 03.13)* |
 
 ## Verified facts behind some decisions (checked 2026-11-02)
 

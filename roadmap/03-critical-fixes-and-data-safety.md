@@ -15,7 +15,7 @@ corrected behavior.
   fixing at the same time.
 
 ## Decisions applied
-DEC-02, DEC-09, DEC-10, DEC-13, DEC-14, DEC-43.
+DEC-02, DEC-09, DEC-10, DEC-13, DEC-14, DEC-43, DEC-50, DEC-51.
 
 ## How tests work in this stage
 The legacy script talks to SMB directly. Step 03.3 introduces a small `SmbSession` class (one connection per
@@ -309,7 +309,20 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
 - **Commit message:** `fix(matching): give each target to the file already named like it`
 
 ### 03.13 — End-to-end check on a real Recalbox (human-run)
-- [ ] Done
+- [x] Done (2026-11-04: signed off on a **VM, not a real device**, by owner decision (DEC-51): Recalbox 10.1.1 x86_64
+  in QEMU, on a Linux host. BECK ran at `d2f2cef`, over the VM's real Samba server, with the owner's 237 files, and
+  filled 152 of 232 targets. All 152 matched by MD5 on the VM right after the upload, and the local files were
+  unchanged. After a rescan, the report went from 232 to 80 targets, with no new ones. Results for all eight checks
+  are in PR #3. Open points:
+  - **Not verified:** real hardware, and BECK choosing direct TCP by itself on port 445 (see DEC-51).
+  - **Unexplained:** `neocdz.zip` was at the share root right after the upload, but later was in `geolith/` with the
+    same timestamp, and the root entry is reported missing again. BECK didn't write there and hadn't run since, so
+    something on the VM probably moved it. The owner chose not to investigate.
+  - **The report can clear an entry whose hash isn't on its list:** `geolith/neocdz.zip` did, with
+    `hashMatchMandatory="false"`, a flag on 82 of the 357 entries in `es_bios.xml`. A rescan doesn't always prove the
+    right file is there.
+  - **Fix after the run:** the wrong-file problem it found is fixed in 03.12a, which was replayed against the fake
+    server, not the VM. No emulator loaded any file.)
 - **What:** The agent writes a checklist into the PR description; **the owner runs it** (agents never touch a
   real device without explicit OK):
   1. Record the Recalbox version and the host OS.
@@ -346,7 +359,7 @@ run). Tests replace pysmb's `SMBConnection` with an in-memory fake (`tests/fakes
 - No code path deletes or renames a user's local file.
 - Every D1–D14 defect has a regression test that fails on the old code and passes on the new code.
 - A full run opens exactly one SMB connection.
-- The owner has verified the result end-to-end on a real Recalbox.
+- The owner has verified the result end-to-end on a Recalbox VM, accepted in place of a real device (DEC-51).
 
 ## Out of scope
 - New CLI flags, config format changes, packaging, and the smbprotocol switch (stages 04–07).

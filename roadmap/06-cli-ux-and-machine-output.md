@@ -128,6 +128,18 @@ beck config  init | show | path                     # added in stage 07
 - **Verify:** `uv run pytest tests/unit/test_safety_flags.py -q`
 - **Commit message:** `feat(cli): add dry-run and opt-in move/clean flags with confirmation`
 
+### 06.6a — Warn when a file's extension differs from its target's
+- [ ] Done
+- **What:** Warn when a file is uploaded to a target with a different extension, without blocking the upload. Reason:
+  in the real report from Recalbox 10.1.1, an MD5 on the `neocdz.zip` entry also belongs to `neocd.bin`, so BECK
+  uploaded a raw `.bin` under a `.zip` name during the 03.13 VM run. The MD5 is valid, but an emulator may not be able
+  to read the file. Show the warning in the normal output and in the file's `uploads[]` item in JSON (06.7).
+- **Files:** `src/beck/executor.py`, `src/beck/output/`, `tests/unit/test_executor.py`
+- **Done when:** A test covers `neocd.bin` going to `neocdz.zip` (warning, still uploaded) and a renamed file with the
+  same extension (no warning).
+- **Verify:** `uv run pytest tests/unit/test_executor.py -q -k extension`
+- **Commit message:** `feat(executor): warn when an upload changes the file extension`
+
 ### 06.7 — JSON output and schema v1 (DEC-23)
 - [ ] Done
 - **What:**
