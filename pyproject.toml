@@ -5,10 +5,34 @@ description = "Match your BIOS files by MD5 and send them to the right folder on
 readme = "README.md"
 requires-python = ">=3.11"
 license = "GPL-3.0-only"
+license-files = ["LICENSE"]
+# A name only: PyPI publishes whatever goes here, for good.
+authors = [{ name = "Andre Salvo" }]
+keywords = ["recalbox", "bios", "retrogaming", "emulation", "smb"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Games/Entertainment",
+    "Typing :: Typed",
+]
 dependencies = [
     "platformdirs>=4.13.5,<5",
     "pysmb>=1.2.9.1,<2",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Andredson/BECK"
+Source = "https://github.com/Andredson/BECK"
+Issues = "https://github.com/Andredson/BECK/issues"
+Changelog = "https://github.com/Andredson/BECK/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/Andredson/BECK#readme"
 
 [project.scripts]
 beck = "beck.cli:main"

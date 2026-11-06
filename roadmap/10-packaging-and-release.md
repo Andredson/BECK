@@ -1,6 +1,6 @@
 # Stage 10 — Packaging & release
 
-**Status:** Not started · **Depends on:** 09 · **Branch:** `stage/10-release` · **Effort:** M
+**Status:** In progress · **Depends on:** 09 · **Branch:** `stage/10-release` · **Effort:** M
 
 ## Goal
 Publish BECK as `beck-bios` on PyPI through **trusted publishing**, with attestations, an SBOM, generated
@@ -32,6 +32,7 @@ flowchart LR
 
 ### 10.1 — Check the PyPI name and set up trusted publishing (human-only)
 - [ ] Done
+> BLOCKED (2026-11-06): the owner's accounts are needed for the publishers and the environments. `beck-bios` is free on PyPI and TestPyPI today (both return 404), and GitHub lists no environments yet.
 - **What:** The owner:
   1. Checks that `beck-bios` is free on PyPI and TestPyPI. If it's taken, **stop**: choose another name with the
      agent and record a DEC superseding DEC-15.
@@ -45,7 +46,8 @@ flowchart LR
 - **Commit message:** none
 
 ### 10.2 — Complete package metadata
-- [ ] Done
+- [x] Done (2026-11-06: built, read back from the real wheel and source archive, and installed into a clean environment. Both now hold the license file, which they didn't. `authors` is the name only, because the owner has said their email is never to be published, and it's the name in recent commits, "Andre Salvo". The step left the development status open, so it's `3 - Alpha`, to match "prototype". All 11 classifiers
+  are in `trove-classifiers`, checked once with `uvx`. "OS Independent" is what the step asks for, and BECK is pure Python, but it's only tested on Linux (DEC-49), as the README says. The owner can change either before the first upload, which can't be edited afterwards. Beyond the list below: `tests/test_package_metadata.py`, which builds both offline.)
 - **What:** In `pyproject.toml`:
   - `license = "GPL-3.0-only"` and `license-files = ["LICENSE"]` (PEP 639). Don't add any
     `License ::` classifier, because PEP 639 doesn't allow one together with a license expression.
@@ -149,6 +151,7 @@ flowchart LR
   dependencies coming from PyPI, for example:
   `uvx --index https://test.pypi.org/simple/ --index-strategy unsafe-best-match --from "beck-bios==<version>rc1" beck --version`.
   Check the exact flags for the installed uv version, and make sure only `beck-bios` comes from TestPyPI.
+- **Also check, on the TestPyPI page:** PyPI shows the README as the project's page, and doesn't resolve its relative links, such as `docs/cli.md`. A published release's page can't be edited, so decide before 10.10 how to fix them.
 - **Files:** `pyproject.toml`, `CHANGELOG.md`
 - **Done when:** The rc installs from TestPyPI and `beck --version` prints it; the GitHub pre-release exists with the SBOM.
 - **Verify:** Owner confirmation plus the install command above.
