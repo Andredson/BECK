@@ -160,7 +160,8 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 - **Commit message:** `feat(transfer): verify uploads by size and optionally by MD5`
 
 ### 07.8 — `SECURITY.md` and threat model
-- [ ] Done
+- [x] Done (2026-11-06: private vulnerability reporting isn't on yet (12.6), so the policy also says what to do if the option isn't there. It promises best effort rather than deadlines, because a
+  commitment is the owner's to make. The threat model lists the risks BECK accepts, and marks attestations and the SBOM as planned for stage 10. Beyond the list below: `README.md`.)
 - **What:**
   - `SECURITY.md`: supported versions (latest minor), how to report a vulnerability (GitHub **private
     vulnerability reporting**, which the owner enables in 12.6), response expectations, and what is out of scope

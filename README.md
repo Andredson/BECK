@@ -110,6 +110,10 @@ to get [one JSON document](docs/json-output.md) instead.
 
 Recalbox 9.1
 
+## Security
+
+To report a problem, see [the security policy](SECURITY.md). [The threat model](docs/threat-model.md) says what BECK protects, and the risks it accepts.
+
 ## Legal notice
 
 BIOS files are copyrighted. BECK doesn't include, download or distribute BIOS files: it only matches files you
