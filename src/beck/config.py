@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """BECK's settings file: TOML, read with the standard library (DEC-24).
 
 ``find_config`` finds the file, ``load`` reads and checks it, and ``resolve`` decides between it,

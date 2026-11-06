@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """A share on an SMB server, through pysmb (DEC-53). Only this module talks to pysmb."""
 
 import io

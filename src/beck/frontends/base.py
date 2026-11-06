@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """What a frontend adapter provides. Each retro-gaming system gets one (DEC-03)."""
 
 from pathlib import PurePosixPath

@@ -110,7 +110,8 @@ DEC-13, DEC-20, DEC-30, DEC-42, DEC-43.
 - **Commit message:** `docs(changelog): generate CHANGELOG.md with git-cliff`
 
 ### 08.7 — License notices (DEC-13)
-- [ ] Done
+- [x] Done (2026-11-06: 67 files, including `check_bios.py`, which the step's test covers though the list above doesn't name it, and three empty `__init__.py` files. The header is the only change: each file's syntax tree is the same as before. The
+  test also looks at new files that aren't tracked yet, so one fails before it's committed. The README and `LICENSE` needed no change. Beyond the list below: `AGENTS.md`'s code style.)
 - **What:** Add `# SPDX-License-Identifier: GPL-3.0-only` as the first comment line of every Python file in
   `src/`, `scripts/` and `tests/`. Add `tests/test_license_headers.py`, which fails if any tracked `.py` file
   lacks it. State "GPL-3.0-only" in the README's License section, and keep `LICENSE` unchanged.

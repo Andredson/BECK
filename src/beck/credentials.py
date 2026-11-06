@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Where an SMB password comes from: the environment or a prompt, never a file or a URL (DEC-10).
 
 The password stays in memory, and goes straight to the transport.

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Keeps credentials out of whatever BECK shows: logs, error messages, the JSON output.
 
 BECK doesn't print a password on purpose, so this is for what repeats one by accident: a URL typed

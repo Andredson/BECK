@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """How BECK shows results: for people in ``console``, and for machines in ``json``.
 
 Output can't change what a run does, or its exit code (DEC-62). So what's written to stdout or

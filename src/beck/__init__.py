@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """BECK: match BIOS files by MD5 and send them to the right folder on a retro-gaming device."""
 
 import importlib.metadata

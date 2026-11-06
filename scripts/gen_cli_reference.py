@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Write docs/cli-reference.md from the help of the `beck` command and its subcommands."""
 
 import argparse

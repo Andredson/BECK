@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Parsing --target URLs: valid forms, and refusing passwords and paths that leave the share."""
 
 from pathlib import PurePosixPath

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Fixtures for tests against a real SMB server: the Samba test server in tests/integration/samba/.
 
 They're skipped unless BECK_TEST_SMB_HOST and BECK_TEST_SMB_PORT are set. They write to the server,

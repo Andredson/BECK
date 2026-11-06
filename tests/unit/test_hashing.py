@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """beck.hashing: ported from the stage 03 tests (D1, D5, D8), without the printed messages."""
 
 import hashlib

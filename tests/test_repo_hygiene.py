@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Tests for scripts/check_repo_hygiene.py: fake file lists, plus one run on the real repository."""
 
 from pathlib import Path

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """A target comes from a report, which could be crafted or corrupted: a bad one is refused (07.6).
 
 One bad entry is one failed item, and the rest of the run carries on. A report BECK can't read at

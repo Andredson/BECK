@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """A folder on disk: a mounted SD card or USB drive, a run on the device itself, or a test."""
 
 import logging

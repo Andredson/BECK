@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """The troubleshooting guide has an entry for every exit code and every error code."""
 
 import re

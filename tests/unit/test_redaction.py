@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """No password reaches stdout, stderr or a log, on any command, in any mode (07.5)."""
 
 import getpass

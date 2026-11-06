@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Where to find the device: parsing ``--target`` URLs. No I/O."""
 
 from dataclasses import dataclass

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """The data passed between BECK's modules. No I/O here.
 
 Remote paths are always relative to the target's BIOS root. Breaking an invariant raises ValueError,

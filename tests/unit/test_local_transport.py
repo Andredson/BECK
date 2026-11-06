@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """LocalTransport: file operations under one folder, and no way out of that folder."""
 
 import os

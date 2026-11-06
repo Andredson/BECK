@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """What arrived is what was sent: the size always, and with --verify the MD5 too (07.7)."""
 
 import json

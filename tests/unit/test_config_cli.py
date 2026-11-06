@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """``beck config``, and what happens to someone who still has the old ``config/config.yml``."""
 
 import json

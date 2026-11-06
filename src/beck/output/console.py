@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Human output on stdout, with colors when the terminal wants them. Logs go to stderr."""
 
 import ctypes

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Pins repeated across GitHub workflows must agree, so a refresh can't miss one file.
 
 Also checks that every third-party action is pinned to a full commit SHA (DEC-34, DEC-35,

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Decide which local file fills which target. Pure: no I/O, and nothing is uploaded here."""
 
 from collections.abc import Sequence

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Recalbox: how its report is laid out. See tests/fixtures/reports/ for real examples."""
 
 import re

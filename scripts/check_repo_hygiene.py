@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Fail if the repository tracks files it must never contain (step 02.8, DEC-28).
 
 There are no git hooks in this project, so CI runs this guard on every PR. It checks every file

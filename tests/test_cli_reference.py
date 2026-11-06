@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """docs/cli-reference.md says what the command really does."""
 
 import os

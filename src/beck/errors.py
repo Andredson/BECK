@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Errors BECK expects, each with a fixed exit code and JSON code.
 
 Library code raises them; only cli.py exits.

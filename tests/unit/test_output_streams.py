@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """A stream that fails can't change a run (DEC-62): the same work, and the same exit code.
 
 Most of these run real processes with real pipes, because these failures depend on real buffers, and

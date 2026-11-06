@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """The console renderer: when to use color, and what each outcome looks like."""
 
 import ctypes

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """``--json``: one document on stdout for each run. A public contract, see docs/json-output.md.
 
 Within ``schema_version`` 1, fields are only added. Don't rename or remove one, or change what one

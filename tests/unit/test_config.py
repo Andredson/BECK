@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """The settings file: what it can say, and how it's refused, without ever repeating a secret."""
 
 import logging
