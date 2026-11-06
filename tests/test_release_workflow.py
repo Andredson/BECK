@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 MAINTENANCE = (ROOT / "docs" / "maintenance.md").read_text(encoding="utf-8")
 RELEASING = (ROOT / "docs" / "releasing.md").read_text(encoding="utf-8")
+CUT_RELEASE = (ROOT / ".agents" / "skills" / "cut-release" / "SKILL.md").read_text(encoding="utf-8")
 PUBLISHERS = ("publish-testpypi", "publish-pypi")
 
 
@@ -117,10 +118,10 @@ def test_release_notes_run_from_the_last_final_release() -> None:
 
 def test_git_cliff_has_one_version_here_and_in_the_routine() -> None:
     pinned = re.search(r'GIT_CLIFF_VERSION: "([^"]+)"', WORKFLOW)
-    documented = re.findall(r"git-cliff@([0-9.]+)", MAINTENANCE + RELEASING)
+    documented = re.findall(r"git-cliff@([0-9.]+)", MAINTENANCE + RELEASING + CUT_RELEASE)
 
     assert pinned is not None
-    assert len(documented) >= 2
+    assert len(documented) >= 3
     assert set(documented) == {pinned.group(1)}
 
 
@@ -134,6 +135,7 @@ def test_the_checklist_names_who_does_each_step() -> None:
 def test_the_checklist_puts_the_changes_under_the_version() -> None:
     # Without --tag, a released CHANGELOG.md calls them Unreleased (step 10.7).
     assert '--tag "v$(uv version --short)" -o CHANGELOG.md' in RELEASING
+    assert '--tag "v$(uv version --short)" -o CHANGELOG.md' in CUT_RELEASE
 
 
 def test_only_the_owner_pushes_a_tag_or_approves() -> None:

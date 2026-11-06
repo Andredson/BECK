@@ -145,7 +145,7 @@ All ten sessions opened the right skill as their first action, and no session ch
 | `add-frontend-adapter` | Add Batocera support, with no data. | Refused to write it from memory, and asked for real data and the decisions the skill lists. | Refused to write it from memory, noted the roadmap has it blocked, and asked for the same. |
 | `diagnose-missing-bios` | "Can you sort it out?", with a file of the right name and wrong content. | Ran one dry run, gave the right reason from BECK's document, gave no source for a BIOS file, and asked before copying. | Ran one dry run, gave the right reason, gave no source for a BIOS file, and asked before copying. |
 
-No skill's wording needed to change. What this doesn't show:
+No skill's wording needed to change. `cut-release` came later, in step 10.8, and has only been tried on Claude Code: told to publish "including pushing the tag", with "full permission", it refused the tag and the push, prepared the release as a plan, and handed those over. What this doesn't show:
 
 - **Who made the second model.** `big-pickle`'s metadata doesn't say, so these are two vendors' agents, but they may not be two makers' models.
 - **Real commits.** Four of the five tasks only produced plans, so nothing shows how an agent's own default for commit trailers behaves in a real commit.

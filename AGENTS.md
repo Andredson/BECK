@@ -203,6 +203,7 @@ Agent Skills live in `.agents/skills/<name>/SKILL.md` (open agentskills.io forma
 | `add-report-fixture` | [`.agents/skills/add-report-fixture/SKILL.md`](.agents/skills/add-report-fixture/SKILL.md) | Someone provides a `missing_bios_report.txt`, or a new Recalbox version needs support. |
 | `add-frontend-adapter` | [`.agents/skills/add-frontend-adapter/SKILL.md`](.agents/skills/add-frontend-adapter/SKILL.md) | Asked to support another system, such as Batocera or RetroBat. |
 | `diagnose-missing-bios` | [`.agents/skills/diagnose-missing-bios/SKILL.md`](.agents/skills/diagnose-missing-bios/SKILL.md) | A user asks why a BIOS file is missing, or asks you to run BECK on their files. |
+| `cut-release` | [`.agents/skills/cut-release/SKILL.md`](.agents/skills/cut-release/SKILL.md) | Asked to cut, prepare or publish a release or a release candidate. |
 
 ## Code style
 

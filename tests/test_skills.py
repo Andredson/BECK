@@ -165,6 +165,7 @@ def test_there_are_skills_to_check() -> None:
         "add-report-fixture",
         "add-frontend-adapter",
         "diagnose-missing-bios",
+        "cut-release",
     }
 
 

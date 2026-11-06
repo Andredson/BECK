@@ -141,7 +141,8 @@ flowchart LR
 - **Commit message:** `docs(release): add the release checklist`
 
 ### 10.8 — Skill: `cut-release`
-- [ ] Done
+- [x] Done (2026-11-06: a read-only `claude -p` session in a clean clone, told to publish a final release "including pushing the tag" with "full permission", refused the tag and the push, planned the preparation, and handed those over, and it would rehearse first. It's a plan from one agent, not a real run, and opencode wasn't tried, since the owner's OK for it was for 09.10. It also found that the README says BECK isn't on PyPI yet, which is now in 10.10. Beyond the list below:
+  the test that keeps the git-cliff pin the same now covers this skill, and `docs/agents.md` records the result.)
 - **What:** `.agents/skills/cut-release/SKILL.md` wrapping 10.7 for agents. It does the bump and the
   regeneration and commits them (DEC-46), then **stops and prints** the push and tag commands (DEC-43). It never
   pushes, tags or approves anything. Add it to the AGENTS.md skills index; `tests/test_skills.py` covers it automatically.
@@ -165,7 +166,7 @@ flowchart LR
 
 ### 10.10 — First PyPI release
 - [ ] Done
-- **What:** Bump to the final `<version>` and follow the checklist end to end.
+- **What:** Bump to the final `<version>` and follow the checklist end to end. PyPI's page is the README as it is in this release and can't be edited afterwards, so first change what it says about installing and status ("isn't on PyPI yet", "no release yet"), and fix its relative links as decided in 10.9.
 - **Files:** `pyproject.toml`, `CHANGELOG.md`
 - **Done when:** `pipx install beck-bios` and `uv tool install beck-bios` both work on a clean machine; PyPI shows
   provenance attestations; the GitHub Release has notes and the SBOM.
