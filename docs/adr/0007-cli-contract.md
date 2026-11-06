@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-05
-- **Decisions covered:** DEC-59, DEC-62. The rest of the contract follows from DEC-02, DEC-05, DEC-17, DEC-23 and DEC-54 (rows in the
+- **Decisions covered:** DEC-59, DEC-62, DEC-64. The rest of the contract follows from DEC-02, DEC-05, DEC-17, DEC-23 and DEC-54 (rows in the
   [decision log](../../roadmap/README.md#decision-log)).
 
 ## Context
@@ -187,3 +187,12 @@ The one-document-on-stdout rule and the `--json` no-prompt rule came from the ro
   - With `--move --yes | head`, files can be deleted without the user seeing the list, though `--yes` confirmed that.
   - A JSON document saved to a full disk is cut short while the exit code says 0, so the guide says to check that a saved document parses.
   - The deletion prompt is the one exception: a question that can't be shown can't be answered, so BECK can't ask, and deletes nothing.
+
+## DEC-64 — An upload that doesn't match is `failed`
+- **Date:** 2026-11-06 (step 07.7).
+- **Context:** Until 07.7, only `--move` checked the size on the target, and the JSON guide said such an upload stayed `uploaded`, with an `error`. Step 07.7 checks every
+  upload, so that would have counted a damaged file as satisfied, and shown `copied` beside an error. This changes what a public field says, so the agent asked. Nothing is released yet.
+- **Decision:** An upload whose size, or with `--verify` whose MD5, doesn't match has the status `failed`, isn't counted in `satisfied` or `uploaded`, and exits with 3.
+- **Alternatives considered:** *Keep `uploaded` with an `error`:* no change to the guide's wording, but a damaged file would count as satisfied, and human output would say `copied` next to an error. Not
+  chosen. The agent recommended `failed`, and the owner gave no further reason.
+- **Consequences:** The damaged file stays on the device, because BECK has no way to delete there. A later run would keep it, so the message says to use `--overwrite`.

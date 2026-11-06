@@ -161,7 +161,7 @@ names.
 | `failed` | The upload failed, and `error` says why. |
 | `skipped` | Not tried, because its folder couldn't be created. That failure is in `errors`, with the folder as its `item`. |
 
-An `uploaded` item can still have an `error`: with `--move`, the size on the target may not match, and then the local file stays.
+A `failed` upload may have left a damaged file on the target: `error` says so, and `--overwrite` tries again. A later run would otherwise keep that file.
 
 ### `summary`
 
@@ -279,7 +279,8 @@ An error about **one item** doesn't stop the run. `item` names the target, folde
 | `transport` | 3 | Yes, if `item` is `null` | Couldn't connect or log in, or one upload, folder or check failed. |
 | `report_not_found` | 4 | Yes | There's no report, so generate one on the device. |
 | `report_parse` | 4 | Yes | BECK can't read the report. |
-| `size_mismatch` | 3 | No | With `--move`, the size on the target doesn't match, so the local file stays. |
+| `size_mismatch` | 3 | No | The size of an upload on the target doesn't match, so the upload is `failed`, and with `--move` the local file stays. |
+| `md5_mismatch` | 3 | No | With `--verify`, the MD5 of an upload on the target doesn't match. It's handled the same way. |
 | `delete_failed` | 3 | No | A local file couldn't be deleted. |
 | `unsafe_path` | 3 | No | A report entry isn't safe to act on, so it was refused. `item` is its name. `beck --json report` can have it too. |
 | `internal` | 1 | Yes | A bug in BECK. The details are on stderr, and they aren't in the document because they could hold anything. Please report it. |

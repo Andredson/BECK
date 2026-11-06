@@ -452,7 +452,7 @@ def test_an_upload_skipped_by_a_failed_folder_is_skipped(
     assert [(e["code"], e["item"]) for e in doc["errors"]] == [("transport", "blocked")]
 
 
-def test_a_size_mismatch_is_on_the_upload_and_has_its_own_code(
+def test_a_size_mismatch_fails_the_upload_and_has_its_own_code(
     source: Path,
     device: Path,
     capsys: pytest.CaptureFixture[str],
@@ -465,7 +465,7 @@ def test_a_size_mismatch_is_on_the_upload_and_has_its_own_code(
     assert cli.main(check(source, device, "--move", "--yes")) == 3
 
     doc = document(capsys)
-    assert statuses(doc) == {"a.bin": "uploaded"}
+    assert statuses(doc) == {"a.bin": "failed"}
     assert doc["errors"][0]["code"] == "size_mismatch"
     assert doc["uploads"][0]["error"] == doc["errors"][0]["message"]
     assert doc["deleted"] == []

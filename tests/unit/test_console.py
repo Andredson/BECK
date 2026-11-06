@@ -668,15 +668,6 @@ def test_people_and_machines_are_told_the_same_about_an_upload(
     assert f"copy.bin: {words} -> a.bin" in rendered(result)
 
 
-def test_a_size_mismatch_is_still_copied_with_an_error() -> None:
-    planned = upload(make_local_file("copy.bin", A), "a.bin")
-    failure = ItemError(item="a.bin", message="wrong size", code="size_mismatch")
-    result = RunResult(plan=Plan(uploads=(planned,)), completed=(planned,), errors=(failure,))
-
-    assert upload_status(planned, result) == "uploaded"
-    assert "copy.bin: copied -> a.bin" in rendered(result)
-
-
 def test_a_failed_delete_does_not_fail_an_upload_with_the_same_name() -> None:
     waiting = upload(make_local_file("z.bin", A), "b/a.bin")
     failure = ItemError(item="b/a.bin", message="can't delete", code="delete_failed")

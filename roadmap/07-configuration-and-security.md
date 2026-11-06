@@ -148,7 +148,8 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 - **Commit message:** `fix(security): reject unsafe target paths from reports`
 
 ### 07.7 — Upload integrity and SMB options
-- [ ] Done
+- [x] Done (2026-11-06: the owner chose that such an upload is `failed` (DEC-64). `--move` no longer has its own size check, because every upload has one. `smb.timeout` was exposed in 07.2. Beyond the
+  list below: the JSON docs and a new `md5_mismatch` code, `docs/cli.md`, and `src/beck/hashing.py`.)
 - **What:**
   - After each upload, compare the remote size with the local size; a mismatch is an item error.
   - `--verify` additionally reads the remote file back and compares its MD5. It's slower, so it's off by default.

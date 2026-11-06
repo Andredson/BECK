@@ -17,7 +17,7 @@ import sys
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from functools import cache
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, NoReturn
 
 import pytest
@@ -575,6 +575,21 @@ def check_with_a_size_mismatch(world: World) -> list[str]:
     world.report(make_missing("a.bin", file.md5))
     world.monkeypatch.setattr(LocalTransport, "size", lambda _self, _path: 1)
     return world.check("--move", "--yes")
+
+
+@scenario(CHECK, 3)
+def check_with_an_upload_that_arrives_damaged(world: World) -> list[str]:
+    file = make_bios_file(world.source, "a.bin")
+    world.report(make_missing("a.bin", file.md5))
+    real_upload = LocalTransport.upload
+
+    def damaged(self: LocalTransport, local: Path, remote: PurePosixPath) -> int:
+        written = real_upload(self, local, remote)
+        (self.root / remote).write_bytes(bytes(reversed((self.root / remote).read_bytes())))
+        return written
+
+    world.monkeypatch.setattr(LocalTransport, "upload", damaged)
+    return world.check("--verify")
 
 
 @scenario(CHECK, 3)

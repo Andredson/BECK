@@ -531,6 +531,59 @@ def test_end_to_end_a_backslash_can_not_reach_another_folder_on_a_real_server(
         assert not transport.exists(folder / "sideways.bin")
 
 
+def test_verify_passes_on_a_real_server(
+    samba: Samba, tmp_path: Path, folder: PurePosixPath, put_report: PutReport
+) -> None:
+    good = make_bios_file(tmp_path / "bios", "good.bin")
+    target = folder / "good.bin"
+    put_report(make_report_text([make_missing(target.as_posix(), good.md5)]))
+    url = f"smb://{samba.host}:{samba.port}/bios"
+
+    assert cli.main(["check", "--target", url, "--verify"], base_dir=tmp_path) == 0
+
+    with samba.guest() as transport:
+        assert transport.read_bytes(target) == good.path.read_bytes()
+
+
+def test_verify_notices_a_damaged_upload_on_a_real_server(
+    samba: Samba,
+    tmp_path: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The same size, and other bytes, so that only reading it back from the server can tell."""
+    good = make_bios_file(tmp_path / "bios", "good.bin")
+    target = folder / "good.bin"
+    put_report(make_report_text([make_missing(target.as_posix(), good.md5)]))
+    url = f"smb://{samba.host}:{samba.port}/bios"
+    damaged = tmp_path / "damaged.bin"
+    damaged.write_bytes(bytes(reversed(good.path.read_bytes())))
+    real_upload = SmbTransport.upload
+
+    def upload(self: SmbTransport, _local: Path, remote: PurePosixPath) -> int:
+        return real_upload(self, damaged, remote)
+
+    monkeypatch.setattr(SmbTransport, "upload", upload)
+
+    assert cli.main(["--json", "check", "--target", url, "--verify"], base_dir=tmp_path) == 3
+
+    document = json.loads(capsys.readouterr().out)
+    assert document["uploads"][0]["status"] == "failed"
+    assert document["errors"][0]["code"] == "md5_mismatch"
+
+
+def test_the_size_check_passes_on_a_real_server(
+    samba: Samba, tmp_path: Path, folder: PurePosixPath, put_report: PutReport
+) -> None:
+    good = make_bios_file(tmp_path / "bios", "good.bin")
+    put_report(make_report_text([make_missing((folder / "good.bin").as_posix(), good.md5)]))
+    url = f"smb://{samba.host}:{samba.port}/bios"
+
+    assert cli.main(["check", "--target", url], base_dir=tmp_path) == 0
+
+
 def at_a_real_prompt(
     arguments: list[str], *, typed: bytes = b"", interrupted: bool = False
 ) -> tuple[int, bytes, bytes]:

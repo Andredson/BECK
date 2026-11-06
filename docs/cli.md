@@ -8,7 +8,7 @@ beck [--version] [-v | -q] [--no-color] [--json] [--config FILE] <command> [opti
 
 beck check   [--source DIR] [--target URL | --target-dir DIR] [--frontend recalbox]
              [--report-file FILE] [--overwrite] [--dry-run] [--move] [--clean-unmatched]
-             [--yes] [--fail-if-missing]
+             [--yes] [--verify] [--fail-if-missing]
 beck scan    [--source DIR]
 beck report  [--target URL | --target-dir DIR | --report-file FILE]
 beck config  path | init [--force] | show
@@ -115,6 +115,7 @@ name one.
 | `--move` | Deletes a local file once it's uploaded to **all** its targets and each remote size matches. If any upload of that file failed, the file stays. |
 | `--clean-unmatched` | Deletes local files that matched nothing. Read the warning below first. |
 | `--yes` | Confirms deletions without asking. Required when BECK can't ask. |
+| `--verify` | Reads each upload back and compares its MD5, on top of the size check every upload gets. It's slower, because it transfers everything twice. |
 | `--fail-if-missing` | Exits with 5 if required files are still missing or incorrect after the run, and lists them. See [exit codes](#exit-codes). |
 
 ## Settings
@@ -164,6 +165,11 @@ dir = "~/beck/bios"
 A `dir` must be an absolute path or start with `~`, so that it means the same folder wherever you run BECK. **Passwords can't go in this
 file:** BECK refuses one, in any setting and in a URL. `beck config init` writes a file like this one, with comments, which only you can read.
 If others can read the file, BECK warns you, because it says who you are and where your device is.
+
+### What crosses the network
+
+There's no `smb.encrypt` setting, because `pysmb`, which BECK uses, has no SMB encryption (DEC-53). The password isn't sent as plain text, but your files
+are. Use BECK on a network you trust, as you would for the Recalbox itself, whose default is a guest login.
 
 ### Passwords
 
@@ -247,7 +253,8 @@ These are a stable contract (DEC-23), and scripts can rely on them.
 
 Some details:
 
-- A failed upload exits with 3 even though the other uploads finished.
+- A failed upload exits with 3 even though the other uploads finished. That includes one whose size on the device doesn't match, and with
+  `--verify`, one whose MD5 doesn't. Such a file stays on the device, so use `--overwrite` to try again: a later run would keep it.
 - A report entry that isn't safe to act on also exits with 3, while the others carry on: one whose target could leave the BIOS folder, or holds a
   backslash, a control character or a byte that wasn't valid text. A report BECK can't read at all exits with 4, and nothing happens.
 - A local file or folder that can't be read, such as a broken symlink, is reported and skipped, and doesn't change the exit code.

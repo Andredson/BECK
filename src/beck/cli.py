@@ -295,6 +295,7 @@ def _run_check(
             "overwrite": args.overwrite,
             "move": args.move,
             "clean_unmatched": args.clean_unmatched,
+            "verify": args.verify,
         }
         started = time.monotonic()
         if args.dry_run:
@@ -502,6 +503,11 @@ def _build_parser(*, json_errors: bool = False) -> argparse.ArgumentParser:
                 "--yes", action="store_true", help="confirm deletions without asking"
             )
             command.add_argument(
+                "--verify",
+                action="store_true",
+                help="read each upload back and compare its MD5, which is slower",
+            )
+            command.add_argument(
                 "--fail-if-missing",
                 action="store_true",
                 help="exit with 5 if required files are still missing or incorrect after the run",
@@ -539,6 +545,7 @@ def _build_parser(*, json_errors: bool = False) -> argparse.ArgumentParser:
         clean_unmatched=False,
         yes=False,
         fail_if_missing=False,
+        verify=False,
         config_action=None,
         force=False,
     )
