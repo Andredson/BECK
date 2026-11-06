@@ -10,7 +10,7 @@ BECK (BIOS checker for Recalbox) matches a user's BIOS files against the MD5 has
 report that Recalbox generates, then copies the matching files, under the expected names, into the right
 folders on the Recalbox over SMB.
 
-**Status (2026-11-06, stage 07 closed):** prototype, not published yet. The application is the `beck` package in `src/beck/`, with a pure
+**Status (2026-11-06, stage 08 closed):** prototype, not published yet. The application is the `beck` package in `src/beck/`, with a pure
 core and adapters around it ([design](docs/ARCHITECTURE.md)). Its [known defects are fixed](roadmap/00-assessment.md#defects),
 and it never renames local files, or deletes them unless `--move` or `--clean-unmatched` asks for it. The repository around it has tooling and
 CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against a real Samba server, commit-message, secret and dependency checks. It is being improved stage by stage following
@@ -33,7 +33,7 @@ CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against
 | `.gitleaks.toml`, `.trivyignore` | gitleaks settings (fake `beck-test-*` values allowed only under `tests/`); accepted Trivy findings, each with a link and an expiry date. |
 | `.editorconfig`, `.gitattributes` | Editor settings; LF line endings in the repository. |
 | `roadmap/` | The improvement plan: [index and decision log](roadmap/README.md), [assessment](roadmap/00-assessment.md), one file per stage. |
-| `CHANGELOG.md`, `cliff.toml` | The changelog, **generated** from the commit messages by git-cliff (DEC-20). Don't edit it by hand; [the command](docs/maintenance.md#regenerating-the-changelog) is in the maintenance routine. |
+| [`CHANGELOG.md`](CHANGELOG.md), `cliff.toml` | The changelog, **generated** from the commit messages by git-cliff (DEC-20). Don't edit it by hand; [the command](docs/maintenance.md#regenerating-the-changelog) is in the maintenance routine. |
 | `docs/agents.md` | Which AI agents were tested loading this file, and how to test another one. |
 | `docs/ARCHITECTURE.md` | [The design](docs/ARCHITECTURE.md): the core is pure and adapters do the I/O. Data flow, and the rules to keep, which `tests/unit/test_architecture.py` enforces. Read it before changing `src/beck/`. |
 | `docs/troubleshooting.md` | [Each message BECK prints](docs/troubleshooting.md), with why and what to do. A new error needs an entry here, which `tests/test_troubleshooting.py` checks for its code. |
@@ -78,6 +78,7 @@ uv lock --check && uv run ruff check . && uv run ruff format --check . && uv run
 ```
 
 - **After changing a flag or its help**, regenerate the reference: `uv run python scripts/gen_cli_reference.py`.
+- **When releasing**, regenerate the changelog with [the pinned command](docs/maintenance.md#regenerating-the-changelog). Never edit `CHANGELOG.md` by hand.
 - **After any change to dependencies**, regenerate the pip file: `uv export --no-dev --no-hashes --no-emit-project -o requirements.txt`.
   Adding a dependency needs a DEC first (see [Hard rules](#hard-rules)); `uv add` and `uv lock` respect the cooldown.
 - **The other CI checks**, if you have the tools installed (the pinned versions are in the `env:` block of

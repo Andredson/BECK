@@ -1,6 +1,6 @@
 # Stage 08 — Documentation
 
-**Status:** In progress · **Depends on:** 07 · **Branch:** `stage/08-docs` · **Effort:** M
+**Status:** Done (2026-11-06) · **Depends on:** 07 · **Branch:** `stage/08-docs` · **Effort:** M
 
 ## Goal
 Make the documentation complete enough that a Recalbox user with no Python background can install and use BECK,
@@ -121,7 +121,8 @@ DEC-13, DEC-20, DEC-30, DEC-42, DEC-43.
 - **Commit message:** `chore(license): add SPDX identifiers to source files`
 
 ### 08.8 — Close the stage
-- [ ] Done
+- [x] Done (2026-11-06: the acceptance criteria below hold. Every document can be reached from the README by following links, and `CHANGELOG.md`, which couldn't be, now has a link there. The stage scores 7/10, with a sum of 137, up from 135. Draft
+  PR #9 already exists, so the owner marks it ready and merges it with a merge commit. The owner hasn't yet said outright that 08.2's check counts as their sign-off. Beyond the list below: that line in `README.md`.)
 - **What:** Update AGENTS.md: docs map, "regenerate the CLI reference and changelog when you change flags or
   release". Re-score [00-assessment](00-assessment.md#re-scoring-history) and mark D13 fully fixed. Update the
   [README](README.md#stages) status. Push the closing commit (DEC-47). If the stage PR doesn't exist yet, print

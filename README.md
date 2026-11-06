@@ -91,7 +91,7 @@ The most common one is that your computer can't find `recalbox.local`: use your 
 ## Project status
 
 BECK is a prototype, with no release yet. It's been tested on Recalbox 10.1.1 in a virtual machine, but not yet on real hardware. Its automatic tests run on Linux only, so Windows and macOS
-are untested.
+are untested. [The changelog](CHANGELOG.md) lists what has changed.
 
 **If you used an older copy,** note that BECK no longer deletes every file it copies, and no longer reads `config/config.yml`. If you still have that file, BECK prints what to put in
 the new settings. Delete it afterwards, because it may hold your password in plain text. Older copies tracked it in git, so if you edited it, `git pull` refuses to update until
