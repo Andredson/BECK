@@ -216,7 +216,7 @@ skill below, **read its whole `SKILL.md` before acting** and follow it.
 - **Never real BIOS bytes.** Test files are random bytes (`tests/factories.py`); MD5 values and file names are fine. Tests never
   touch the network, except the local Samba test server.
 - Your shell and your home folder can't affect results: `tests/conftest.py` sets `NO_COLOR` for every test, clears the `BECK_*` variables, and points the settings folder nowhere.
-- A settings file in a test should have mode `600`, or BECK warns on stderr, as it would for anyone. `settings_text` in `tests/factories.py` writes one.
+- A settings file in a test should have mode `600`, or BECK warns on stderr, as it would for anyone. `settings_text` in `tests/factories.py` builds its text.
 
 ## Commits and pull requests
 
