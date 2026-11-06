@@ -20,7 +20,7 @@ Someone asks you to cut, prepare or publish a release or a release candidate. If
 
 ## Steps
 
-1. **Check that it's ready.** You're on the branch they created, `git status` is clean, and `main`'s last CI run is green (`gh run list --branch main --limit 1`). Check `.trivyignore` for an expiry coming up. A final release needs a release candidate that went well, except for a small patch, if the owner says so. For the first release, confirm with the owner that the [trusted publishers and environments](../../../roadmap/10-packaging-and-release.md#101--check-the-pypi-name-and-set-up-trusted-publishing-human-only) exist. Otherwise the publish will fail.
+1. **Check that it's ready.** You're on the branch they created, `git status` is clean, and `main`'s last CI run is green (`gh run list --branch main --workflow CI --limit 1`). Check `.trivyignore` for an expiry coming up. A final release needs a release candidate that went well, except for a small patch, if the owner says so. Check that the `testpypi` and `pypi` environments exist, and that `pypi` has a required reviewer: `gh api repos/Andredson/BECK/environments`. **GitHub creates a missing environment by itself when a tag runs, with no approval gate,** so if they aren't there, tell the owner before they tag. You can't see the [trusted publishers](../../../roadmap/10-packaging-and-release.md#101--check-the-pypi-name-and-set-up-trusted-publishing-human-only), so ask whether they exist. Without them, the publish fails.
 2. **Bump the version** with [`uv version`](../../../docs/releasing.md#where-the-version-lives), never by hand:
 
    ```sh
