@@ -71,6 +71,20 @@ the owner:
 - **`-v` names no user,** as `--json` doesn't, and turns on only BECK's own logs, because pysmb's debug logs show what crosses the network.
 - **No counter with `-v`,** because it would break up the log lines, or with `--json`, because a counter is for people.
 
+### Details settled in step 07.2
+The roadmap gives the order of the sources. Building it raised these details, which the agent settled and reported to the owner:
+
+- **A target is one setting with two forms,** so a higher source wins even in the other form: `--target-dir` beats `BECK_TARGET`, and
+  `BECK_TARGET_DIR` beats a `url` in the file. Two targets in the environment are refused, unless a flag makes them not matter.
+- **An empty variable counts as not set,** as it does for `NO_COLOR` and `FORCE_COLOR`, except `BECK_SMB_USER`, where the roadmap says it means
+  a guest. So an empty one beats a user in the file.
+- **A user in a target URL beats `BECK_SMB_USER`,** because it's the most specific thing anyone said about that target.
+- **A broken settings file stops every command,** even one that wouldn't use it, such as `beck scan --source DIR`, because a typo should
+  be noticed at once. A default file that doesn't exist is fine, and one that can't be read isn't taken for one that doesn't exist.
+- **A source named anywhere must exist,** as `--source` already had to, so that a typo can't read as an empty folder.
+- **The default timeout stays 30 seconds,** as it is today. The roadmap's sample file said 10, with no reason given, so the guide's sample says 30.
+- **`config/config.yml` stays until 07.3,** only when no other source names a target, and its password still only goes to its own server.
+
 ### Deleting is always explicit
 Nothing is deleted without `--move` or `--clean-unmatched`, and off a terminal not without `--yes` too. `--json` never prompts, so that
 a consumer can't hang on a question or confirm one by accident.

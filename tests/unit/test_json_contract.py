@@ -28,7 +28,7 @@ from beck.errors import BeckError, TransportError
 from beck.frontends.recalbox import RecalboxAdapter
 from beck.models import MissingBios
 from beck.transports.local import LocalTransport
-from tests.conftest import REAL_REPORT, REPORT_NAMES, REPORTS
+from tests.conftest import REAL_REPORT, REPORT_NAMES, REPORTS, isolate_settings
 from tests.factories import make_bios_file, make_missing, make_report_text
 from tests.fakes import FakeSMBServer, install_fake_smb
 
@@ -592,6 +592,49 @@ def check_passes_if_only_optional_files_are_missing(world: World) -> list[str]:
     return world.check("--fail-if-missing")
 
 
+# check: settings from somewhere other than the command line
+
+
+@scenario(CHECK)
+def check_with_a_settings_file(world: World) -> list[str]:
+    file = make_bios_file(world.source, "a.bin")
+    world.report(make_missing("a.bin", file.md5))
+    settings = world.root / "settings.toml"
+    settings.write_text(
+        "schema_version = 1\n"
+        f'[target]\nfrontend = "recalbox"\ndir = "{world.device}"\n'
+        f'[source]\ndir = "{world.source}"\n',
+        encoding="utf-8",
+    )
+    return ["--json", "check", "--config", str(settings)]
+
+
+@scenario(CHECK)
+def check_with_settings_in_the_environment(world: World) -> list[str]:
+    world.report()
+    world.monkeypatch.setenv("BECK_TARGET_DIR", str(world.device))
+    world.monkeypatch.setenv("BECK_SOURCE", str(world.source))
+    return ["--json", "check"]
+
+
+@scenario(CHECK, 2)
+def check_with_a_settings_file_that_has_problems(world: World) -> list[str]:
+    settings = world.root / "settings.toml"
+    settings.write_text('[smb]\ntimeout = "ten"\n', encoding="utf-8")
+    return ["--json", "check", "--config", str(settings)]
+
+
+@scenario(CHECK, 2)
+def check_with_a_settings_file_that_does_not_exist(world: World) -> list[str]:
+    return ["--json", "check", "--config", str(world.root / "nope.toml")]
+
+
+@scenario(CHECK, 2)
+def check_with_a_bad_target_in_the_environment(world: World) -> list[str]:
+    world.monkeypatch.setenv("BECK_TARGET", "http://nope/bios")
+    return ["--json", "check"]
+
+
 # check: an error stops the run
 
 
@@ -718,6 +761,20 @@ def report_that_does_not_say_what_is_required(world: World) -> list[str]:
     return ["--json", "report", "--report-file", world.report_file()]
 
 
+@scenario(REPORT)
+def report_from_a_target_in_the_environment(world: World) -> list[str]:
+    world.report(make_missing("a.bin", A))
+    world.monkeypatch.setenv("BECK_TARGET_DIR", str(world.device))
+    return ["--json", "report"]
+
+
+@scenario(REPORT, 2)
+def report_with_a_settings_file_that_has_problems(world: World) -> list[str]:
+    settings = world.root / "settings.toml"
+    settings.write_text("schema_version = 99\n", encoding="utf-8")
+    return ["--json", "report", "--config", str(settings)]
+
+
 @scenario(REPORT, 2)
 def report_with_no_config(world: World) -> list[str]:
     return ["--json", "report"]
@@ -799,6 +856,20 @@ def scan_on_a_file_name_that_is_not_utf8(world: World) -> list[str]:
     return ["--json", "scan", "--source", str(world.source)]
 
 
+@scenario(SCAN)
+def scan_with_a_source_in_the_environment(world: World) -> list[str]:
+    make_bios_file(world.source, "a.bin")
+    world.monkeypatch.setenv("BECK_SOURCE", str(world.source))
+    return ["--json", "scan"]
+
+
+@scenario(SCAN, 2)
+def scan_with_a_settings_file_that_has_problems(world: World) -> list[str]:
+    settings = world.root / "settings.toml"
+    settings.write_text("this is not toml", encoding="utf-8")
+    return ["--json", "scan", "--config", str(settings)]
+
+
 @scenario(SCAN, 2)
 def scan_with_a_source_that_does_not_exist(world: World) -> list[str]:
     return ["--json", "scan", "--source", str(world.root / "nope")]
@@ -839,6 +910,7 @@ class Outcome:
 def run(item: Scenario, folder: Path) -> Outcome:
     stdout, stderr = io.StringIO(), io.StringIO()
     with pytest.MonkeyPatch.context() as monkeypatch:
+        isolate_settings(monkeypatch)  # this runs too early for the fixture that does it elsewhere
         world = World(folder, monkeypatch)
         arguments = item.arrange(world)
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):

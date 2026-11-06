@@ -1,23 +1,26 @@
 """BECK's settings file: TOML, read with the standard library (DEC-24).
 
-``load`` reads and checks one file. Finding it, and deciding between it and other settings, is
-someone else's job. A password never goes in this file, and no message here repeats a value that
-could be one: someone may have typed it in the wrong place.
+``find_config`` finds the file, ``load`` reads and checks it, and ``resolve`` decides between it,
+the environment and the flags. A password never goes in this file, and no message here repeats a
+value that could be one: someone may have typed it in the wrong place.
 """
 
 import json
 import logging
 import tomllib
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from platformdirs import user_config_path
 
 from beck.errors import ConfigError, UsageError
 from beck.frontends import get_adapter
 from beck.targets import parse_smb_url
 
 SCHEMA_VERSION = 1
+DEFAULT_FRONTEND = "recalbox"
 KNOWN_SETTINGS = {
     "target": {"frontend", "url", "dir"},
     "smb": {"user", "timeout"},
@@ -38,6 +41,40 @@ class Config:
     smb_user: str | None = None  # empty means a guest, which isn't the same as not saying
     smb_timeout: int | None = None
     source_dir: Path | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ConfigLocation:
+    """Which file to read, and why: ``flag``, ``environment`` or ``default``."""
+
+    path: Path
+    source: str
+
+
+@dataclass(frozen=True, slots=True)
+class Flags:
+    """The settings on the command line. None means they aren't there."""
+
+    target: str | None = None
+    target_dir: str | None = None
+    source: str | None = None
+    frontend: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Settings:
+    """What a run uses, once flags, the environment, the file and the defaults are decided.
+
+    No ``source_dir`` means ``./bios``, and no target means the legacy settings file, because both
+    depend on where BECK runs. No ``smb_timeout`` means the transport's own.
+    """
+
+    target_url: str | None = None
+    target_dir: Path | None = None
+    source_dir: Path | None = None
+    frontend: str = DEFAULT_FRONTEND
+    smb_user: str = ""
+    smb_timeout: int | None = None
 
 
 def _kind(value: object) -> str:
@@ -75,11 +112,13 @@ def _password_keys(node: object, path: str = "") -> Iterator[str]:
             yield from _password_keys(item, f"{path}[]")
 
 
-def _read(path: Path) -> dict[str, Any]:
+def _read(path: Path, *, may_be_missing: bool) -> dict[str, Any] | None:
     try:
         with path.open("rb") as file:
             return tomllib.load(file)
     except FileNotFoundError as e:
+        if may_be_missing:
+            return None
         raise ConfigError(f"{path} not found") from e
     except OSError as e:
         raise ConfigError(f"Can't read {path}: {e.strerror}") from e
@@ -154,13 +193,17 @@ def _warn_about_unknown_settings(path: Path, data: dict[str, Any]) -> None:
                     warn(f"{key}.{inner}")
 
 
-def load(path: Path) -> Config:
+def load(path: Path, *, may_be_missing: bool = False) -> Config:
     """Read a settings file. Raises ConfigError, listing every problem, each with its setting.
 
     They're on one line, because a line break in a message would show as ``\\x0a``. A setting this
     BECK doesn't know is only a warning, because it's probably a typo, and may be from a newer BECK.
+
+    With ``may_be_missing``, no file means no settings, but any other failure is still an error.
     """
-    data = _read(path)
+    data = _read(path, may_be_missing=may_be_missing)
+    if data is None:
+        return Config()
     problems: list[str] = []
     _check_version(path, data, problems)
     for place in dict.fromkeys(_password_keys(data)):
@@ -204,3 +247,57 @@ def load(path: Path) -> Config:
     if problems:
         raise ConfigError(f"{path} has problems: {'; '.join(problems)}")
     return config
+
+
+def find_config(flag: str | None, environ: Mapping[str, str]) -> ConfigLocation:
+    """The file to read: the flag, then ``BECK_CONFIG``, then the folder the system says (DEC-19).
+
+    This creates nothing. An empty variable counts as not set.
+    """
+    if flag is not None:
+        return ConfigLocation(Path(flag), "flag")
+    named = environ.get("BECK_CONFIG")
+    if named:
+        return ConfigLocation(Path(named), "environment")
+    folder = user_config_path("beck", appauthor=False, roaming=True)
+    return ConfigLocation(folder / "config.toml", "default")
+
+
+def _target(
+    flags: Flags, environ: Mapping[str, str], file: Config
+) -> tuple[str | None, Path | None]:
+    """A target is one setting with two forms, so a higher source wins even in the other form."""
+    if flags.target is not None:
+        return flags.target, None
+    if flags.target_dir is not None:
+        return None, Path(flags.target_dir)
+    url, folder = environ.get("BECK_TARGET"), environ.get("BECK_TARGET_DIR")
+    if url and folder:
+        raise ConfigError("Set BECK_TARGET or BECK_TARGET_DIR, not both")
+    if url:
+        try:
+            parse_smb_url(url)
+        except UsageError as e:  # it never repeats the URL, which might hold a password
+            raise ConfigError(f"BECK_TARGET: {e}") from e
+        return url, None
+    if folder:
+        return None, Path(folder)
+    return file.target_url, file.target_dir
+
+
+def resolve(flags: Flags, environ: Mapping[str, str], file: Config) -> Settings:
+    """Decide each setting: flags, then the environment, then the file, then the default. Pure.
+
+    An empty variable counts as not set, except ``BECK_SMB_USER``, where it means a guest.
+    """
+    target_url, target_dir = _target(flags, environ, file)
+    source = flags.source if flags.source is not None else environ.get("BECK_SOURCE")
+    user = environ.get("BECK_SMB_USER", file.smb_user)
+    return Settings(
+        target_url=target_url,
+        target_dir=target_dir,
+        source_dir=Path(source) if source else file.source_dir,
+        frontend=flags.frontend or file.frontend or DEFAULT_FRONTEND,
+        smb_user="" if user is None else user,
+        smb_timeout=file.smb_timeout,
+    )

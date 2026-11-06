@@ -8,9 +8,30 @@ import pytest
 
 REPORTS = Path(__file__).resolve().parent / "fixtures" / "reports"
 REAL_REPORT = "recalbox-10.1.1/default-install"
+NO_SETTINGS_FOLDER = "/nonexistent/beck-tests-have-no-settings"
+SETTINGS_VARIABLES = (
+    "BECK_CONFIG",
+    "BECK_TARGET",
+    "BECK_TARGET_DIR",
+    "BECK_SOURCE",
+    "BECK_SMB_USER",
+    "BECK_SMB_PASSWORD",
+)
 REPORT_NAMES = sorted(
     p.relative_to(REPORTS).with_suffix("").as_posix() for p in REPORTS.rglob("*.txt")
 )
+
+
+def isolate_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Results can't depend on who runs them: no settings from the shell or the home folder."""
+    monkeypatch.setenv("XDG_CONFIG_HOME", NO_SETTINGS_FOLDER)
+    for name in SETTINGS_VARIABLES:
+        monkeypatch.delenv(name, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def no_settings_from_the_user(monkeypatch: pytest.MonkeyPatch) -> None:
+    isolate_settings(monkeypatch)
 
 
 @pytest.fixture(autouse=True)

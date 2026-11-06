@@ -228,6 +228,9 @@ class ConsoleRenderer:
     def opened(self, target: str) -> None:
         """Nothing: human output names the target only when something goes wrong with it."""
 
+    def uses_frontend(self, name: str) -> None:
+        """Nothing: human output doesn't name the frontend."""
+
     def ended_early(self, result: RunResult, failing: Sequence[MissingBios] = ()) -> None:
         """The lines before this one already said why there's nothing to upload."""
         self._failing_if_missing(failing, dry_run=result.dry_run)

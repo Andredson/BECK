@@ -147,6 +147,9 @@ class JsonRenderer:
     def opened(self, target: str) -> None:
         self.target = target
 
+    def uses_frontend(self, name: str) -> None:
+        self.frontend = name
+
     def missing_count(self, count: int) -> None:
         """Nothing yet: the document has it at the end."""
 

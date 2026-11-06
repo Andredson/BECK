@@ -12,6 +12,7 @@ from typing import Any, NoReturn
 import yaml
 
 from beck import __version__
+from beck.config import DEFAULT_FRONTEND, Flags, Settings, find_config, load, resolve
 from beck.errors import BeckError, ConfigError, ReportNotFoundError, TransportError, UsageError
 from beck.executor import execute
 from beck.frontends import get_adapter
@@ -25,7 +26,7 @@ from beck.output.json import JsonRenderer, write_rejected_command
 from beck.targets import URL_FORM, parse_smb_url
 from beck.transports.base import Transport
 from beck.transports.local import LocalTransport
-from beck.transports.smb import SmbTransport
+from beck.transports.smb import DEFAULT_TIMEOUT, SmbTransport
 
 DESCRIPTION = "Match your BIOS files by MD5 and send them to the right folder on your Recalbox."
 
@@ -45,7 +46,6 @@ COMMANDS = {
 }
 
 SMB_SETTINGS = ("server", "port", "user", "passwd")
-DEFAULT_FRONTEND = "recalbox"
 FAILED_IF_MISSING_EXIT_CODE = 5
 HIGHEST_PORT = 65535
 REPORT_FILE_HELP = "read this local copy of the report, not the one on the target"
@@ -121,24 +121,42 @@ def _checked_smb_settings(file: Path, settings: dict[str, Any]) -> dict[str, Any
     return settings
 
 
-def _open_target(args: argparse.Namespace, base_dir: Path) -> Transport:
-    """The transport for the chosen target. With none chosen, it comes from the config file."""
-    if args.target_dir is not None:
-        return LocalTransport(Path(args.target_dir))
-    if args.target is not None:
-        target = parse_smb_url(args.target)
-        # No password: the one in the config file belongs to its own server, and sending it to
-        # whatever host this flag names would leak it. Stage 07 adds passwords for targets.
+def _load_settings(args: argparse.Namespace) -> Settings:
+    location = find_config(args.config, os.environ)
+    _log.debug("Settings file: %s (%s)", location.path, location.source)
+    file = load(location.path, may_be_missing=location.source == "default")
+    flags = Flags(
+        target=args.target, target_dir=args.target_dir, source=args.source, frontend=args.frontend
+    )
+    return resolve(flags, os.environ, file)
+
+
+def _open_target(settings: Settings, base_dir: Path) -> Transport:
+    """The transport for the chosen target. With none chosen, it comes from the legacy file."""
+    timeout = settings.smb_timeout or DEFAULT_TIMEOUT
+    if settings.target_dir is not None:
+        return LocalTransport(settings.target_dir)
+    if settings.target_url is not None:
+        target = parse_smb_url(settings.target_url)
+        # No password: the one in the legacy file belongs to its own server, and sending it to
+        # whatever host this names would leak it. Stage 07 adds passwords for targets.
         return SmbTransport(
-            target.host, target.port, target.share, target.user, "", root=target.root
+            target.host,
+            target.port,
+            target.share,
+            target.user or settings.smb_user,
+            "",
+            timeout=timeout,
+            root=target.root,
         )
-    settings = load_legacy_config(base_dir / "config" / "config.yml")
+    legacy = load_legacy_config(base_dir / "config" / "config.yml")
     return SmbTransport(
-        host=settings["server"],
-        port=settings["port"],
+        host=legacy["server"],
+        port=legacy["port"],
         share="bios",
-        user=settings["user"],
-        password=settings["passwd"],
+        user=legacy["user"],
+        password=legacy["passwd"],
+        timeout=timeout,
     )
 
 
@@ -208,11 +226,11 @@ def _log_run(result: RunResult, started: float) -> None:
     )
 
 
-def _source_folder(args: argparse.Namespace, base_dir: Path) -> Path:
+def _source_folder(settings: Settings, base_dir: Path) -> Path:
     """The folder of BIOS files. One the user named must exist, so a typo can't read as empty."""
-    if args.source is None:
+    source = settings.source_dir
+    if source is None:
         return base_dir / "bios"
-    source = Path(args.source)
     if not source.is_dir():
         raise UsageError(f"The source folder {source} doesn't exist")
     return source
@@ -247,9 +265,11 @@ def _failing_if_missing(args: argparse.Namespace, result: RunResult) -> list[Mis
     return [entry for entry in still_needed if entry.required is not False]
 
 
-def _run_check(args: argparse.Namespace, base_dir: Path, renderer: Renderer) -> int:
-    source = _source_folder(args, base_dir)
-    adapter = get_adapter(args.frontend)
+def _run_check(
+    args: argparse.Namespace, settings: Settings, base_dir: Path, renderer: Renderer
+) -> int:
+    source = _source_folder(settings, base_dir)
+    adapter = get_adapter(settings.frontend)
 
     def ended_early(entries: list[MissingBios]) -> int:
         """Nothing to upload. The plan still says what's missing and incorrect."""
@@ -258,7 +278,7 @@ def _run_check(args: argparse.Namespace, base_dir: Path, renderer: Renderer) -> 
         renderer.ended_early(result, failing)
         return FAILED_IF_MISSING_EXIT_CODE if failing else 0
 
-    transport = _open_target(args, base_dir)
+    transport = _open_target(settings, base_dir)
     renderer.opened(transport.url())
     _log.debug("Target: %s", transport.url())
     with transport:
@@ -314,13 +334,15 @@ def _run_check(args: argparse.Namespace, base_dir: Path, renderer: Renderer) -> 
     return FAILED_IF_MISSING_EXIT_CODE if failing else 0
 
 
-def _run_report(args: argparse.Namespace, base_dir: Path, renderer: Renderer) -> int:
+def _run_report(
+    args: argparse.Namespace, settings: Settings, base_dir: Path, renderer: Renderer
+) -> int:
     """List what the report says. It never writes anything, and a local copy needs no target."""
-    adapter = get_adapter(args.frontend)
+    adapter = get_adapter(settings.frontend)
     if args.report_file is not None:
         entries = _entries_from_file(adapter, args.report_file)
     else:
-        transport = _open_target(args, base_dir)
+        transport = _open_target(settings, base_dir)
         renderer.opened(transport.url())
         _log.debug("Target: %s", transport.url())
         with transport:
@@ -329,9 +351,9 @@ def _run_report(args: argparse.Namespace, base_dir: Path, renderer: Renderer) ->
     return 0
 
 
-def _run_scan(args: argparse.Namespace, base_dir: Path, renderer: Renderer) -> int:
+def _run_scan(settings: Settings, base_dir: Path, renderer: Renderer) -> int:
     """List the local files. It uses no network and writes nothing."""
-    source = _source_folder(args, base_dir)
+    source = _source_folder(settings, base_dir)
     renderer.scan(_scan_with_progress(source, renderer), source)
     return 0
 
@@ -361,6 +383,12 @@ def _add_global_options(parser: argparse.ArgumentParser, *, on_a_command: bool) 
         action="store_true",
         default=argparse.SUPPRESS if on_a_command else False,
         help="don't use colors, the same as setting NO_COLOR",
+    )
+    parser.add_argument(
+        "--config",
+        metavar="FILE",
+        default=argparse.SUPPRESS if on_a_command else None,
+        help="read the settings from this file, not the default one (see docs/cli.md)",
     )
     parser.add_argument(
         "--json",
@@ -439,7 +467,6 @@ def _build_parser(*, json_errors: bool = False) -> argparse.ArgumentParser:
             )
             command.add_argument(
                 "--frontend",
-                default=DEFAULT_FRONTEND,
                 metavar="NAME",
                 help=f"the kind of device (default: {DEFAULT_FRONTEND})",
             )
@@ -449,7 +476,7 @@ def _build_parser(*, json_errors: bool = False) -> argparse.ArgumentParser:
     parser.set_defaults(
         target=None,
         target_dir=None,
-        frontend=DEFAULT_FRONTEND,
+        frontend=None,
         source=None,
         report_file=None,
         overwrite=False,
@@ -487,8 +514,11 @@ def _main(argv: list[str] | None, base_dir: Path | None) -> int:
     _log.debug("BECK %s, Python %s", __version__, platform.python_version())
     renderer: Renderer
     if args.json:
+        # The frontend can come from the settings file, which may be what fails.
         renderer = JsonRenderer(
-            args.command or "check", frontend=args.frontend, dry_run=args.dry_run
+            args.command or "check",
+            frontend=args.frontend or DEFAULT_FRONTEND,
+            dry_run=args.dry_run,
         )
     else:
         environ = {**os.environ, "NO_COLOR": "1"} if args.no_color else None
@@ -500,11 +530,13 @@ def _main(argv: list[str] | None, base_dir: Path | None) -> int:
 
     try:
         folder = Path.cwd() if base_dir is None else base_dir
+        settings = _load_settings(args)
+        renderer.uses_frontend(settings.frontend)
         if args.command == "scan":
-            return _run_scan(args, folder, renderer)
+            return _run_scan(settings, folder, renderer)
         if args.command == "report":
-            return _run_report(args, folder, renderer)
-        return _run_check(args, folder, renderer)
+            return _run_report(args, settings, folder, renderer)
+        return _run_check(args, settings, folder, renderer)
     except BeckError as error:
         renderer.error(error)
         return error.exit_code

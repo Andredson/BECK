@@ -16,6 +16,8 @@ from smb.SMBConnection import SMBConnection
 from beck.errors import TransportError
 from beck.models import SHARE_ROOT
 
+DEFAULT_TIMEOUT = 30  # seconds
+
 _log = logging.getLogger(__name__)
 
 
@@ -56,7 +58,7 @@ class SmbTransport:
         share: str,
         user: str,
         password: str,
-        timeout: float = 30,
+        timeout: float = DEFAULT_TIMEOUT,
         root: PurePosixPath = SHARE_ROOT,
     ) -> None:
         self.host = host

@@ -69,7 +69,10 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 - **Commit message:** `feat(config): load and validate a TOML configuration file`
 
 ### 07.2 — Discovery and precedence
-- [ ] Done
+- [x] Done (2026-11-06: `platformdirs` 4.13.5, with no dependencies of its own. The choices it needed are in
+  [ADR-0007](../docs/adr/0007-cli-contract.md#details-settled-in-step-072). `BECK_SMB_PASSWORD` is 07.4, so until then a user with no password can't
+  log in. Beyond the list below: `requirements.txt`, `docs/cli.md`, `tests/conftest.py`, so that tests can't read the settings of whoever runs them,
+  `tests/unit/test_json_contract.py`, and the renderers, because the frontend in a JSON document can now come from the file.)
 - **What:** `uv add platformdirs` (DEC-19). Implement discovery and the precedence order above as a pure function
   `resolve(flags, env, file_config) -> Settings`, so it can be tested without touching the real environment.
   Tests monkeypatch `platformdirs` and the environment.

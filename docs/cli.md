@@ -4,7 +4,7 @@ The reference for using BECK from the command line.
 
 
 ```text
-beck [--version] [-v | -q] [--no-color] [--json] <command> [options]
+beck [--version] [-v | -q] [--no-color] [--json] [--config FILE] <command> [options]
 
 beck check   [--source DIR] [--target URL | --target-dir DIR] [--frontend recalbox]
              [--report-file FILE] [--overwrite] [--dry-run] [--move] [--clean-unmatched]
@@ -67,6 +67,7 @@ They work before or after the command.
 | `-q` | With `beck check`, prints only errors, deletions and how the run ended, including why `--fail-if-missing` failed. The deletion prompt still appears. It doesn't shorten `beck report` or `beck scan`, whose lists are what you asked for. |
 | `--no-color` | The same as setting `NO_COLOR`. |
 | `--json` | Prints one JSON document on stdout, and logs on stderr. It never asks anything. See [JSON output](#json-output). |
+| `--config FILE` | Reads the settings from this file, not the default one. See [Settings](#settings). |
 
 `-v` and `-q` can't be combined, and neither changes a `--json` document.
 
@@ -88,8 +89,9 @@ act on your terminal, or look like something else. `--json` keeps the exact name
 | `--frontend NAME` | `check` | The kind of device. Only `recalbox`, for now. |
 | `--report-file FILE` | `check`, `report` | Reads a local copy of the report, not the one on the target. `beck report` then needs no target, and can't take one. `beck check` still needs a target to upload to. |
 
-With no target, BECK uses the settings in `config/config.yml`. A blank `user` or `passwd` means guest access. A value that can't work,
-such as a `port` that isn't a number from 1 to 65535, exits with 2. Put a password made only of digits in quotes.
+All of these except `--report-file` can also come from [Settings](#settings). With no target anywhere, BECK uses the older
+`config/config.yml`. A blank `user` or `passwd` there means guest access. A value that can't work, such as a `port` that isn't a number from
+1 to 65535, exits with 2. Put a password made only of digits in quotes.
 
 ### Safety
 
@@ -101,6 +103,52 @@ such as a `port` that isn't a number from 1 to 65535, exits with 2. Put a passwo
 | `--clean-unmatched` | Deletes local files that matched nothing. Read the warning below first. |
 | `--yes` | Confirms deletions without asking. Required when BECK can't ask. |
 | `--fail-if-missing` | Exits with 5 if required files are still missing or incorrect after the run, and lists them. See [exit codes](#exit-codes). |
+
+## Settings
+
+Each setting comes from the first of these that has it:
+
+1. a flag on the command line;
+2. an environment variable;
+3. the settings file;
+4. BECK's default.
+
+A target is one setting, whether it's a URL or a folder, so `--target-dir` beats `BECK_TARGET`, and `BECK_TARGET_DIR` beats a `url` in the
+file. Two targets in the environment exit with 2, unless a flag decides.
+
+| Variable | What it does |
+|---|---|
+| `BECK_CONFIG` | The settings file. |
+| `BECK_TARGET` | The same as `--target`. |
+| `BECK_TARGET_DIR` | The same as `--target-dir`. |
+| `BECK_SOURCE` | The same as `--source`. |
+| `BECK_SMB_USER` | The SMB user. Empty means a guest, even if the file names a user. A user in the target URL beats this. |
+
+Any other empty variable counts as not set.
+
+### The settings file
+
+BECK reads the file named by `--config`, then the one named by `BECK_CONFIG`, then `config.toml` in the folder your system uses for settings:
+`~/.config/beck/` on Linux. A file you name must exist, and the default one doesn't have to. A file that's broken stops every command with
+exit code 2, and BECK lists all its problems at once. A setting it doesn't know is only a warning.
+
+```toml
+schema_version = 1                 # required
+
+[target]
+frontend = "recalbox"
+url = "smb://recalbox.local/bios"  # or: dir = "/media/user/RECALBOX/bios", but not both
+
+[smb]
+user = ""                          # empty means a guest
+timeout = 30                       # seconds
+
+[source]
+dir = "~/beck/bios"
+```
+
+A `dir` must be an absolute path or start with `~`, so that it means the same folder wherever you run BECK. **Passwords can't go in this
+file:** BECK refuses one, in any setting and in a URL.
 
 ## What BECK deletes, and when
 
