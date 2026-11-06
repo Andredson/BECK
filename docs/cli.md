@@ -2,9 +2,6 @@
 
 The reference for using BECK from the command line.
 
-**Status:** this is the design [stage 06](../roadmap/06-cli-ux-and-machine-output.md) is building, so most of it doesn't exist yet.
-Today, `beck check` and `beck report` work with the options under [Choosing what BECK works on](#choosing-what-beck-works-on), the
-[safety options](#safety) work, and all the global options work. `beck scan` only works with `--json`, and otherwise says it isn't available yet. The rest arrives in later steps of the stage.
 
 ```text
 beck [--version] [-v | -q] [--no-color] [--json] <command> [options]
@@ -36,15 +33,20 @@ Running `beck` with no command works as `beck check` for one more release, and p
 
 ### `beck scan`
 
-Lists your local files with their relative path, size and MD5. It uses no network and writes nothing.
+Lists your local files with their MD5, size in bytes and relative path, the same order as `md5sum`. Then it lists what it couldn't read, and
+the totals. It uses no network and writes nothing.
 
-```sh
-beck scan --source ~/my-bios
+```text
+$ beck scan --source ~/my-bios
+d41d8cd98f00b204e9800998ecf8427e  524288  ps1/scph1001.bin
+900150983cd24fb0d6963f7d28e17f72    1024  tos.img
+broken-link.bin: can't be read, skipped: broken symlink
+Files: 2, can't be read: 1
 ```
 
 ### `beck report`
 
-Lists what the report says is missing or incorrect, grouped by folder, with whether each file is required. A file listed in several
+Lists what the report says is incorrect, then what's missing, grouped by folder, with whether each file is required. A file listed in several
 systems appears once, and counts as required if any of them requires it. It writes nothing.
 
 ```sh
@@ -62,7 +64,7 @@ They work before or after the command.
 |---|---|
 | `--version` | Prints `beck <version>`. |
 | `-v` | Adds debug logs on stderr: connection steps, timings and plan details, never credentials or user names. Each line starts with the time since BECK started. |
-| `-q` | With `beck check`, prints only errors, deletions and how the run ended, including why `--fail-if-missing` failed. The deletion prompt still appears. It doesn't shorten `beck report`, whose list is what you asked for. |
+| `-q` | With `beck check`, prints only errors, deletions and how the run ended, including why `--fail-if-missing` failed. The deletion prompt still appears. It doesn't shorten `beck report` or `beck scan`, whose lists are what you asked for. |
 | `--no-color` | The same as setting `NO_COLOR`. |
 | `--json` | Prints one JSON document on stdout, and logs on stderr. It never asks anything. See [JSON output](#json-output). |
 

@@ -328,9 +328,10 @@ def _run_report(args: argparse.Namespace, base_dir: Path, renderer: Renderer) ->
     return 0
 
 
-def _run_scan(args: argparse.Namespace, base_dir: Path, renderer: JsonRenderer) -> int:
+def _run_scan(args: argparse.Namespace, base_dir: Path, renderer: Renderer) -> int:
     """List the local files. It uses no network and writes nothing."""
-    renderer.scan(_scan_with_progress(_source_folder(args, base_dir), renderer))
+    source = _source_folder(args, base_dir)
+    renderer.scan(_scan_with_progress(source, renderer), source)
     return 0
 
 
@@ -490,7 +491,7 @@ def _main(argv: list[str] | None, base_dir: Path | None) -> int:
         )
     else:
         environ = {**os.environ, "NO_COLOR": "1"} if args.no_color else None
-        # A report's list is what it's for, so quiet is only for check.
+        # A list is what report and scan are for, so quiet is only for check.
         quiet = args.quiet and args.command in (None, "check")
         renderer = ConsoleRenderer(environ=environ, quiet=quiet, progress=not args.verbose)
     if args.command is None and not args.quiet:
@@ -499,8 +500,6 @@ def _main(argv: list[str] | None, base_dir: Path | None) -> int:
     try:
         folder = Path.cwd() if base_dir is None else base_dir
         if args.command == "scan":
-            if isinstance(renderer, ConsoleRenderer):  # step 06.11 adds the human output
-                raise UsageError("beck scan isn't available yet")
             return _run_scan(args, folder, renderer)
         if args.command == "report":
             return _run_report(args, folder, renderer)

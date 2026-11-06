@@ -731,13 +731,136 @@ def test_beck_check_has_no_hint(
     assert capsys.readouterr().err == ""
 
 
-def test_scan_still_to_come_says_so_and_exits_2(
-    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+def test_scan_lists_path_size_and_md5_in_aligned_columns(
+    server: FakeSMBServer, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    assert cli.main(["scan"], base_dir=app) == 2
+    source = tmp_path / "source"
+    small, large = b"x" * 7, b"y" * 1234
+    write(source / "ps1" / "my bios (v1).bin", small)
+    write(source / "a.rom", large)
 
-    assert "beck scan isn't available yet" in capsys.readouterr().out
+    assert cli.main(["scan", "--source", str(source)], base_dir=tmp_path) == 0
+
+    assert capsys.readouterr().out.splitlines() == [
+        f"{md5_of(large)}  1234  a.rom",
+        f"{md5_of(small)}     7  ps1/my bios (v1).bin",
+        "Files: 2",
+    ]
+
+
+def test_scan_uses_the_default_folder(app: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    data = write(app / "bios" / "a.bin")
+
+    assert cli.main(["scan"], base_dir=app) == 0
+
+    assert f"{md5_of(data)}  64  a.bin" in capsys.readouterr().out
+
+
+def test_scan_shows_what_it_cannot_read_and_it_does_not_change_the_exit_code(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    data = write(tmp_path / "a.bin")
+    (tmp_path / "broken").symlink_to(tmp_path / "nowhere")
+
+    assert cli.main(["scan", "--source", str(tmp_path)]) == 0
+
+    assert capsys.readouterr().out.splitlines() == [
+        f"{md5_of(data)}  64  a.bin",
+        "broken: can't be read, skipped: broken symlink",
+        "Files: 1, can't be read: 1",
+    ]
+
+
+def test_scan_of_an_empty_folder_says_so(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert cli.main(["scan", "--source", str(tmp_path)]) == 0
+
+    assert capsys.readouterr().out.splitlines() == [f"No BIOS files found in {tmp_path}"]
+
+
+def test_scan_with_no_default_folder_says_so(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert cli.main(["scan"], base_dir=tmp_path) == 0
+
+    assert capsys.readouterr().out.splitlines() == [f"No BIOS files found in {tmp_path / 'bios'}"]
+
+
+def test_scan_with_only_what_it_cannot_read(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (tmp_path / "broken").symlink_to(tmp_path / "nowhere")
+
+    assert cli.main(["scan", "--source", str(tmp_path)]) == 0
+
+    assert capsys.readouterr().out.splitlines() == [
+        f"No BIOS files found in {tmp_path}",
+        "broken: can't be read, skipped: broken symlink",
+    ]
+
+
+def test_scan_skips_hidden_files(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    write(tmp_path / ".hidden")
+
+    assert cli.main(["scan", "--source", str(tmp_path)]) == 0
+
+    assert "No BIOS files found" in capsys.readouterr().out
+
+
+def test_scan_of_a_source_that_does_not_exist_exits_2(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert cli.main(["scan", "--source", str(tmp_path / "nope")]) == 2
+
+    assert "doesn't exist" in capsys.readouterr().out
+
+
+def test_scan_writes_nothing_uses_no_network_and_needs_no_config(
+    server: FakeSMBServer, tmp_path: Path
+) -> None:
+    write(tmp_path / "a.bin")
+    before = snapshot(tmp_path)
+
+    assert cli.main(["scan", "--source", str(tmp_path)], base_dir=tmp_path) == 0
+
+    assert snapshot(tmp_path) == before
     assert server.connections == []
+
+
+def test_scan_shows_a_name_that_is_not_utf8_escaped(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (tmp_path / os.fsdecode(b"bad-\xff.bin")).write_bytes(os.urandom(64))
+
+    assert cli.main(["scan", "--source", str(tmp_path)]) == 0
+
+    assert "  bad-\\xff.bin\n" in capsys.readouterr().out
+
+
+def test_q_does_not_shorten_a_scan(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    write(tmp_path / "a.bin")
+    (tmp_path / "broken").symlink_to(tmp_path / "nowhere")
+    assert cli.main(["scan", "--source", str(tmp_path)]) == 0
+    normal = capsys.readouterr().out
+
+    assert cli.main(["-q", "scan", "--source", str(tmp_path)]) == 0
+
+    assert capsys.readouterr().out == normal
+
+
+def test_v_on_a_scan_logs_on_stderr_and_leaves_stdout_alone(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write(tmp_path / "a.bin")
+    assert cli.main(["scan", "--source", str(tmp_path)]) == 0
+    normal = capsys.readouterr().out
+
+    assert cli.main(["-v", "scan", "--source", str(tmp_path)]) == 0
+
+    out = capsys.readouterr()
+    assert out.out == normal
+    assert "Scanned" in out.err
 
 
 @pytest.mark.parametrize(
@@ -1076,9 +1199,52 @@ def test_report_shows_incorrect_files(tmp_path: Path, capsys: pytest.CaptureFixt
     assert cli.main(["report", "--report-file", file], base_dir=tmp_path) == 0
 
     output = capsys.readouterr().out
-    assert "INCORRECT: two/b.bin is on the device with a wrong MD5" in output
+    assert "INCORRECT: two/b.bin (required) is on the device with a wrong MD5" in output
     assert "No missing bios" not in output
     assert "There are" not in output
+
+
+def test_report_says_whether_an_incorrect_file_is_required_and_does_not_say_kept(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A report changes nothing, so it has kept nothing."""
+    report_path = tmp_path / "report.txt"
+    report_path.write_text(
+        make_report_text(
+            [
+                make_missing("ps1/bad.bin", "0" * 32, incorrect=True, system="One"),
+                make_missing("spare.bin", "1" * 32, required=False, incorrect=True, system="One"),
+                make_missing("both.bin", "2" * 32, required=False, incorrect=True, system="One"),
+                make_missing("both.bin", "3" * 32, required=True, incorrect=True, system="Two"),
+            ]
+        ),
+        encoding="utf-8",
+        newline="",
+    )
+
+    assert cli.main(["report", "--report-file", str(report_path)]) == 0
+
+    assert capsys.readouterr().out.splitlines() == [
+        "INCORRECT: both.bin (required) is on the device with a wrong MD5",
+        "INCORRECT: ps1/bad.bin (required) is on the device with a wrong MD5",
+        "INCORRECT: spare.bin (optional) is on the device with a wrong MD5",
+    ]
+
+
+def test_report_counts_a_file_as_required_when_the_report_does_not_say(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    entries = [
+        make_missing("a.bin", "0" * 32, required=None),
+        make_missing("b.bin", "1" * 32, required=None, incorrect=True),
+    ]
+    monkeypatch.setattr(RecalboxAdapter, "parse_report", lambda _self, _text: entries)
+
+    assert cli.main(["report", "--report-file", local_report(tmp_path, "")]) == 0
+
+    output = capsys.readouterr().out
+    assert "  a.bin (required)" in output
+    assert "INCORRECT: b.bin (required)" in output
 
 
 def test_report_with_nothing_missing(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

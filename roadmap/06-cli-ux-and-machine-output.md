@@ -300,7 +300,9 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `feat(cli): add verbosity and color controls`
 
 ### 06.11 — `beck scan` and `beck report`
-- [ ] Done
+- [x] Done (2026-11-06: `scan` prints the MD5, size and path, in the order of `md5sum`, then what it couldn't read and the totals. Beyond the list
+  below: `report` no longer says an `INCORRECT` file "was kept", because it changes nothing, and it now says whether that file is required, as
+  [docs/cli.md](../docs/cli.md#beck-report) promised. So `src/beck/output/` changes too, with `docs/cli.md`, which no longer calls itself a design.)
 - **What:** `scan` lists local files with relative path, size and MD5, for people too (06.7 built only `--json`). `report` already lists missing entries, grouped
   by folder, with the `required` / optional marker (06.4). Both support `--json`. Neither ever writes anything.
 - **Files:** `src/beck/cli.py`, `tests/unit/test_cli.py`

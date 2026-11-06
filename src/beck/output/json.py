@@ -183,7 +183,7 @@ class JsonRenderer:
     def report(self, entries: list[MissingBios]) -> None:
         _write(self._report(entries, []), self.stream)
 
-    def scan(self, scanned: ScanResult) -> None:
+    def scan(self, scanned: ScanResult, folder: Path) -> None:
         _write(self._scan(scanned, []), self.stream)
 
     def error(self, error: BeckError) -> None:

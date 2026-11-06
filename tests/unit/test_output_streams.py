@@ -729,3 +729,36 @@ def test_a_stderr_that_is_no_terminal_gets_no_counter(tmp_path: Path) -> None:
 
     assert done.returncode == 0
     assert done.stderr == b""
+
+
+# A scan for people, into a stream that fails
+
+
+@pytest.mark.parametrize("stdout", BROKEN_STDOUTS)
+def test_a_stream_that_fails_cannot_change_a_scan(tmp_path: Path, stdout: str) -> None:
+    (tmp_path / "good.bin").write_bytes(GOOD)
+
+    done = run_beck("scan", "--source", str(tmp_path), stdout=stdout)
+
+    assert done.returncode == 0
+    assert_no_crash(done)
+
+
+def test_a_real_terminal_shows_the_counter_during_a_scan(tmp_path: Path) -> None:
+    import pty  # here because it doesn't exist on Windows
+
+    (tmp_path / "good.bin").write_bytes(GOOD)
+    master, slave = pty.openpty()
+    try:
+        done = run_beck("scan", "--source", str(tmp_path), stderr=slave)
+    finally:
+        os.close(slave)
+    try:
+        shown = read_terminal(master)
+    finally:
+        os.close(master)
+
+    assert done.returncode == 0
+    assert b"Hashing files: 1" in shown
+    assert b"Hashing" not in done.stdout
+    assert md5_of(GOOD).encode() in done.stdout

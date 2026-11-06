@@ -10,7 +10,7 @@ from pathlib import Path, PurePosixPath
 from typing import TextIO
 
 from beck.errors import BeckError
-from beck.models import SHARE_ROOT, LocalFile, MissingBios, RunResult, Unreadable
+from beck.models import SHARE_ROOT, LocalFile, MissingBios, RunResult, ScanResult, Unreadable
 from beck.output import (
     LOGGER_NAME,
     distinct_targets,
@@ -98,6 +98,18 @@ def _printable(line: str, stream: TextIO | None) -> str:
     readable = UNDECODABLE_BYTE.sub(lambda byte: f"\\x{ord(byte[0]) - 0xDC00:02x}", line)
     encoding = getattr(stream, "encoding", None) or "utf-8"  # a StringIO has none
     return readable.encode(encoding, "backslashreplace").decode(encoding)
+
+
+def _required_by_target(entries: list[MissingBios]) -> dict[PurePosixPath, bool]:
+    """Whether each target counts as required: if any entry says so, or one doesn't say."""
+    by_target: dict[PurePosixPath, bool] = {}
+    for entry in entries:
+        by_target[entry.target] = by_target.get(entry.target, False) or entry.required is not False
+    return by_target
+
+
+def _kind(required: bool) -> str:
+    return "required" if required else "optional"
 
 
 def _deletes_unmatched(result: RunResult) -> bool:
@@ -227,21 +239,33 @@ class ConsoleRenderer:
         if not entries:
             self.nothing_missing()
             return
-        self.incorrect([entry for entry in entries if entry.incorrect])
-        missing = [entry for entry in entries if not entry.incorrect]
-        by_target: dict[PurePosixPath, bool] = {}
-        for entry in missing:
-            by_target[entry.target] = (
-                by_target.get(entry.target, False) or entry.required is not False
+        incorrect = _required_by_target([entry for entry in entries if entry.incorrect])
+        for target in sorted(incorrect):
+            self._print(
+                f"{self._paint('INCORRECT:', RED)} {target} ({_kind(incorrect[target])}) "
+                "is on the device with a wrong MD5"
             )
+        by_target = _required_by_target([entry for entry in entries if not entry.incorrect])
         if by_target:
             self.missing_count(len(by_target))
         for folder in sorted({target.parent for target in by_target}, key=PurePosixPath.as_posix):
             self._print(f"{folder.as_posix()}/" if folder != SHARE_ROOT else "(BIOS folder)")
             for target in sorted(by_target, key=PurePosixPath.as_posix):
                 if target.parent == folder:
-                    kind = "required" if by_target[target] else "optional"
-                    self._print(f"  {target.name} ({kind})")
+                    self._print(f"  {target.name} ({_kind(by_target[target])})")
+
+    def scan(self, scanned: ScanResult, folder: Path) -> None:
+        """Each local file, in the order of ``md5sum``: the name last, as it can be anything."""
+        if not scanned.files:
+            self.no_files(folder)
+        width = max((len(str(file.size)) for file in scanned.files), default=0)
+        for file in scanned.files:
+            self._print(f"{file.md5}  {file.size:>{width}}  {file.relative.as_posix()}")
+        self.unreadable(scanned.unreadable)
+        if scanned.files:
+            total = f"Files: {len(scanned.files)}"
+            unreadable = f", can't be read: {len(scanned.unreadable)}" if scanned.unreadable else ""
+            self._print(f"{total}{unreadable}")
 
     def result(self, result: RunResult, failing: Sequence[MissingBios] = ()) -> None:
         """What happened: uploads, then one or more lines per local file, then the summary."""

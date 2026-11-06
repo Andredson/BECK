@@ -62,7 +62,7 @@ the owner:
 
 - **`-q` never hides a deletion,** because [the docs](../cli.md#what-beck-deletes-and-when) promise that every one is listed, and the prompt
   still appears.
-- **`-q` doesn't shorten `beck report`,** because the list is what the command is for.
+- **`-q` doesn't shorten `beck report`, or `beck scan` since 06.11,** because the list is what the command is for.
 - **A run that ends early still says how:** `No missing bios were found`, or `No BIOS files found in …`, because there's no other summary.
 - **A run that fails `--fail-if-missing` still says why,** with each file, because otherwise exit 5 would explain nothing. An `INCORRECT` file
   gets a short line here, because its usual line is hidden.
