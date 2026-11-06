@@ -197,6 +197,10 @@ flowchart LR
 - **Verify:** The full check suite in AGENTS.md passes on `main`.
 - **Commit message:** `docs(roadmap): close stage 10 and record the 1.0 assessment`
 
+## Breaking changes to mention in the first release notes
+Step 07.3 removed `config/config.yml`: BECK prints what to write instead, and a password now goes in `BECK_SMB_PASSWORD`. See also the note on
+`40856f1` in [04.13](04-architecture-refactor.md).
+
 ## Stage acceptance criteria
 - Releases are fully tag-driven, use no stored tokens, and need explicit owner approval for PyPI.
 - Every release has attestations, an SBOM, and generated notes; release candidates go through TestPyPI first.

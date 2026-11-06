@@ -29,7 +29,13 @@ from beck.output import console, escaped_for_terminal, upload_status
 from beck.output.console import ConsoleRenderer, configure_logging, enable_windows_ansi, wants_color
 from beck.output.json import JsonRenderer
 from beck.transports.local import LocalTransport
-from tests.factories import make_bios_file, make_local_file, make_missing, make_report_text
+from tests.factories import (
+    make_bios_file,
+    make_local_file,
+    make_missing,
+    make_report_text,
+    settings_text,
+)
 from tests.fakes import FakeSMBServer, install_fake_smb
 
 A, B, C, D = "a" * 32, "b" * 32, "c" * 32, "d" * 32
@@ -683,13 +689,7 @@ def test_a_failed_delete_does_not_fail_an_upload_with_the_same_name() -> None:
 
 SENTINEL = "beck-test-password-sentinel"
 ACCOUNT_USER = "beck-test-user-sentinel"
-ACCOUNT = f"""\
-smb:
-  user: "{ACCOUNT_USER}"
-  passwd: "{SENTINEL}"
-  server: "beck-test-server"
-  port: 445
-"""
+ACCOUNT = settings_text("smb://beck-test-server/bios", ACCOUNT_USER)
 
 
 @pytest.fixture
@@ -701,12 +701,13 @@ def folders(tmp_path: Path) -> tuple[Path, Path]:
 
 
 @pytest.fixture
-def account(tmp_path: Path) -> Path:
-    """A folder with a config whose password must never appear anywhere."""
+def account(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """A folder with settings for a user whose password must never appear anywhere."""
     folder = tmp_path / "app"
-    (folder / "config").mkdir(parents=True)
-    (folder / "config" / "config.yml").write_text(ACCOUNT, encoding="utf-8")
-    (folder / "bios").mkdir()
+    (folder / "bios").mkdir(parents=True)
+    (folder / "settings.toml").write_text(ACCOUNT, encoding="utf-8")
+    monkeypatch.setenv("BECK_CONFIG", str(folder / "settings.toml"))
+    monkeypatch.setenv("BECK_SMB_PASSWORD", SENTINEL)
     return folder
 
 
@@ -840,13 +841,13 @@ def verbose_no_report(server: FakeSMBServer, account: Path) -> list[str]:
 
 
 def verbose_config_it_cannot_parse(server: FakeSMBServer, account: Path) -> list[str]:
-    (account / "config" / "config.yml").write_text(f"{ACCOUNT}  broken: [", encoding="utf-8")
+    (account / "settings.toml").write_text(f'{ACCOUNT}broken = "{SENTINEL}', encoding="utf-8")
     return ["check"]
 
 
 def verbose_password_that_is_not_text(server: FakeSMBServer, account: Path) -> list[str]:
-    config = ACCOUNT.replace(f'"{SENTINEL}"', f"[{SENTINEL}]")
-    (account / "config" / "config.yml").write_text(config, encoding="utf-8")
+    config = f'{ACCOUNT}password = ["{SENTINEL}"]\n'
+    (account / "settings.toml").write_text(config, encoding="utf-8")
     return ["check"]
 
 

@@ -83,7 +83,23 @@ The roadmap gives the order of the sources. Building it raised these details, wh
   be noticed at once. A default file that doesn't exist is fine, and one that can't be read isn't taken for one that doesn't exist.
 - **A source named anywhere must exist,** as `--source` already had to, so that a typo can't read as an empty folder.
 - **The default timeout stays 30 seconds,** as it is today. The roadmap's sample file said 10, with no reason given, so the guide's sample says 30.
-- **`config/config.yml` stays until 07.3,** only when no other source names a target, and its password still only goes to its own server.
+- **`config/config.yml` stayed until 07.3,** only when no other source named a target, and its password only went to its own server.
+
+### Details settled in step 07.3
+The roadmap lists the commands. Building them raised these details, which the agent settled and reported to the owner:
+
+- **`BECK_SMB_PASSWORD` works from this step, not 07.4.** `beck config show` has to say whether it's set, and removing the old file would
+  otherwise leave no way to log in. 07.4 adds the prompt, and the error when there's no password and no terminal.
+- **A guest sends no password,** even if the variable is set, so that it can't go to a server nobody meant to log in to.
+- **The notice isn't literally one-time.** That would need BECK to remember, by writing a marker file somewhere nobody asked for. Instead, it
+  appears while the old file is there and the new one isn't, and it stops as soon as there's a new one.
+- **`beck config init` writes where BECK would read,** so `--config` and `BECK_CONFIG` decide, not only the default place. It writes real settings,
+  not only comments, so that `init` and a BIOS folder are enough for a guest on `recalbox.local`, which is what the stage asks for.
+- **`beck config` has `--json`,** with a fifth schema, because stage 06 says every command has it. `settings.smb_user` is the one place a document
+  names the user: asking what the settings are is the point of the command.
+- **Only `show` reads the file,** so that `path` can find a broken one and `init --force` can replace it.
+- **The first line of `beck config path` is only the path,** so that scripts can use it.
+- **An old file whose `server` isn't a host name gets the default in the suggestion,** so that what BECK suggests always loads.
 
 ### Deleting is always explicit
 Nothing is deleted without `--move` or `--clean-unmatched`, and off a terminal not without `--yes` too. `--json` never prompts, so that

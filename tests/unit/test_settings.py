@@ -157,6 +157,57 @@ def test_an_empty_variable_counts_as_not_set(name: str, field: str, file: Config
     assert getattr(resolve(Flags(), {name: ""}, file), field) == getattr(file, field)
 
 
+@pytest.mark.parametrize(
+    ("flags", "environ", "file", "name", "source"),
+    [
+        (Flags(), {}, Config(), "target", "default"),
+        (Flags(), {}, Config(target_url=FILE_URL), "target", "file"),
+        (Flags(), {}, Config(target_dir=Path(FILE_DIR)), "target", "file"),
+        (Flags(), {"BECK_TARGET": ENV_URL}, Config(target_url=FILE_URL), "target", "environment"),
+        (Flags(), {"BECK_TARGET_DIR": ENV_DIR}, Config(), "target", "environment"),
+        (Flags(target=FLAG_URL), {"BECK_TARGET": ENV_URL}, Config(), "target", "flag"),
+        (Flags(target_dir=FLAG_DIR), {"BECK_TARGET": ENV_URL}, Config(), "target", "flag"),
+        (Flags(), {}, Config(), "source", "default"),
+        (Flags(), {}, Config(source_dir=Path(FILE_DIR)), "source", "file"),
+        (Flags(), {"BECK_SOURCE": ""}, Config(source_dir=Path(FILE_DIR)), "source", "file"),
+        (Flags(), {"BECK_SOURCE": ENV_DIR}, Config(), "source", "environment"),
+        (Flags(source=FLAG_DIR), {"BECK_SOURCE": ENV_DIR}, Config(), "source", "flag"),
+        (Flags(), {}, Config(), "frontend", "default"),
+        (Flags(), {}, Config(frontend="file"), "frontend", "file"),
+        (Flags(frontend="flag"), {}, Config(frontend="file"), "frontend", "flag"),
+        (Flags(), {}, Config(), "smb_user", "default"),
+        (Flags(), {}, Config(smb_user="file"), "smb_user", "file"),
+        (Flags(), {"BECK_SMB_USER": ""}, Config(smb_user="file"), "smb_user", "environment"),
+        (Flags(), {}, Config(), "smb_password", "default"),
+        (Flags(), {"BECK_SMB_PASSWORD": ""}, Config(), "smb_password", "default"),
+        (Flags(), {"BECK_SMB_PASSWORD": SENTINEL}, Config(), "smb_password", "environment"),
+        (Flags(), {}, Config(), "smb_timeout", "default"),
+        (Flags(), {}, Config(smb_timeout=5), "smb_timeout", "file"),
+    ],
+)
+def test_each_setting_says_where_it_came_from(
+    flags: Flags, environ: dict[str, str], file: Config, name: str, source: str
+) -> None:
+    assert resolve(flags, environ, file).sources[name] == source
+
+
+def test_settings_can_be_compared_whatever_their_sources_say() -> None:
+    assert resolve(Flags(), {}, Config(frontend="recalbox")) == resolve(Flags(), {}, Config())
+
+
+def test_the_password_comes_only_from_its_variable() -> None:
+    assert resolve(Flags(), {"BECK_SMB_PASSWORD": SENTINEL}, Config()).smb_password == SENTINEL
+    assert resolve(Flags(), {}, Config()).smb_password == ""
+
+
+def test_printing_the_settings_can_not_show_the_password() -> None:
+    settings_with_a_password = resolve(Flags(), {"BECK_SMB_PASSWORD": SENTINEL}, Config())
+
+    assert SENTINEL not in repr(settings_with_a_password)
+    assert SENTINEL not in str(settings_with_a_password)
+    assert SENTINEL not in f"{settings_with_a_password}"
+
+
 def test_resolve_reads_only_what_it_is_given(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("BECK_TARGET", "smb://from-the-real-environment/bios")
     monkeypatch.setenv("BECK_SOURCE", "/from-the-real-environment")
@@ -627,38 +678,6 @@ def test_a_url_with_no_user_takes_the_one_from_the_variable(
     assert cli.main(["report", "--target", "smb://host/bios"], base_dir=tmp_path) == 0
 
     assert server.connections[0].username == "env-user"
-
-
-def test_the_target_in_the_environment_comes_before_the_legacy_file(
-    server: FakeSMBServer, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    (tmp_path / "config").mkdir()
-    (tmp_path / "config" / "config.yml").write_text(
-        f'smb: {{user: "legacy", passwd: "{SENTINEL}", server: "legacy-host", port: 445}}\n',
-        encoding="utf-8",
-    )
-    monkeypatch.setenv("BECK_TARGET", "smb://env-host/bios")
-
-    assert cli.main(["report"], base_dir=tmp_path) == 0
-
-    connection = server.connections[0]
-    assert connection.remote_name == "env-host"
-    assert connection.password == "", "the legacy password belongs to its own server"
-
-
-def test_with_no_target_anywhere_it_still_reads_the_legacy_file(
-    server: FakeSMBServer, tmp_path: Path
-) -> None:
-    (tmp_path / "config").mkdir()
-    (tmp_path / "config" / "config.yml").write_text(
-        'smb: {user: "beck-test-user", passwd: "beck-test-password", '
-        'server: "legacy", port: 445}\n',
-        encoding="utf-8",
-    )
-
-    assert cli.main(["report"], base_dir=tmp_path) == 0
-
-    assert server.connections[0].remote_name == "legacy"
 
 
 def test_v_says_which_file_it_read_and_why(

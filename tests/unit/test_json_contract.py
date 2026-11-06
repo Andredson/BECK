@@ -29,7 +29,7 @@ from beck.frontends.recalbox import RecalboxAdapter
 from beck.models import MissingBios
 from beck.transports.local import LocalTransport
 from tests.conftest import REAL_REPORT, REPORT_NAMES, REPORTS, isolate_settings
-from tests.factories import make_bios_file, make_missing, make_report_text
+from tests.factories import make_bios_file, make_missing, make_report_text, settings_text
 from tests.fakes import FakeSMBServer, install_fake_smb
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -39,16 +39,17 @@ GUIDE = ROOT / "docs" / "json-output.md"
 SHIM = ROOT / "check_bios.py"
 
 CHECK, REPORT, SCAN, REJECTED = "check-result", "report-result", "scan-result", "rejected-command"
-SCHEMA_OF_COMMAND = {"check": CHECK, "report": REPORT, "scan": SCAN, None: REJECTED}
+CONFIG = "config-result"
+SCHEMA_OF_COMMAND = {
+    "check": CHECK,
+    "report": REPORT,
+    "scan": SCAN,
+    "config": CONFIG,
+    None: REJECTED,
+}
 
 A, B = "a" * 32, "b" * 32
-ACCOUNT = """\
-smb:
-  user: "beck-test-user"
-  passwd: "beck-test-password"
-  server: "beck-test-server"
-  port: 445
-"""
+ACCOUNT = settings_text("smb://beck-test-server/bios", "beck-test-user")
 
 Json = dict[str, Any]
 Rules = dict[str, Json]
@@ -98,6 +99,12 @@ def listing(name: str, item: Rules) -> Rules:
 
 def summary(*names: str) -> Rules:
     return {"summary": {"type": "object"}, **{f"summary.{name}": COUNT for name in names}}
+
+
+def setting(name: str, value: Json) -> Rules:
+    """A setting ``beck config show`` shows, with where it came from."""
+    place = f"settings.{name}"
+    return {place: {"type": "object"}, f"{place}.value": value, f"{place}.source": TEXT}
 
 
 COMMON: Rules = {
@@ -157,6 +164,23 @@ V1_FIELDS: dict[str, Rules] = {
         **COMMON,
         "command": {"const": None},
         "ok": {"const": False},
+    },
+    CONFIG: {
+        **COMMON,
+        "command": {"const": "config"},
+        "action": {"enum": ["path", "init", "show"]},
+        "file": {"type": ["object", "null"]},
+        "file.path": TEXT,
+        "file.source": {"enum": ["flag", "environment", "default"]},
+        "file.exists": FLAG,
+        "created": FLAG,
+        "settings": {"type": ["object", "null"]},
+        **setting("target", TEXT_OR_NULL),
+        **setting("source", TEXT),
+        **setting("frontend", TEXT),
+        **setting("smb_user", TEXT),
+        **setting("smb_password", {"enum": ["set", "not set"]}),
+        **setting("smb_timeout", {"type": "integer", "minimum": 1}),
     },
 }
 
@@ -278,9 +302,10 @@ class World:
         return ["--json", "check", *target, *flags]
 
     def on_smb(self, *entries: MissingBios) -> FakeSMBServer:
-        """The config file names a fake server, which has this report."""
-        (self.app / "config").mkdir()
-        (self.app / "config" / "config.yml").write_text(ACCOUNT, encoding="utf-8")
+        """The settings file names a fake server, which has this report."""
+        (self.app / "settings.toml").write_text(ACCOUNT, encoding="utf-8")
+        self.monkeypatch.setenv("BECK_CONFIG", str(self.app / "settings.toml"))
+        self.monkeypatch.setenv("BECK_SMB_PASSWORD", "beck-test-password")
         server = install_fake_smb(self.monkeypatch)
         server.files[("bios", "missing_bios_report.txt")] = make_report_text(entries).encode()
         return server
@@ -644,20 +669,6 @@ def check_with_no_config(world: World) -> list[str]:
 
 
 @scenario(CHECK, 2)
-def check_with_a_config_that_is_not_yaml(world: World) -> list[str]:
-    (world.app / "config").mkdir()
-    (world.app / "config" / "config.yml").write_text(f"{ACCOUNT}  broken: [", encoding="utf-8")
-    return ["--json", "check"]
-
-
-@scenario(CHECK, 2)
-def check_with_a_config_that_is_incomplete(world: World) -> list[str]:
-    (world.app / "config").mkdir()
-    (world.app / "config" / "config.yml").write_text("smb:\n  user: beck\n", encoding="utf-8")
-    return ["--json", "check"]
-
-
-@scenario(CHECK, 2)
 def check_with_a_password_in_the_url(world: World) -> list[str]:
     return ["--json", "check", "--target", "smb://user:beck-test-password@beck-test-server/bios"]
 
@@ -881,6 +892,61 @@ def scan_with_a_bug(world: World) -> list[str]:
     return ["--json", "scan", "--source", str(world.source)]
 
 
+# config
+
+
+@scenario(CONFIG)
+def config_path_of_a_file_that_does_not_exist(world: World) -> list[str]:
+    return ["--json", "config", "path"]
+
+
+@scenario(CONFIG)
+def config_path_of_a_named_file(world: World) -> list[str]:
+    (world.app / "settings.toml").write_text(ACCOUNT, encoding="utf-8")
+    return ["--json", "config", "path", "--config", str(world.app / "settings.toml")]
+
+
+@scenario(CONFIG)
+def config_path_from_the_environment(world: World) -> list[str]:
+    world.monkeypatch.setenv("BECK_CONFIG", str(world.root / "settings.toml"))
+    return ["--json", "config", "path"]
+
+
+@scenario(CONFIG)
+def config_init_creates_the_file(world: World) -> list[str]:
+    return ["--json", "config", "init", "--config", str(world.root / "new" / "settings.toml")]
+
+
+@scenario(CONFIG, 2)
+def config_init_refuses_to_replace_a_file(world: World) -> list[str]:
+    (world.app / "settings.toml").write_text(ACCOUNT, encoding="utf-8")
+    return ["--json", "config", "init", "--config", str(world.app / "settings.toml")]
+
+
+@scenario(CONFIG)
+def config_show_with_nothing_set(world: World) -> list[str]:
+    return ["--json", "config", "show"]
+
+
+@scenario(CONFIG)
+def config_show_with_everything_set(world: World) -> list[str]:
+    (world.app / "settings.toml").write_text(ACCOUNT, encoding="utf-8")
+    world.monkeypatch.setenv("BECK_SMB_PASSWORD", "beck-test-password")
+    return ["--json", "config", "show", "--config", str(world.app / "settings.toml")]
+
+
+@scenario(CONFIG, 2)
+def config_show_with_a_file_that_has_problems(world: World) -> list[str]:
+    (world.app / "settings.toml").write_text("this is not toml", encoding="utf-8")
+    return ["--json", "config", "show", "--config", str(world.app / "settings.toml")]
+
+
+@scenario(CONFIG, 1)
+def config_with_a_bug(world: World) -> list[str]:
+    world.monkeypatch.setattr(cli, "find_config", raises(RuntimeError("a bug")))
+    return ["--json", "config", "path"]
+
+
 # A command line that can't be parsed
 
 SCENARIOS |= {
@@ -893,6 +959,8 @@ SCENARIOS |= {
         "flag_with_no_value": ["--json", "check", "--source"],
         "two_targets": ["--json", "check", "--target", "smb://h/s", "--target-dir", "x"],
         "flag_with_json_shortened": ["--js", "check", "--no-such-flag"],
+        "config_with_no_action": ["--json", "config"],
+        "config_with_an_unknown_action": ["--json", "config", "nope"],
     }.items()
 }
 

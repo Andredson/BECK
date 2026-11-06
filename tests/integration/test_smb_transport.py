@@ -210,11 +210,11 @@ def test_direct_tcp_is_chosen_for_port_445_and_works(
 
 
 @pytest.fixture
-def app(samba: Samba, tmp_path: Path) -> Path:
+def app(samba: Samba, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     folder = tmp_path / "app"
-    (folder / "config").mkdir(parents=True)
-    (folder / "bios").mkdir()
-    (folder / "config" / "config.yml").write_text(samba.config(), encoding="utf-8")
+    (folder / "bios").mkdir(parents=True)
+    (folder / "settings.toml").write_text(samba.settings(), encoding="utf-8")
+    monkeypatch.setenv("BECK_CONFIG", str(folder / "settings.toml"))
     return folder
 
 
@@ -455,11 +455,11 @@ def test_end_to_end_v_never_shows_the_credentials_on_a_real_server(
     folder: PurePosixPath,
     put_report: PutReport,
     capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    (tmp_path / "config").mkdir()
-    (tmp_path / "config" / "config.yml").write_text(
-        samba.config("beck", ACCOUNT_CREDENTIAL), encoding="utf-8"
-    )
+    (tmp_path / "settings.toml").write_text(samba.settings("beck"), encoding="utf-8")
+    monkeypatch.setenv("BECK_CONFIG", str(tmp_path / "settings.toml"))
+    monkeypatch.setenv("BECK_SMB_PASSWORD", ACCOUNT_CREDENTIAL)
     good = make_bios_file(tmp_path / "bios", "good.bin")
     target = (folder / "good.bin").as_posix()
     put_report(make_report_text([make_missing(target, good.md5)]))
@@ -474,15 +474,12 @@ def test_end_to_end_v_never_shows_the_credentials_on_a_real_server(
         assert transport.read_bytes(PurePosixPath(target)) == good.path.read_bytes()
 
 
-def test_end_to_end_blank_credentials_are_a_guest_on_a_real_server(
-    samba: Samba, tmp_path: Path, put_report: PutReport
+def test_end_to_end_an_empty_user_is_a_guest_on_a_real_server(
+    samba: Samba, tmp_path: Path, put_report: PutReport, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Real pysmb crashes on a blank YAML value, which is null, so the fake can't show this."""
-    (tmp_path / "config").mkdir()
-    (tmp_path / "config" / "config.yml").write_text(
-        f"smb:\n  user:\n  passwd:\n  server: {samba.host}\n  port: {samba.port}\n",
-        encoding="utf-8",
-    )
+    (tmp_path / "settings.toml").write_text(samba.settings(""), encoding="utf-8")
+    monkeypatch.setenv("BECK_CONFIG", str(tmp_path / "settings.toml"))
+    monkeypatch.setenv("BECK_SMB_PASSWORD", BAD_CREDENTIAL)  # a guest doesn't send it
     put_report(make_report_text([]))
 
     assert cli.main(["report"], base_dir=tmp_path) == 0
@@ -695,10 +692,10 @@ def test_end_to_end_no_report_is_exit_4(app: Path, capsys: pytest.CaptureFixture
 
 
 def test_end_to_end_wrong_password_is_exit_3_with_no_traceback(
-    samba: Samba, app: Path, capsys: pytest.CaptureFixture[str]
+    samba: Samba, app: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    config = samba.config(user="beck", password=BAD_CREDENTIAL)
-    (app / "config" / "config.yml").write_text(config, encoding="utf-8")
+    (app / "settings.toml").write_text(samba.settings("beck"), encoding="utf-8")
+    monkeypatch.setenv("BECK_SMB_PASSWORD", BAD_CREDENTIAL)
 
     assert cli.main(["check"], base_dir=app) == 3
 
@@ -711,8 +708,7 @@ def test_end_to_end_wrong_password_is_exit_3_with_no_traceback(
 def test_end_to_end_unreachable_server_is_exit_3_with_no_traceback(
     samba: Samba, app: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    config = f'smb: {{user: "", passwd: "", server: "{samba.host}", port: 1}}\n'
-    (app / "config" / "config.yml").write_text(config, encoding="utf-8")
+    (app / "settings.toml").write_text(samba.settings(port=1), encoding="utf-8")
 
     assert cli.main(["check"], base_dir=app) == 3
 

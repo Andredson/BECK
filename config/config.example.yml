@@ -1,8 +1,0 @@
-# BECK's SMB settings. Copy this file to config/config.yml and edit the copy:
-# git ignores config/config.yml, so your password is never committed.
-
-smb:
-  user: ""                 # leave empty for guest access
-  passwd: ""               # leave empty for guest access
-  server: "recalbox.local" # your Recalbox's address: host name or IP address
-  port: 445

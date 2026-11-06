@@ -82,7 +82,10 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 - **Commit message:** `feat(config): resolve settings from flags, environment, file and defaults`
 
 ### 07.3 — `beck config` commands and the legacy migration
-- [ ] Done
+- [x] Done (2026-11-06: the choices it needed are in [ADR-0007](../docs/adr/0007-cli-contract.md#details-settled-in-step-073). `BECK_SMB_PASSWORD` works from
+  here, because `config show` needs it and the old file was the only other way to log in, so 07.4 is left with the prompt and its error. The notice stops
+  once there's a new file, rather than literally being one-time, which would need a marker file. Beyond the list below: a fifth JSON schema and its docs,
+  `README.md`, `AGENTS.md` and `docs/cli.md`, and every test that wrote the old file, now through `settings_text` in `tests/factories.py`.)
 - **What:**
   - `beck config path` prints the file that would be used and why (flag, env or default).
   - `beck config init` writes a commented template like the one above to the default location. It refuses to

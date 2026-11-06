@@ -58,6 +58,12 @@ def make_missing(
     )
 
 
+def settings_text(url: str, user: str = "", *, timeout: int | None = None) -> str:
+    """A settings file naming this target. A password can't go in one: see BECK_SMB_PASSWORD."""
+    timeout_line = "" if timeout is None else f"timeout = {timeout}\n"
+    return f'schema_version = 1\n[target]\nurl = "{url}"\n[smb]\nuser = "{user}"\n{timeout_line}'
+
+
 def make_report_text(entries: Iterable[MissingBios]) -> str:
     """Render entries in the real Recalbox format, CRLF included (see tests/fixtures/reports/)."""
     lines = [

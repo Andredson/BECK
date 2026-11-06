@@ -11,9 +11,10 @@ beck check   [--source DIR] [--target URL | --target-dir DIR] [--frontend recalb
              [--yes] [--fail-if-missing]
 beck scan    [--source DIR]
 beck report  [--target URL | --target-dir DIR | --report-file FILE]
+beck config  path | init [--force] | show
 ```
 
-`beck config` arrives in stage 07, with TOML settings. Passwords never go on the command line.
+Passwords never go on the command line.
 
 ## Commands
 
@@ -54,6 +55,19 @@ beck report --target smb://recalbox.local/bios
 beck report --report-file missing_bios_report.txt     # a local copy: no network
 ```
 
+### `beck config`
+
+Finds, creates or shows [the settings](#settings). None of these connects to anything.
+
+```sh
+beck config path    # which settings file BECK reads, and why
+beck config init    # create that file, with comments
+beck config show    # the settings a run would use, and where each comes from
+```
+
+`init` refuses to replace a file unless you add `--force`, and only you can read the file it writes. `show` never shows a password, only
+whether one is `set`. `path` and `init` don't read the file, so `path` works even when the file is broken, and `init --force` can replace it.
+
 ## Options
 
 ### Global options
@@ -84,14 +98,13 @@ act on your terminal, or look like something else. `--json` keeps the exact name
 | Option | Commands | What it does |
 |---|---|---|
 | `--source DIR` | `check`, `scan` | Your folder of BIOS files. The default is `./bios`. Hidden files and folders are skipped. A folder you name must exist, or BECK exits with 2. |
-| `--target URL` | `check`, `report` | An SMB target: `smb://[user@]host[:port]/share[/sub/path]`. The port defaults to 445. A URL with a password is refused, and the password in `config/config.yml` isn't used, so this means guest access until stage 07 adds passwords for targets. |
+| `--target URL` | `check`, `report` | An SMB target: `smb://[user@]host[:port]/share[/sub/path]`. The port defaults to 445. A URL with a password is refused: use `BECK_SMB_PASSWORD`. |
 | `--target-dir DIR` | `check`, `report` | A folder: a mounted SD card or USB drive, or the device itself. It can't be combined with `--target`. |
 | `--frontend NAME` | `check` | The kind of device. Only `recalbox`, for now. |
 | `--report-file FILE` | `check`, `report` | Reads a local copy of the report, not the one on the target. `beck report` then needs no target, and can't take one. `beck check` still needs a target to upload to. |
 
-All of these except `--report-file` can also come from [Settings](#settings). With no target anywhere, BECK uses the older
-`config/config.yml`. A blank `user` or `passwd` there means guest access. A value that can't work, such as a `port` that isn't a number from
-1 to 65535, exits with 2. Put a password made only of digits in quotes.
+All of these except `--report-file` can also come from [Settings](#settings). With no target anywhere, BECK exits with 2 and says how to
+name one.
 
 ### Safety
 
@@ -123,6 +136,7 @@ file. Two targets in the environment exit with 2, unless a flag decides.
 | `BECK_TARGET_DIR` | The same as `--target-dir`. |
 | `BECK_SOURCE` | The same as `--source`. |
 | `BECK_SMB_USER` | The SMB user. Empty means a guest, even if the file names a user. A user in the target URL beats this. |
+| `BECK_SMB_PASSWORD` | The SMB password. It's the one way to give BECK a password. A guest doesn't send it. |
 
 Any other empty variable counts as not set.
 
@@ -148,7 +162,13 @@ dir = "~/beck/bios"
 ```
 
 A `dir` must be an absolute path or start with `~`, so that it means the same folder wherever you run BECK. **Passwords can't go in this
-file:** BECK refuses one, in any setting and in a URL.
+file:** BECK refuses one, in any setting and in a URL. `beck config init` writes a file like this one, with comments.
+
+### The old `config/config.yml`
+
+BECK doesn't read this file any more. While it's still in the folder you run BECK from, and there's no new settings file, BECK prints what to
+put in the new one, on stderr, and leaves its password out. `-q` hides this. Once you've moved your settings, delete the old file, because it
+may hold your password in plain text.
 
 ## What BECK deletes, and when
 

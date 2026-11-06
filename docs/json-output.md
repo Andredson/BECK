@@ -7,6 +7,7 @@ adds more of them, `-q` changes nothing, and it never asks a question. The optio
 beck --json check --dry-run
 beck --json report --report-file missing_bios_report.txt
 beck --json scan --source ~/my-bios
+beck --json config show
 ```
 
 ## How to read the result
@@ -41,6 +42,7 @@ The [schemas](schemas/) describe each document. They allow extra fields on purpo
 | `beck --json check` | [`check-result.v1.json`](schemas/check-result.v1.json) |
 | `beck --json report` | [`report-result.v1.json`](schemas/report-result.v1.json) |
 | `beck --json scan` | [`scan-result.v1.json`](schemas/scan-result.v1.json) |
+| `beck --json config` | [`config-result.v1.json`](schemas/config-result.v1.json) |
 | A command line BECK rejected | [`rejected-command.v1.json`](schemas/rejected-command.v1.json) |
 
 ## Fields in every document
@@ -49,7 +51,7 @@ The [schemas](schemas/) describe each document. They allow extra fields on purpo
 |---|---|
 | `schema_version` | `1`. |
 | `beck_version` | The BECK that wrote this. |
-| `command` | `check`, `report` or `scan`. `null` if the command line was rejected, because no command ran. Running `beck` with no command counts as `check`. |
+| `command` | `check`, `report`, `scan` or `config`. `null` if the command line was rejected, because no command ran. Running `beck` with no command counts as `check`. |
 | `ok` | `true` only when the exit code is 0. |
 | `errors[]` | What went wrong: `code`, `message` and `item`. See [Errors](#errors). |
 
@@ -226,6 +228,41 @@ Hashes the local files. It uses no network and changes nothing.
   "errors": []
 }
 ```
+
+## `beck --json config`
+
+`config path`, `config init` and `config show` all give this document. It connects to nothing.
+
+```json
+{
+  "schema_version": 1,
+  "beck_version": "0.1.0",
+  "command": "config",
+  "ok": true,
+  "action": "show",
+  "file": { "path": "/home/you/.config/beck/config.toml", "source": "default", "exists": true },
+  "created": false,
+  "settings": {
+    "target": { "value": "smb://recalbox.local:445/bios", "source": "file" },
+    "source": { "value": "/home/you/beck/bios", "source": "file" },
+    "frontend": { "value": "recalbox", "source": "file" },
+    "smb_user": { "value": "", "source": "file" },
+    "smb_password": { "value": "not set", "source": "default" },
+    "smb_timeout": { "value": 30, "source": "file" }
+  },
+  "errors": []
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `action` | `path`, `init` or `show`. |
+| `file` | The settings file: its `path`, `exists`, and `source`, which says why this one: `flag`, `environment` or `default`. It's `null` only if a bug stopped BECK before it knew. |
+| `created` | `true` if this run wrote the file, which only `init` does. |
+| `settings` | What a run would use, each with its `value` and its `source`: `flag`, `environment`, `file` or `default`. It's `null` unless the action is `show` and the file could be read. |
+| `settings.target` | The target as a URL, with no user name or password, or `null` if nothing names one. |
+| `settings.smb_user` | The SMB user, which is empty for a guest. This is the one place a document names the user. |
+| `settings.smb_password` | Only `set` or `not set`, never the password. |
 
 ## Errors
 

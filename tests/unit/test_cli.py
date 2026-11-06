@@ -18,22 +18,15 @@ from smb.smb_structs import OperationFailure
 
 import beck
 from beck import cli
-from beck.errors import ConfigError, TransportError
+from beck.errors import TransportError
 from beck.frontends.recalbox import RecalboxAdapter
 from beck.models import MissingBios
 from beck.transports.local import LocalTransport
 from tests.conftest import REAL_REPORT, load_report
-from tests.factories import make_missing, make_report_text, md5_of, snapshot
+from tests.factories import make_missing, make_report_text, md5_of, settings_text, snapshot
 from tests.fakes import FakeSMBConnection, FakeSMBServer, install_fake_smb
 
-GUEST = 'smb: {user: "", passwd: "", server: "beck-test-server", port: 445}\n'
-ACCOUNT = """\
-smb:
-  user: "beck-test-user"
-  passwd: "beck-test-password"
-  server: "beck-test-server"
-  port: 445
-"""
+SERVER_URL = "smb://beck-test-server/bios"
 
 
 def block(name: str, *md5s: str, folder: str = "") -> str:
@@ -67,12 +60,21 @@ def server(monkeypatch: pytest.MonkeyPatch) -> FakeSMBServer:
 
 @pytest.fixture
 def app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """A folder with a config and an empty bios folder, which is also the current directory."""
+    """A folder with settings for a guest and an empty bios folder. It's the current directory."""
     folder = tmp_path / "app"
-    write(folder / "config" / "config.yml", GUEST.encode())
+    write(folder / "settings.toml", settings_text(SERVER_URL).encode())
+    monkeypatch.setenv("BECK_CONFIG", str(folder / "settings.toml"))
     (folder / "bios").mkdir()
     monkeypatch.chdir(folder)
     return folder
+
+
+@pytest.fixture
+def account(app: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """The same folder, with settings for a user who has a password."""
+    write(app / "settings.toml", settings_text(SERVER_URL, "beck-test-user").encode())
+    monkeypatch.setenv("BECK_SMB_PASSWORD", "beck-test-password")
+    return app
 
 
 def report(server: FakeSMBServer, text: str | bytes) -> None:
@@ -87,58 +89,22 @@ def run(app: Path) -> int:
 # Settings
 
 
-def test_missing_config_tells_the_user_to_copy_the_example(tmp_path: Path) -> None:
-    missing = tmp_path / "config" / "config.yml"
-
-    with pytest.raises(ConfigError) as error:
-        cli.load_legacy_config(missing)
-
-    assert f"{missing} not found" in str(error.value)
-    assert "Copy config/config.example.yml to config/config.yml and fill it in" in str(error.value)
-
-
-@pytest.mark.parametrize(
-    "content",
-    [
-        "",
-        "other: 1\n",
-        "- a list\n",
-        "smb: 1\n",
-        'smb: {user: "", passwd: "", server: "x"}\n',
-        'smb: {user: "", passwd: "", port: 445}\n',
-    ],
-)
-def test_config_without_the_needed_settings_is_a_clear_error(tmp_path: Path, content: str) -> None:
-    file = tmp_path / "config.yml"
-    file.write_text(content, encoding="utf-8")
-
-    with pytest.raises(ConfigError, match="needs an smb section"):
-        cli.load_legacy_config(file)
-
-
-def test_malformed_yaml_is_a_clear_error(tmp_path: Path) -> None:
-    file = tmp_path / "config.yml"
-    file.write_text("smb: {unclosed\n", encoding="utf-8")
-
-    with pytest.raises(ConfigError, match="isn't valid YAML"):
-        cli.load_legacy_config(file)
-
-
-def test_a_config_error_prints_and_returns_2(
+def test_no_target_anywhere_prints_what_to_do_and_returns_2(
     tmp_path: Path, server: FakeSMBServer, capsys: pytest.CaptureFixture[str]
 ) -> None:
     assert run(tmp_path) == 2
-    assert "Copy config/config.example.yml" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "BECK has no target" in output
+    assert "beck config init" in output
     assert server.connections == []
 
 
 def test_the_settings_reach_the_connection(
-    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+    server: FakeSMBServer, account: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    write(app / "config" / "config.yml", ACCOUNT.encode())
     report(server, "MISSING BIOS REPORT\n")
 
-    assert run(app) == 0
+    assert run(account) == 0
 
     conn = server.connections[0]
     assert (conn.username, conn.password, conn.remote_name) == (
@@ -888,10 +854,10 @@ def test_no_color_works_before_or_after_the_command(
 # Choosing a target
 
 
-def test_target_url_is_used_instead_of_the_config(
-    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+def test_target_url_is_used_instead_of_the_settings_file(
+    server: FakeSMBServer, account: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    write(app / "config" / "config.yml", ACCOUNT.encode())
+    app = account
     data = write(app / "bios" / "copy.bin")
     report(server, block("a.bin", md5_of(data), folder="ps1/"))
 
@@ -903,17 +869,44 @@ def test_target_url_is_used_instead_of_the_config(
     assert "beck-test-password" not in "".join(capsys.readouterr())
 
 
-def test_the_password_in_the_config_never_goes_to_a_target_url(
-    server: FakeSMBServer, app: Path
+def test_the_password_in_the_old_settings_file_is_never_read(
+    server: FakeSMBServer, tmp_path: Path
 ) -> None:
-    # Sending it to whatever host the flag names would leak it.
-    write(app / "config" / "config.yml", ACCOUNT.encode())
+    write(
+        tmp_path / "config" / "config.yml",
+        b'smb:\n  user: "beck-test-user"\n  passwd: "beck-test-password"\n  server: "old"\n',
+    )
+    report(server, "MISSING BIOS REPORT\n")
+    url = "smb://beck-test-user@beck-test-other/bios"
+
+    assert cli.main(["check", "--target", url], base_dir=tmp_path) == 0
+
+    connection = server.connections[0]
+    assert (connection.remote_name, connection.password) == ("beck-test-other", "")
+
+
+def test_the_password_in_the_environment_goes_with_a_user(
+    server: FakeSMBServer, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("BECK_SMB_PASSWORD", "beck-test-password")
     report(server, "MISSING BIOS REPORT\n")
 
-    assert cli.main(["check", "--target", "smb://beck-test-user@evil/bios"], base_dir=app) == 0
+    assert cli.main(["check", "--target", "smb://beck-test-user@host/bios"], base_dir=tmp_path) == 0
 
-    assert server.connections[0].username == "beck-test-user"
-    assert server.connections[0].password == ""
+    connection = server.connections[0]
+    assert (connection.username, connection.password) == ("beck-test-user", "beck-test-password")
+
+
+def test_a_guest_sends_no_password_even_if_one_is_set(
+    server: FakeSMBServer, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("BECK_SMB_PASSWORD", "beck-test-password")
+    report(server, "MISSING BIOS REPORT\n")
+
+    assert cli.main(["check", "--target", "smb://host/bios"], base_dir=tmp_path) == 0
+
+    connection = server.connections[0]
+    assert (connection.username, connection.password) == ("", "")
 
 
 def test_target_url_works_with_no_config_file(server: FakeSMBServer, tmp_path: Path) -> None:
@@ -1133,7 +1126,7 @@ def test_check_with_a_report_file_still_needs_a_target(
 
     assert cli.main(["check", "--report-file", file], base_dir=tmp_path) == 2
 
-    assert "Copy config/config.example.yml" in capsys.readouterr().out
+    assert "BECK has no target" in capsys.readouterr().out
 
 
 def test_check_can_combine_a_report_file_and_a_target(
@@ -1449,11 +1442,12 @@ def test_exit_2_usage_error(server: FakeSMBServer, capsys: pytest.CaptureFixture
 @pytest.mark.parametrize(
     ("config", "message"),
     [
-        (None, "Copy config/config.example.yml"),
-        ("smb: {unclosed\n", "isn't valid YAML"),
-        ("other: 1\n", "needs an smb section"),
+        (None, "not found"),
+        ("this is not toml\n", "isn't valid TOML"),
+        ("other = 1\n", "schema_version: missing"),
+        ('schema_version = 1\n[smb]\ntimeout = "ten"\n', "smb.timeout"),
     ],
-    ids=["missing", "malformed", "no-smb-section"],
+    ids=["missing", "malformed", "no-version", "wrong-value"],
 )
 def test_exit_2_config_error(
     server: FakeSMBServer,
@@ -1463,9 +1457,9 @@ def test_exit_2_config_error(
     message: str,
 ) -> None:
     if config is None:
-        (app / "config" / "config.yml").unlink()
+        (app / "settings.toml").unlink()
     else:
-        write(app / "config" / "config.yml", config.encode())
+        write(app / "settings.toml", config.encode())
 
     assert cli.main(["check"], base_dir=app) == 2
 
@@ -1534,7 +1528,7 @@ def test_the_exit_code_reaches_the_operating_system(tmp_path: Path, command: lis
     )
 
     assert result.returncode == 2
-    assert "Copy config/config.example.yml" in result.stdout
+    assert "BECK has no target" in result.stdout
     assert result.stderr == ""
 
 
@@ -1635,15 +1629,14 @@ def _report_unreadable(server: FakeSMBServer) -> None:
 )
 def test_a_transport_error_prints_returns_3_and_closes(
     server: FakeSMBServer,
-    app: Path,
+    account: Path,
     capsys: pytest.CaptureFixture[str],
     break_server: Callable[[FakeSMBServer], None],
     message: str,
 ) -> None:
-    write(app / "config" / "config.yml", ACCOUNT.encode())
     break_server(server)
 
-    assert run(app) == 3
+    assert run(account) == 3
 
     output = capsys.readouterr().out
     assert f"Error: {message}" in output
@@ -2219,97 +2212,12 @@ def test_exit_0_with_json_and_the_flag_is_ok(
 # Exit 2: settings that can't work are a configuration error, not a connection error or a bug
 
 
-@pytest.mark.parametrize(
-    "line",
-    [
-        'smb: {user: "", passwd: "", server: "beck-test-server", port: "445"}',
-        'smb: {user: "", passwd: "", server: "beck-test-server", port: abc}',
-        'smb: {user: "", passwd: "", server: "beck-test-server", port: 0}',
-        'smb: {user: "", passwd: "", server: "beck-test-server", port: 65536}',
-        'smb: {user: "", passwd: "", server: "beck-test-server", port: null}',
-        'smb: {user: "", passwd: "", server: "beck-test-server", port: [445]}',
-        'smb: {user: "", passwd: "", server: "beck-test-server", port: true}',
-        'smb: {user: "", passwd: "", server: "", port: 445}',
-        'smb: {user: "", passwd: "", server: null, port: 445}',
-        'smb: {user: "", passwd: "", server: 123, port: 445}',
-        'smb: {user: 1234, passwd: "", server: "beck-test-server", port: 445}',
-        'smb: {user: "", passwd: 1234, server: "beck-test-server", port: 445}',
-        'smb: {user: "", passwd: [a], server: "beck-test-server", port: 445}',
-    ],
-)
-def test_exit_2_settings_with_the_wrong_kind_of_value(
-    server: FakeSMBServer, app: Path, line: str, capsys: pytest.CaptureFixture[str]
-) -> None:
-    write(app / "config" / "config.yml", f"{line}\n".encode())
-
-    assert cli.main(["check"], base_dir=app) == 2
-
-    assert "config.yml" in capsys.readouterr().out
-    assert server.connections == []
-
-
-@pytest.mark.parametrize("port", [1, 65535])
-def test_exit_0_the_lowest_and_highest_ports_are_settings_that_can_work(
-    server: FakeSMBServer, app: Path, port: int
-) -> None:
-    config = f'smb: {{user: "", passwd: "", server: "beck-test-server", port: {port}}}\n'
-    write(app / "config" / "config.yml", config.encode())
-    report(server, block("gone.bin", ZERO))
-
-    assert cli.main(["check"], base_dir=app) == 0
-
-
-def test_exit_2_a_password_that_is_not_text_is_never_repeated(
-    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    config = 'smb: {user: "", passwd: 918273645, server: "beck-test-server", port: 445}\n'
-    write(app / "config" / "config.yml", config.encode())
-
-    assert cli.main(["check"], base_dir=app) == 2
-
-    out = capsys.readouterr()
-    assert "918273645" not in out.out + out.err
-    assert "quotes" in out.out
-
-
-def test_exit_2_a_yaml_error_stays_on_one_line(
-    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    write(app / "config" / "config.yml", b"smb: {unclosed\n")
-
-    assert cli.main(["check"], base_dir=app) == 2
-
-    output = capsys.readouterr().out
-    assert "isn't valid YAML" in output
-    assert output.count("\n") == 1
-    assert "\\x0a" not in output
-
-
-def test_exit_2_a_config_that_is_not_utf8(
-    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    write(app / "config" / "config.yml", b"smb:\n  passwd: secret\xff\xfe\n")
-
-    assert cli.main(["check"], base_dir=app) == 2
-
-    out = capsys.readouterr()
-    assert "UTF-8" in out.out
-    assert "secret" not in out.out + out.err
-
-
-def test_exit_2_a_config_that_is_a_folder(server: FakeSMBServer, app: Path) -> None:
-    (app / "config" / "config.yml").unlink()
-    (app / "config" / "config.yml").mkdir()
-
-    assert cli.main(["check"], base_dir=app) == 2
-
-
 needs_permissions = pytest.mark.skipif(os.geteuid() == 0, reason="root ignores file permissions")
 
 
 @needs_permissions
-def test_exit_2_a_config_it_cannot_read(server: FakeSMBServer, app: Path) -> None:
-    file = app / "config" / "config.yml"
+def test_exit_2_a_settings_file_it_cannot_read(server: FakeSMBServer, app: Path) -> None:
+    file = app / "settings.toml"
     file.chmod(0o000)
     try:
         assert cli.main(["check"], base_dir=app) == 2
@@ -2317,25 +2225,23 @@ def test_exit_2_a_config_it_cannot_read(server: FakeSMBServer, app: Path) -> Non
         file.chmod(0o644)
 
 
-@pytest.mark.parametrize(
-    "line",
-    [
-        "smb:\n  user:\n  passwd:\n  server: beck-test-server\n  port: 445\n",
-        'smb:\n  user: ""\n  passwd: ""\n  server: beck-test-server\n  port: 445\n',
-    ],
-    ids=["left-blank", "empty-text"],
-)
-def test_exit_0_blank_credentials_mean_guest_access(
-    server: FakeSMBServer, app: Path, line: str
+def test_exit_2_a_settings_file_that_is_a_folder(server: FakeSMBServer, app: Path) -> None:
+    (app / "settings.toml").unlink()
+    (app / "settings.toml").mkdir()
+
+    assert cli.main(["check"], base_dir=app) == 2
+
+
+@pytest.mark.parametrize("port", [1, 65535])
+def test_exit_0_the_lowest_and_highest_ports_can_work(
+    server: FakeSMBServer, tmp_path: Path, port: int
 ) -> None:
-    """The example says to leave them empty, and in YAML a blank value isn't an empty text."""
-    write(app / "config" / "config.yml", line.encode())
     report(server, block("gone.bin", ZERO))
+    url = f"smb://beck-test-server:{port}/bios"
 
-    assert cli.main(["check"], base_dir=app) == 0
+    assert cli.main(["check", "--target", url], base_dir=tmp_path) == 0
 
-    connection = server.connections[0]
-    assert (connection.username, connection.password) == ("", "")
+    assert server.connections
 
 
 def test_exit_2_a_url_with_port_0(server: FakeSMBServer, tmp_path: Path) -> None:

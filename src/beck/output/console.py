@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, TextIO
 
+from beck.config import ConfigLocation
 from beck.errors import BeckError
 from beck.models import SHARE_ROOT, LocalFile, MissingBios, RunResult, ScanResult, Unreadable
 from beck.output import (
@@ -35,6 +36,13 @@ OUTCOMES = {
     "kept": "already on the device, kept",
     "failed": "failed",
     "skipped": "skipped",
+}
+
+# Why BECK reads the settings file it reads.
+WHY_THIS_FILE = {
+    "flag": "named by --config",
+    "environment": "named by BECK_CONFIG",
+    "default": "the default place on this system",
 }
 
 # DEC-56: the risk of --clean-unmatched, wherever it's about to delete something.
@@ -300,6 +308,29 @@ class ConsoleRenderer:
             total = f"Files: {len(scanned.files)}"
             unreadable = f", can't be read: {len(scanned.unreadable)}" if scanned.unreadable else ""
             self._print(f"{total}{unreadable}")
+
+    def config_path(self, location: ConfigLocation, exists: bool) -> None:
+        """The path alone on the first line, so that ``$(beck config path | head -1)`` works."""
+        self._print(str(location.path))
+        self._print(f"This is {WHY_THIS_FILE[location.source]}.")
+        if not exists:
+            self._print("It doesn't exist yet. To create it, run beck config init.")
+
+    def config_created(self, location: ConfigLocation, exists: bool) -> None:
+        self._print(f"Wrote {location.path}, which only you can read. Edit it to suit you.")
+
+    def config_file(self, location: ConfigLocation, exists: bool) -> None:
+        """Nothing yet: ``config_settings`` says it, if the file can be read."""
+
+    def config_settings(
+        self, location: ConfigLocation, exists: bool, settings: dict[str, dict[str, Any]]
+    ) -> None:
+        state = "" if exists else ", which doesn't exist"
+        self._print(f"Settings file: {location.path} ({WHY_THIS_FILE[location.source]}{state})")
+        for name, setting in settings.items():
+            value = "not set" if setting["value"] is None else setting["value"]
+            shown = "(a guest)" if name == "smb_user" and value == "" else value
+            self._print(f"{name}: {shown} ({setting['source']})")
 
     def result(self, result: RunResult, failing: Sequence[MissingBios] = ()) -> None:
         """What happened: uploads, then one or more lines per local file, then the summary."""

@@ -4,7 +4,7 @@ bios/*
 # But do not ignore the .keep file
 !bios/.keep
 
-# Your SMB settings, copied from config/config.example.yml: never commit them
+# The old settings file, which may hold a password: never commit it
 config/config.yml
 
 # uv virtual environment

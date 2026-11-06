@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, TextIO
 
 from beck import __version__
+from beck.config import ConfigLocation
 from beck.errors import BeckError, UsageError
 from beck.models import (
     ItemError,
@@ -126,9 +127,17 @@ class JsonRenderer:
     """Collects what a run finds, and writes one document when it ends. Nothing here decides."""
 
     def __init__(
-        self, command: str, *, frontend: str, dry_run: bool, stream: TextIO | None = None
+        self,
+        command: str,
+        *,
+        frontend: str,
+        dry_run: bool,
+        stream: TextIO | None = None,
+        action: str | None = None,
     ) -> None:
         self.command = command
+        self.action = action
+        self.file: dict[str, Any] | None = None
         self.frontend = frontend
         self.dry_run = dry_run
         self.stream = sys.stdout if stream is None else stream
@@ -189,6 +198,23 @@ class JsonRenderer:
     def scan(self, scanned: ScanResult, folder: Path) -> None:
         _write(self._scan(scanned, []), self.stream)
 
+    def config_file(self, location: ConfigLocation, exists: bool) -> None:
+        self.file = {"path": str(location.path), "source": location.source, "exists": exists}
+
+    def config_path(self, location: ConfigLocation, exists: bool) -> None:
+        self.config_file(location, exists)
+        _write(self._config([]), self.stream)
+
+    def config_created(self, location: ConfigLocation, exists: bool) -> None:
+        self.config_file(location, exists)
+        _write(self._config([], created=True), self.stream)
+
+    def config_settings(
+        self, location: ConfigLocation, exists: bool, settings: dict[str, dict[str, Any]]
+    ) -> None:
+        self.config_file(location, exists)
+        _write(self._config([], settings=settings), self.stream)
+
     def error(self, error: BeckError) -> None:
         """An error that stopped the run: the lists stay empty, and the document is still valid."""
         self._stopped({"code": error.code, "message": str(error), "item": None})
@@ -202,6 +228,8 @@ class JsonRenderer:
             document = self._report([], [error])
         elif self.command == "scan":
             document = self._scan(ScanResult(), [error])
+        elif self.command == "config":
+            document = self._config([error])
         else:
             self.files_scanned = 0
             self.unreadable_items = ()
@@ -258,6 +286,22 @@ class JsonRenderer:
             "summary": {"missing": len(missing), "incorrect": len(incorrect)},
             "missing": missing,
             "incorrect": incorrect,
+            "errors": errors,
+        }
+
+    def _config(
+        self,
+        errors: list[dict[str, Any]],
+        *,
+        created: bool = False,
+        settings: dict[str, dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        return {
+            **_header(self.command, ok=not errors),
+            "action": self.action,
+            "file": self.file,
+            "created": created,
+            "settings": settings,
             "errors": errors,
         }
 

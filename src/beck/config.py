@@ -7,9 +7,10 @@ value that could be one: someone may have typed it in the wrong place.
 
 import json
 import logging
+import os
 import tomllib
 from collections.abc import Iterator, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +28,22 @@ KNOWN_SETTINGS = {
     "source": {"dir"},
 }
 PASSWORD_KEYS = {"password", "passwd"}
+TEMPLATE = """\
+# BECK's settings. Flags and environment variables beat what's here: see docs/cli.md.
+# Passwords can't go in this file: set BECK_SMB_PASSWORD instead.
+schema_version = 1
+
+[target]
+frontend = "recalbox"
+url = "smb://recalbox.local/bios"   # or, for an SD card or USB drive: dir = "/media/you/bios"
+
+[smb]
+user = ""                           # empty means a guest, which is what Recalbox allows by default
+timeout = 30                        # seconds
+
+[source]
+dir = "~/beck/bios"                 # your BIOS files. Create this folder, or change this
+"""
 
 _log = logging.getLogger(__name__)
 
@@ -66,7 +83,8 @@ class Settings:
     """What a run uses, once flags, the environment, the file and the defaults are decided.
 
     No ``source_dir`` means ``./bios``, and no target means the legacy settings file, because both
-    depend on where BECK runs. No ``smb_timeout`` means the transport's own.
+    depend on where BECK runs. No ``smb_timeout`` means the transport's own. ``sources`` says where
+    each came from: ``flag``, ``environment``, ``file`` or ``default``.
     """
 
     target_url: str | None = None
@@ -74,7 +92,9 @@ class Settings:
     source_dir: Path | None = None
     frontend: str = DEFAULT_FRONTEND
     smb_user: str = ""
+    smb_password: str = field(default="", repr=False)  # so that printing this can't show it
     smb_timeout: int | None = None
+    sources: Mapping[str, str] = field(default_factory=dict, compare=False)
 
 
 def _kind(value: object) -> str:
@@ -265,12 +285,12 @@ def find_config(flag: str | None, environ: Mapping[str, str]) -> ConfigLocation:
 
 def _target(
     flags: Flags, environ: Mapping[str, str], file: Config
-) -> tuple[str | None, Path | None]:
+) -> tuple[str | None, Path | None, str]:
     """A target is one setting with two forms, so a higher source wins even in the other form."""
     if flags.target is not None:
-        return flags.target, None
+        return flags.target, None, "flag"
     if flags.target_dir is not None:
-        return None, Path(flags.target_dir)
+        return None, Path(flags.target_dir), "flag"
     url, folder = environ.get("BECK_TARGET"), environ.get("BECK_TARGET_DIR")
     if url and folder:
         raise ConfigError("Set BECK_TARGET or BECK_TARGET_DIR, not both")
@@ -279,25 +299,69 @@ def _target(
             parse_smb_url(url)
         except UsageError as e:  # it never repeats the URL, which might hold a password
             raise ConfigError(f"BECK_TARGET: {e}") from e
-        return url, None
+        return url, None, "environment"
     if folder:
-        return None, Path(folder)
-    return file.target_url, file.target_dir
+        return None, Path(folder), "environment"
+    named_in_file = file.target_url is not None or file.target_dir is not None
+    return file.target_url, file.target_dir, "file" if named_in_file else "default"
+
+
+def _source_of(flag: object, variable: object, in_file: object) -> str:
+    """Where a setting comes from, given what each source says about it."""
+    if flag:
+        return "flag"
+    if variable is not None:
+        return "environment"
+    return "file" if in_file is not None else "default"
 
 
 def resolve(flags: Flags, environ: Mapping[str, str], file: Config) -> Settings:
     """Decide each setting: flags, then the environment, then the file, then the default. Pure.
 
-    An empty variable counts as not set, except ``BECK_SMB_USER``, where it means a guest.
+    An empty variable counts as not set, except ``BECK_SMB_USER``, where it means a guest. The
+    password only comes from the environment: the file can't hold one, and neither can a URL.
     """
-    target_url, target_dir = _target(flags, environ, file)
-    source = flags.source if flags.source is not None else environ.get("BECK_SOURCE")
+    target_url, target_dir, target_source = _target(flags, environ, file)
+    source_variable = environ.get("BECK_SOURCE") or None
+    source = flags.source if flags.source is not None else source_variable
+    user_variable = environ.get("BECK_SMB_USER")
     user = environ.get("BECK_SMB_USER", file.smb_user)
+    password = environ.get("BECK_SMB_PASSWORD", "")
     return Settings(
         target_url=target_url,
         target_dir=target_dir,
         source_dir=Path(source) if source else file.source_dir,
         frontend=flags.frontend or file.frontend or DEFAULT_FRONTEND,
         smb_user="" if user is None else user,
+        smb_password=password,
         smb_timeout=file.smb_timeout,
+        sources={
+            "target": target_source,
+            "source": _source_of(flags.source, source_variable, file.source_dir),
+            "frontend": _source_of(flags.frontend, None, file.frontend),
+            "smb_user": _source_of(None, user_variable, file.smb_user),
+            "smb_password": "environment" if password else "default",
+            "smb_timeout": _source_of(None, None, file.smb_timeout),
+        },
     )
+
+
+def write_template(path: Path, *, force: bool) -> None:
+    """Write a settings file with comments, which only its owner can read.
+
+    It refuses to replace a file unless ``force`` says so. It's only the template, but someone may
+    have spent time on what's there.
+    """
+    how = os.O_WRONLY | os.O_CREAT | (os.O_TRUNC if force else os.O_EXCL)
+    try:
+        path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    except OSError as e:  # apart: a file in the way of a folder is a FileExistsError too
+        raise ConfigError(f"Can't write {path}: {e.strerror}") from e
+    try:
+        with os.fdopen(os.open(path, how, 0o600), "w", encoding="utf-8") as file:
+            path.chmod(0o600)  # one that was already there can have any permissions
+            file.write(TEMPLATE)
+    except FileExistsError as e:
+        raise ConfigError(f"{path} already exists. To replace it, use --force.") from e
+    except OSError as e:
+        raise ConfigError(f"Can't write {path}: {e.strerror}") from e

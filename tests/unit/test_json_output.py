@@ -15,18 +15,18 @@ from beck.models import Unreadable
 from beck.output.json import JsonRenderer
 from beck.transports.local import LocalTransport
 from tests.conftest import REAL_REPORT, REPORTS, load_report
-from tests.factories import make_bios_file, make_missing, make_report_text, md5_of, snapshot
+from tests.factories import (
+    make_bios_file,
+    make_missing,
+    make_report_text,
+    md5_of,
+    settings_text,
+    snapshot,
+)
 from tests.fakes import FakeSMBServer, install_fake_smb
 
 A, B = "a" * 32, "b" * 32
 SENTINEL = "beck-test-password-sentinel"
-ACCOUNT = f"""\
-smb:
-  user: "beck-test-user"
-  passwd: "{SENTINEL}"
-  server: "beck-test-server"
-  port: 445
-"""
 
 
 @pytest.fixture
@@ -44,12 +44,14 @@ def device(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def app(tmp_path: Path) -> Path:
-    """A folder with a config holding a password that must never appear anywhere."""
+def app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """A folder with settings for a user whose password must never appear anywhere."""
     folder = tmp_path / "app"
-    (folder / "config").mkdir(parents=True)
-    (folder / "config" / "config.yml").write_text(ACCOUNT, encoding="utf-8")
-    (folder / "bios").mkdir()
+    (folder / "bios").mkdir(parents=True)
+    settings = settings_text("smb://beck-test-server/bios", "beck-test-user")
+    (folder / "settings.toml").write_text(settings, encoding="utf-8")
+    monkeypatch.setenv("BECK_CONFIG", str(folder / "settings.toml"))
+    monkeypatch.setenv("BECK_SMB_PASSWORD", SENTINEL)
     return folder
 
 

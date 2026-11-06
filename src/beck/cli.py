@@ -9,15 +9,22 @@ import time
 from pathlib import Path
 from typing import Any, NoReturn
 
-import yaml
-
 from beck import __version__
-from beck.config import DEFAULT_FRONTEND, Flags, Settings, find_config, load, resolve
+from beck.config import (
+    DEFAULT_FRONTEND,
+    Flags,
+    Settings,
+    find_config,
+    load,
+    resolve,
+    write_template,
+)
 from beck.errors import BeckError, ConfigError, ReportNotFoundError, TransportError, UsageError
 from beck.executor import execute
 from beck.frontends import get_adapter
 from beck.frontends.base import FrontendAdapter
 from beck.hashing import scan
+from beck.legacy_config import migration_notice, read_legacy
 from beck.matcher import plan
 from beck.models import MissingBios, Plan, RunResult, ScanResult
 from beck.output import LOGGER_NAME, escaped_for_terminal, finish_output
@@ -35,6 +42,7 @@ examples:
   beck check                  copy the matching files to your device
   beck scan                   list your local files and their MD5s
   beck report                 list what your device is missing
+  beck config init            create a settings file
 
 See docs/cli.md for every option, the exit codes, and what gets deleted.
 """
@@ -43,11 +51,15 @@ COMMANDS = {
     "check": ("Copy your matching BIOS files to the device.", "example:\n  beck check\n"),
     "scan": ("List your local BIOS files with their MD5s.", "example:\n  beck scan\n"),
     "report": ("List the BIOS files the device reports as missing.", "example:\n  beck report\n"),
+    "config": ("Find, create or show BECK's settings.", "example:\n  beck config show\n"),
+}
+CONFIG_ACTIONS = {
+    "path": "print which settings file BECK reads, and why",
+    "init": "create that settings file",
+    "show": "print the settings a run would use, and where each comes from",
 }
 
-SMB_SETTINGS = ("server", "port", "user", "passwd")
 FAILED_IF_MISSING_EXIT_CODE = 5
-HIGHEST_PORT = 65535
 REPORT_FILE_HELP = "read this local copy of the report, not the one on the target"
 
 Renderer = ConsoleRenderer | JsonRenderer
@@ -76,51 +88,6 @@ def _asks_for_json(argv: list[str]) -> bool:
     return any(len(arg) > 2 and "--json".startswith(arg) for arg in argv)
 
 
-def load_legacy_config(file: Path) -> dict[str, Any]:
-    """The ``smb`` section of ``config/config.yml``. TOML replaces this file in stage 07."""
-    try:
-        with file.open(encoding="utf-8") as config_file:
-            data = yaml.safe_load(config_file)
-    except FileNotFoundError as e:
-        raise ConfigError(
-            f"{file} not found. Copy config/config.example.yml to config/config.yml and fill it in."
-        ) from e
-    except yaml.YAMLError as e:
-        where = " ".join(str(e).split())  # on one line: its line breaks would show escaped
-        raise ConfigError(f"{file} isn't valid YAML: {where}") from e
-    except UnicodeDecodeError as e:  # its message is left out, because it can show the file's bytes
-        raise ConfigError(f"{file} isn't UTF-8 text") from e
-    except OSError as e:
-        raise ConfigError(f"Can't read {file}: {e.strerror}") from e
-
-    try:
-        settings: dict[str, Any] = data["smb"]
-        for name in SMB_SETTINGS:
-            settings[name]
-    except (KeyError, TypeError) as e:
-        raise ConfigError(f"{file} needs an smb section with {', '.join(SMB_SETTINGS)}") from e
-
-    return _checked_smb_settings(file, settings)
-
-
-def _checked_smb_settings(file: Path, settings: dict[str, Any]) -> dict[str, Any]:
-    """Refuse values that could never connect. Messages never repeat a value: it may be a password.
-
-    A blank ``user`` or ``passwd`` means guest access, as the example config says.
-    """
-    server, port = settings["server"], settings["port"]
-    if not server or not isinstance(server, str):
-        raise ConfigError(f"In {file}, server must be a host name or an IP address")
-    if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= HIGHEST_PORT:
-        raise ConfigError(f"In {file}, port must be a number from 1 to {HIGHEST_PORT}")
-    for name in ("user", "passwd"):
-        if settings[name] is None:
-            settings[name] = ""
-        elif not isinstance(settings[name], str):
-            raise ConfigError(f"In {file}, {name} must be text: put it in quotes")
-    return settings
-
-
 def _load_settings(args: argparse.Namespace) -> Settings:
     location = find_config(args.config, os.environ)
     _log.debug("Settings file: %s (%s)", location.path, location.source)
@@ -131,32 +98,25 @@ def _load_settings(args: argparse.Namespace) -> Settings:
     return resolve(flags, os.environ, file)
 
 
-def _open_target(settings: Settings, base_dir: Path) -> Transport:
-    """The transport for the chosen target. With none chosen, it comes from the legacy file."""
-    timeout = settings.smb_timeout or DEFAULT_TIMEOUT
+def _open_target(settings: Settings) -> Transport:
+    """The transport for the chosen target. It connects when it's entered, not here."""
     if settings.target_dir is not None:
         return LocalTransport(settings.target_dir)
-    if settings.target_url is not None:
-        target = parse_smb_url(settings.target_url)
-        # No password: the one in the legacy file belongs to its own server, and sending it to
-        # whatever host this names would leak it. Stage 07 adds passwords for targets.
-        return SmbTransport(
-            target.host,
-            target.port,
-            target.share,
-            target.user or settings.smb_user,
-            "",
-            timeout=timeout,
-            root=target.root,
+    if settings.target_url is None:
+        raise ConfigError(
+            "BECK has no target. Use --target or --target-dir, set BECK_TARGET or BECK_TARGET_DIR, "
+            "or name one in the settings file: to create it, run beck config init."
         )
-    legacy = load_legacy_config(base_dir / "config" / "config.yml")
+    target = parse_smb_url(settings.target_url)
+    user = target.user or settings.smb_user
     return SmbTransport(
-        host=legacy["server"],
-        port=legacy["port"],
-        share="bios",
-        user=legacy["user"],
-        password=legacy["passwd"],
-        timeout=timeout,
+        target.host,
+        target.port,
+        target.share,
+        user,
+        settings.smb_password if user else "",  # a guest has no password to send
+        timeout=settings.smb_timeout or DEFAULT_TIMEOUT,
+        root=target.root,
     )
 
 
@@ -278,7 +238,7 @@ def _run_check(
         renderer.ended_early(result, failing)
         return FAILED_IF_MISSING_EXIT_CODE if failing else 0
 
-    transport = _open_target(settings, base_dir)
+    transport = _open_target(settings)
     renderer.opened(transport.url())
     _log.debug("Target: %s", transport.url())
     with transport:
@@ -342,7 +302,7 @@ def _run_report(
     if args.report_file is not None:
         entries = _entries_from_file(adapter, args.report_file)
     else:
-        transport = _open_target(settings, base_dir)
+        transport = _open_target(settings)
         renderer.opened(transport.url())
         _log.debug("Target: %s", transport.url())
         with transport:
@@ -356,6 +316,65 @@ def _run_scan(settings: Settings, base_dir: Path, renderer: Renderer) -> int:
     source = _source_folder(settings, base_dir)
     renderer.scan(_scan_with_progress(source, renderer), source)
     return 0
+
+
+def _shown_settings(settings: Settings, base_dir: Path) -> dict[str, dict[str, Any]]:
+    """What ``beck config show`` shows: never the password, only whether there is one."""
+    has_target = settings.target_url is not None or settings.target_dir is not None
+    url_user = parse_smb_url(settings.target_url).user if settings.target_url else ""
+    source = base_dir / "bios" if settings.source_dir is None else settings.source_dir
+    sources = settings.sources
+    return {
+        "target": {
+            "value": _open_target(settings).url() if has_target else None,
+            "source": sources["target"],
+        },
+        "source": {"value": str(source), "source": sources["source"]},
+        "frontend": {"value": settings.frontend, "source": sources["frontend"]},
+        "smb_user": {
+            "value": url_user or settings.smb_user,
+            "source": sources["target"] if url_user else sources["smb_user"],
+        },
+        "smb_password": {
+            "value": "set" if settings.smb_password else "not set",
+            "source": sources["smb_password"],
+        },
+        "smb_timeout": {
+            "value": settings.smb_timeout or DEFAULT_TIMEOUT,
+            "source": sources["smb_timeout"],
+        },
+    }
+
+
+def _run_config(args: argparse.Namespace, base_dir: Path, renderer: Renderer) -> int:
+    """Find, create or show the settings. Only ``show`` reads the file, so bad ones can be found."""
+    location = find_config(args.config, os.environ)
+    if args.config_action == "init":
+        write_template(location.path, force=args.force)
+        renderer.config_created(location, location.path.exists())
+    elif args.config_action == "path":
+        renderer.config_path(location, location.path.exists())
+    else:
+        renderer.config_file(location, location.path.exists())
+        settings = _load_settings(args)
+        renderer.config_settings(
+            location, location.path.exists(), _shown_settings(settings, base_dir)
+        )
+    return 0
+
+
+def _notice_old_settings(args: argparse.Namespace, base_dir: Path) -> None:
+    """Help someone who still has the old file, until they have a new one."""
+    if args.quiet:
+        return
+    old = base_dir / "config" / "config.yml"
+    legacy = read_legacy(old)
+    if legacy is None:
+        return
+    new = find_config(args.config, os.environ).path
+    if not new.exists():
+        for line in migration_notice(old, legacy, new):
+            logging.getLogger(LOGGER_NAME).warning("%s", line)
 
 
 def _add_global_options(parser: argparse.ArgumentParser, *, on_a_command: bool) -> None:
@@ -473,6 +492,19 @@ def _build_parser(*, json_errors: bool = False) -> argparse.ArgumentParser:
         if name == "report":
             group = _add_target_options(command)
             group.add_argument("--report-file", metavar="FILE", help=REPORT_FILE_HELP)
+        if name == "config":
+            actions = command.add_subparsers(
+                dest="config_action", required=True, title="actions", metavar="<action>"
+            )
+            for action, help_text in CONFIG_ACTIONS.items():
+                inner = actions.add_parser(
+                    action, json_errors=json_errors, help=help_text, description=help_text
+                )
+                _add_global_options(inner, on_a_command=True)
+                if action == "init":
+                    inner.add_argument(
+                        "--force", action="store_true", help="replace a file that's already there"
+                    )
     parser.set_defaults(
         target=None,
         target_dir=None,
@@ -485,6 +517,8 @@ def _build_parser(*, json_errors: bool = False) -> argparse.ArgumentParser:
         clean_unmatched=False,
         yes=False,
         fail_if_missing=False,
+        config_action=None,
+        force=False,
     )
     return parser
 
@@ -519,6 +553,7 @@ def _main(argv: list[str] | None, base_dir: Path | None) -> int:
             args.command or "check",
             frontend=args.frontend or DEFAULT_FRONTEND,
             dry_run=args.dry_run,
+            action=args.config_action,
         )
     else:
         environ = {**os.environ, "NO_COLOR": "1"} if args.no_color else None
@@ -530,6 +565,9 @@ def _main(argv: list[str] | None, base_dir: Path | None) -> int:
 
     try:
         folder = Path.cwd() if base_dir is None else base_dir
+        _notice_old_settings(args, folder)
+        if args.command == "config":
+            return _run_config(args, folder, renderer)
         settings = _load_settings(args)
         renderer.uses_frontend(settings.frontend)
         if args.command == "scan":
