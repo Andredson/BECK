@@ -79,15 +79,16 @@ uv run pytest --cov --cov-report=xml
 
 | Pin | Where | Newest release ≥ 14 days old | Check before pinning |
 |---|---|---|---|
-| `actions/checkout`, `astral-sh/setup-uv`, `actions/upload-artifact` | `uses:` lines | [4a](#4a-list-releases-with-their-age) | Resolve the tag to a commit SHA ([4b](#4b-resolve-an-action-tag-to-its-commit-sha)) |
+| `actions/checkout`, `astral-sh/setup-uv`, `actions/upload-artifact`, `actions/download-artifact`, `pypa/gh-action-pypi-publish` | `uses:` lines | [4a](#4a-list-releases-with-their-age) | Resolve the tag to a commit SHA ([4b](#4b-resolve-an-action-tag-to-its-commit-sha)) |
 | uv | `UV_VERSION` | [4a](#4a-list-releases-with-their-age) on `astral-sh/uv` | Release notes |
 | gitleaks | `GITLEAKS_VERSION`, `GITLEAKS_SHA256` | [4a](#4a-list-releases-with-their-age) on `gitleaks/gitleaks` | Three matching hashes ([4c](#4c-hash-a-release-binary)) |
 | Trivy | `TRIVY_VERSION`, `TRIVY_SHA256` | [4a](#4a-list-releases-with-their-age) on `aquasecurity/trivy`; must show `immutable=true` | Three matching hashes ([4c](#4c-hash-a-release-binary)), and Trivy's advisories |
 | commitizen | `COMMITIZEN_VERSION` | [4d](#4d-list-pypi-releases-with-their-age) | Release notes |
-| git-cliff | [The changelog command](#regenerating-the-changelog) | [4d](#4d-list-pypi-releases-with-their-age) | Release notes, then regenerate: only the expected lines should change |
+| twine | `TWINE_VERSION` | [4d](#4d-list-pypi-releases-with-their-age) | Release notes |
+| git-cliff | `GIT_CLIFF_VERSION` in `release.yml`, [the changelog command](#regenerating-the-changelog), and [the release checklist](releasing.md#the-release-checklist) | [4d](#4d-list-pypi-releases-with-their-age) | Release notes, then regenerate: only the expected lines should change |
 
 All of them but git-cliff are in the `env:` block or the `uses:` lines of **both** `.github/workflows/ci.yml` and
-`.github/workflows/security.yml` (commitizen and `upload-artifact` only in `ci.yml`). Update the version, the hash
+`.github/workflows/security.yml` (commitizen, twine and `upload-artifact` only in `ci.yml`). `.github/workflows/release.yml` repeats uv, twine, Trivy, checkout, setup-uv and `upload-artifact`, and has the only copy of `download-artifact` and `pypa/gh-action-pypi-publish`. Update the version, the hash
 or SHA, and the "pinned" date in the trailing comment.
 
 ### 4a. List releases with their age
@@ -145,6 +146,8 @@ for uploaded, version in uploads[-5:]:
 ```sh
 uv run pytest tests/test_workflow_pins.py -q
 uvx --exclude-newer "14 days" --from "commitizen==NEW_VERSION" cz check --rev-range origin/main..HEAD
+uv build && uvx --exclude-newer "14 days" --from "twine==NEW_VERSION" twine check --strict dist/*
+uvx --exclude-newer "14 days" --from "actionlint-py==1.7.12.25" actionlint   # when a workflow changed (DEC-66)
 ```
 
 The gitleaks and Trivy pins are proven by CI: the install step fails if the hash doesn't match.
@@ -222,7 +225,7 @@ git push -u origin deps/YYYY-MM && gh pr create --base main --title "build(deps)
 
 ## Regenerating the changelog
 
-`CHANGELOG.md` is generated from the commit messages, by the rules in `cliff.toml` (DEC-20), so it's never edited by hand. It's regenerated for each release, so `Unreleased` falls behind between releases, and it can't include the commit that updates it. This version was pinned on 2026-11-06:
+`CHANGELOG.md` is generated from the commit messages, by the rules in `cliff.toml` (DEC-20), so it's never edited by hand. It's regenerated for each release, with `--tag`, as in [the checklist](releasing.md#the-release-checklist), so `Unreleased` falls behind between releases, and it can't include the commit that updates it. This version was pinned on 2026-11-06:
 
 ```sh
 uvx --exclude-newer "14 days" git-cliff@2.14.2 -o CHANGELOG.md

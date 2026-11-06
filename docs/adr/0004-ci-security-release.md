@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-02
-- **Decisions covered:** DEC-11, DEC-25, DEC-32, DEC-33, DEC-34, DEC-35, DEC-37, DEC-38, DEC-41, DEC-48
+- **Decisions covered:** DEC-11, DEC-25, DEC-32, DEC-33, DEC-34, DEC-35, DEC-37, DEC-38, DEC-41, DEC-48, DEC-65, DEC-66, DEC-67, DEC-68
 
 ## Context
 At baseline there was no CI, no security tooling and no release process. Two other decisions shape this area:
@@ -104,3 +104,35 @@ asked for tool options per security category (SAST, DAST, SCA, secret scanning) 
 All third-party GitHub Actions are pinned to full commit SHAs, and downloaded tools (gitleaks, Trivy) to
 versions with verified checksums. Floating tags have been hijacked before (for example `tj-actions/changed-files`
 in March 2025). The monthly routine (`docs/maintenance.md`) refreshes the pins.
+
+## DEC-65 — The release jobs pass files with download-artifact
+- **Decision:** The release workflow builds in one job and publishes in others, passing the files with
+  `actions/download-artifact`, pinned by SHA. It's the companion to `actions/upload-artifact`, which CI already uses.
+- **Alternatives considered:** *build and publish in one job* (no new action, but the publishing identity would be
+  available while build tools run, and the approval gate would cover the build too) and *rebuild in each job* (no new
+  action, but what's published wouldn't be the file that was checked): not chosen. The owner gave no further reason.
+- **Consequences:** The publish jobs run none of the project's code, which `tests/test_release_workflow.py` checks.
+  The pin is kept up by the monthly routine.
+
+## DEC-66 — actionlint by hand, not in CI
+- **Decision:** `actionlint` checks a workflow when it changes, run by hand through `uvx` at a pinned version. It's
+  not a dev dependency, and CI doesn't run it.
+- **Alternatives considered:** *add it to CI* (catches later mistakes too, but it's one more pin to keep up) and
+  *don't use it* (lightest, but expression and permission mistakes would first show in a rehearsal): not chosen. The
+  owner gave no further reason.
+- **Consequences:** Nothing stops a later workflow change that skips it. `docs/maintenance.md` has the command.
+
+## DEC-67 — The first public version is 0.5.0
+- **Decision:** BECK's first public version is `0.5.0`, rehearsed as `0.5.0rc1` on TestPyPI.
+- **Alternatives considered:** *`0.9.0`* (a candidate for 1.0, with little room for features before it) and *`0.1.0`*
+  (the version in `pyproject.toml`, which undersells it and clashes with the changelog's Earlier history entry): not
+  chosen. The owner gave no further reason.
+- **Consequences:** PyPI never accepts a version twice, so this number can't be used again.
+
+## DEC-68 — Absolute links in the README
+- **Decision:** The README's links to the repository's files are absolute GitHub URLs, because PyPI shows it as the
+  project's page and doesn't resolve relative links.
+- **Alternatives considered:** *a separate description for PyPI* (the README stays as it is, but there's a second page
+  to keep accurate) and *leaving them broken* until a later release: not chosen. The owner gave no further reason.
+- **Consequences:** Those links point at `main`, so a new file's link only works once it's merged.
+  `tests/test_docs_links.py` checks them against the real files, and fails on a relative link in the README.

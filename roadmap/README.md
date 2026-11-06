@@ -21,7 +21,7 @@ executed **one step at a time**, by a human or an AI agent, in the order below. 
 | 07 | [Configuration & security](07-configuration-and-security.md) | 06 | `stage/07-config-security` | M | Done (2026-11-06) |
 | 08 | [Documentation](08-documentation.md) | 07 | `stage/08-docs` | M | Done (2026-11-06) |
 | 09 | [Agent Skills & automation](09-agent-skills-and-automation.md) | 08 | `stage/09-skills` | M | Done (2026-11-06) |
-| 10 | [Packaging & release](10-packaging-and-release.md) | 09 | `stage/10-release` | M | Not started |
+| 10 | [Packaging & release](10-packaging-and-release.md) | 09 | `stage/10-release` | M | In progress |
 | 11 | [Feature expansion](11-feature-expansion.md) | 10 | one branch per feature | L | Not started |
 | 12 | [Community & governance](12-community-and-governance.md) | 02 (can run in parallel with 03–11) | `stage/12-community` | S | Not started |
 
@@ -150,6 +150,10 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-61 | A file already on the device is **kept and reported**, and `--overwrite` replaces it, including files listed as `INCORRECT` (the flag DEC-54 left open). *(2026-11-05, step 06.5)* |
 | DEC-62 | What BECK does, and its exit code, **don't depend on whether its output can be written**. The run carries on when stdout fails: a closed pipe is silent, and any other failure prints one line on stderr. *(2026-11-05, step 06.7b)* |
 | DEC-63 | `types-jsonschema` is a dev-only dependency, so that mypy can check the tests that use `jsonschema`, which ships no type hints. *(2026-11-06, step 06.8)* |
+| DEC-67 | BECK's first public version is `0.5.0`, rehearsed as `0.5.0rc1`. *(2026-11-06, step 10.9)* |
+| DEC-68 | The README uses absolute GitHub links, which work on GitHub and on PyPI's project page. *(2026-11-06, step 10.9)* |
+| DEC-65 | The release workflow passes built files between jobs with `actions/download-artifact`, pinned by SHA, so what's published is exactly what was built and checked. *(2026-11-06, step 10.6)* |
+| DEC-66 | `actionlint` is run by hand with `uvx` when a workflow changes, and isn't in CI. *(2026-11-06, step 10.6)* |
 | DEC-64 | An upload whose size, or with `--verify` whose MD5, doesn't match has the status `failed`, not `uploaded` with an `error`. *(2026-11-06, step 07.7)* |
 
 ### CI/CD, security, and release

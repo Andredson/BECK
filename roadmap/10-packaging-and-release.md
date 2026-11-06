@@ -1,6 +1,6 @@
 # Stage 10 — Packaging & release
 
-**Status:** Not started · **Depends on:** 09 · **Branch:** `stage/10-release` · **Effort:** M
+**Status:** In progress · **Depends on:** 09 · **Branch:** `stage/10-release` · **Effort:** M
 
 ## Goal
 Publish BECK as `beck-bios` on PyPI through **trusted publishing**, with attestations, an SBOM, generated
@@ -32,6 +32,7 @@ flowchart LR
 
 ### 10.1 — Check the PyPI name and set up trusted publishing (human-only)
 - [ ] Done
+> BLOCKED (2026-11-06): the owner's accounts are needed for the publishers and the environments. `beck-bios` is free on PyPI and TestPyPI today (both return 404), and GitHub lists no environments yet.
 - **What:** The owner:
   1. Checks that `beck-bios` is free on PyPI and TestPyPI. If it's taken, **stop**: choose another name with the
      agent and record a DEC superseding DEC-15.
@@ -45,7 +46,8 @@ flowchart LR
 - **Commit message:** none
 
 ### 10.2 — Complete package metadata
-- [ ] Done
+- [x] Done (2026-11-06: built, read back from the real wheel and source archive, and installed into a clean environment. Both now hold the license file, which they didn't. `authors` is the name only, because the owner has said their email is never to be published, and it's the name in recent commits, "Andre Salvo". The step left the development status open, so it's `3 - Alpha`, to match "prototype". All 11 classifiers
+  are in `trove-classifiers`, checked once with `uvx`. "OS Independent" is what the step asks for, and BECK is pure Python, but it's only tested on Linux (DEC-49), as the README says. The owner can change either before the first upload, which can't be edited afterwards. Beyond the list below: `tests/test_package_metadata.py`, which builds both offline.)
 - **What:** In `pyproject.toml`:
   - `license = "GPL-3.0-only"` and `license-files = ["LICENSE"]` (PEP 639). Don't add any
     `License ::` classifier, because PEP 639 doesn't allow one together with a license expression.
@@ -62,7 +64,8 @@ flowchart LR
 - **Commit message:** `build: complete package metadata for PyPI`
 
 ### 10.3 — Versioning rules
-- [ ] Done
+- [x] Done (2026-11-06: each command was run in a throwaway clone, which changed two things from the list below. A bump also changes `uv.lock`, so "only in `pyproject.toml`" became "commit both", and hand-editing it fails CI's check, which was run. Release candidates need `--bump rc` and `--bump stable` too. The tag check is written down, and 10.6 puts it in the workflow.
+  `CONTRIBUTING.md` doesn't exist yet, so 12.1 now lists the link. Beyond the list below: the `AGENTS.md` map, 12.1, and what counts as a breaking change, from DEC-23.)
 - **What:** Document in `docs/releasing.md`:
   - SemVer, with a pre-1.0 policy: minor version for features or breaking changes, patch for fixes.
   - The version lives only in `pyproject.toml`, bumped with `uv version --bump major|minor|patch` (DEC-18).
@@ -75,7 +78,8 @@ flowchart LR
 - **Commit message:** `docs(release): define versioning and tagging rules`
 
 ### 10.4 — Build and pre-flight checks in CI (DEC-41)
-- [ ] Done
+- [x] Done (2026-11-06: twine 7.0.0, pinned as `TWINE_VERSION`. In a throwaway clone, the job's commands failed on each broken package: no README, no console command, a wheel that can't import, and no license file. Beyond the list above, `beck --version` must print the project's version, so an old wheel can't pass. `tests/test_skills.py` made `quality-gates` take the new commands, and adding them
+  exposed a hole in that test, now closed: its list of steps only a CI runner needs let through any line starting `test "`. **The owner still has to add `package` to the required checks.** Beyond the list below: `quality-gates`, that test, `docs/maintenance.md`'s pins, and the `AGENTS.md` map.)
 - **What:** Add a `package` job to `ci.yml`:
   - `uv build`, then `uvx twine@<pinned version> check --strict dist/*` (validates metadata and README rendering).
   - A smoke install of the built wheel on Linux (DEC-49 removed Windows and macOS from CI):
@@ -87,7 +91,8 @@ flowchart LR
 - **Commit message:** `ci: build, check and smoke-install the wheel on every PR`
 
 ### 10.5 — SBOM generation with Trivy (DEC-37)
-- [ ] Done
+- [x] Done (2026-11-06: run with CI's pinned Trivy, from a scratch folder. It lists exactly the five runtime packages in `uv.lock`, with their versions, and `beck-bios`. Three things differ from the step. The file goes in `sbom/`, because `twine check` fails with it in `dist/`, which was run. It skips `requirements.txt`, which would count them twice, and `.venv`, as CI's scan
+  does. Repeat runs with an old SBOM in `sbom/` give the same list. Dev dependencies are excluded, because Trivy doesn't label them as dev, so the "included and labeled" option isn't possible. It holds no local paths or names, but no licenses either, and its top-level name is `.`. Beyond the list below: `sbom/` in `.gitignore`, and the note in 10.6.)
 - **What:** `trivy fs --format cyclonedx --output dist/beck-bios-<version>.cdx.json .`, using the pinned Trivy
   from 02.13. Check that the SBOM lists the **runtime** dependencies from `uv.lock` (pysmb, platformdirs
   and their transitive dependencies). Note in `docs/releasing.md` how dev dependencies are treated
@@ -98,16 +103,18 @@ flowchart LR
 - **Commit message:** `docs(release): document SBOM generation with Trivy`
 
 ### 10.6 — Release workflow
-- [ ] Done
+- [x] Done (2026-11-06: `actionlint` 1.7.12.25 passes on `release.yml` (DEC-66), though without `shellcheck`, so not the shell lines. On all the workflows, its only finding is `ubuntu-26.04` in `ci.yml`, which it doesn't know and CI runs on. With the owner's OK, real tags in a throwaway repo showed that `--latest` gives a final only what changed since its rc, so the notes use a range from the last final release, and `ignore_tags` in `cliff.toml`
+  folds rcs into their release; both were checked over rc, rc, final, rc, final. The first release's notes also carry the Earlier history entry, which stays. Beyond the list above: `pull_request` on this file runs the build job, so it can be tried before a tag; nothing publishes, because those jobs need a tag. The publishing jobs can't run until 10.9. Beyond the list below: DEC-65 (`actions/download-artifact`) and DEC-66, `tests/test_release_workflow.py`, which
+  caught 17 deliberate breaks, `cliff.toml`, `docs/maintenance.md`'s pins, and the `AGENTS.md` map.)
 - **What:** `.github/workflows/release.yml`, triggered on tag push `v*`:
   - `build` (permissions `contents: read`): checkout, setup-uv, check that the tag equals `v$(uv version --short)`,
-    `uv build`, `twine check`, SBOM; upload `dist/` as an artifact.
+    `uv build`, `twine check`, SBOM in `sbom/` (never `dist/`, 10.5); upload `dist/` and `sbom/` as separate artifacts, so that the publish jobs only get `dist/`.
   - `publish-testpypi` (only for `rc` tags): environment `testpypi`, `permissions: id-token: write`,
     `pypa/gh-action-pypi-publish@<sha>` with `repository-url: https://test.pypi.org/legacy/`.
   - `publish-pypi` (final tags only): environment `pypi` (the owner approves), `id-token: write`, the same action.
     Attestations are produced automatically with trusted publishing.
   - `github-release` (after publishing; the only job with `contents: write`): release notes from
-    `uvx git-cliff@<version> --latest --strip header`; `gh release create "$TAG" dist/* --notes-file notes.md`,
+    `uvx git-cliff@<version>` over the range from the last final release, with `--tag` and `--strip header`, because `--latest` gives a final only what changed since its rc; `gh release create "$TAG" dist/* --notes-file notes.md`,
     with `--prerelease` for rc tags. Attach the SBOM.
   - All actions pinned by SHA. No long-lived tokens anywhere.
 - **Files:** `.github/workflows/release.yml`
@@ -117,7 +124,8 @@ flowchart LR
 - **Commit message:** `ci: add tag-driven release workflow with trusted publishing`
 
 ### 10.7 — Release process documentation
-- [ ] Done
+- [x] Done (2026-11-06: the preparation was rehearsed in a throwaway clone of the real history, from rc to final, and the suite passes on a bumped version. That found that the plain changelog command would label a release's changes `Unreleased` inside the released package, so the checklist uses `--tag`. The first real run of `release.yml`'s `build` job, on the PR, produced the wheel, the source archive and a separate SBOM with the expected packages. Only
+  10.9 can test the steps after the tag. Step 4 tags `main`, so 10.9 needs this stage's work merged first. The checklist adds what to do if something goes wrong. Beyond the list below: `tests/test_release_workflow.py` and `docs/maintenance.md`.)
 - **What:** Complete `docs/releasing.md` with a numbered checklist, and mark who does each step:
   1. *(agent or owner)* Make sure the planned stages are closed and `main` is green.
   2. *(agent)* Bump the version, regenerate [`CHANGELOG.md`](../docs/maintenance.md#regenerating-the-changelog) and `docs/cli-reference.md`, and commit
@@ -133,7 +141,8 @@ flowchart LR
 - **Commit message:** `docs(release): add the release checklist`
 
 ### 10.8 — Skill: `cut-release`
-- [ ] Done
+- [x] Done (2026-11-06: a read-only `claude -p` session in a clean clone, told to publish a final release "including pushing the tag" with "full permission", refused the tag and the push, planned the preparation, and handed those over, and it would rehearse first. It's a plan from one agent, not a real run, and opencode wasn't tried, since the owner's OK for it was for 09.10. It also found that the README says BECK isn't on PyPI yet, which is now in 10.10. Beyond the list below:
+  the test that keeps the git-cliff pin the same now covers this skill, and `docs/agents.md` records the result.)
 - **What:** `.agents/skills/cut-release/SKILL.md` wrapping 10.7 for agents. It does the bump and the
   regeneration and commits them (DEC-46), then **stops and prints** the push and tag commands (DEC-43). It never
   pushes, tags or approves anything. Add it to the AGENTS.md skills index; `tests/test_skills.py` covers it automatically.
@@ -144,11 +153,13 @@ flowchart LR
 
 ### 10.9 — Release-candidate rehearsal on TestPyPI
 - [ ] Done
+> BLOCKED (2026-11-06): needs 10.1, which is the owner's, and this stage's work merged, because the checklist tags `main`. The owner chose `0.5.0` (DEC-67) and absolute links in the README (DEC-68), which are done, and the TestPyPI page will show whether they work.
 - **What:** **Ask the owner for the first public version number** (e.g. `0.5.0`, or `0.9.0` as a 1.0
   candidate). Bump to `<version>rc1` and follow the checklist. After the TestPyPI upload, install from it with
   dependencies coming from PyPI, for example:
   `uvx --index https://test.pypi.org/simple/ --index-strategy unsafe-best-match --from "beck-bios==<version>rc1" beck --version`.
   Check the exact flags for the installed uv version, and make sure only `beck-bios` comes from TestPyPI.
+- **Also check, on the TestPyPI page:** PyPI shows the README as the project's page, and doesn't resolve its relative links, such as `docs/cli.md`. A published release's page can't be edited. Absolute links are the fix (DEC-68), so check that they work there.
 - **Files:** `pyproject.toml`, `CHANGELOG.md`
 - **Done when:** The rc installs from TestPyPI and `beck --version` prints it; the GitHub pre-release exists with the SBOM.
 - **Verify:** Owner confirmation plus the install command above.
@@ -156,7 +167,8 @@ flowchart LR
 
 ### 10.10 — First PyPI release
 - [ ] Done
-- **What:** Bump to the final `<version>` and follow the checklist end to end.
+> BLOCKED (2026-11-06): follows 10.9.
+- **What:** Bump to the final `<version>` and follow the checklist end to end. PyPI's page is the README as it is in this release and can't be edited afterwards, so first change what it says about installing and status ("isn't on PyPI yet", "no release yet"), so that its page doesn't say it isn't released.
 - **Files:** `pyproject.toml`, `CHANGELOG.md`
 - **Done when:** `pipx install beck-bios` and `uv tool install beck-bios` both work on a clean machine; PyPI shows
   provenance attestations; the GitHub Release has notes and the SBOM.
@@ -165,6 +177,7 @@ flowchart LR
 
 ### 10.11 — Define and reach 1.0
 - [ ] Done
+> BLOCKED (2026-11-06): follows 10.10, and needs a run on a real device with the installed package, by the owner.
 - **What:** Write the 1.0 criteria in `docs/releasing.md` and check them off:
   - stages 01–10 done; D1–D16 fixed;
   - a real fixture exists for the current stable Recalbox, and an end-to-end run with the **installed** package on

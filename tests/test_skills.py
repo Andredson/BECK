@@ -28,8 +28,8 @@ INDEX_ROW = re.compile(r"^\| `([^`]+)` \| \[`([^`]+)`\]\(([^)]+)\) \| .+ \|$")
 
 # Steps that only make sense on a CI runner: installing tools, waiting and showing logs.
 CI_ONLY = re.compile(
-    r"""^(?:echo\ |test\ "|curl\ |"https://|mkdir\ |tar\ |for\ attempt|if\ timeout|exit\ |sleep\ |
-    done$|fi$|podman\ logs)""",
+    r"""^(?:echo\ |test\ "\$RESULT"|curl\ |"https://|mkdir\ |tar\ |for\ attempt|if\ timeout|
+    exit\ |sleep\ |done$|fi$|podman\ logs)""",
     re.VERBOSE,
 )
 # CI sets this in the step's ``env:``, and a local command has to set it on its own line.
@@ -41,6 +41,8 @@ LOCAL_ONLY = (
     "BECK_TEST_SMB_HOST=127.0.0.1 BECK_TEST_SMB_PORT=4450 bash -eo pipefail -c",
     "rm -f pytest-output.txt",
     "COMMITIZEN_VERSION=$(sed",
+    "TWINE_VERSION=$(sed",
+    "rm -rf dist",
 )
 
 
@@ -163,6 +165,7 @@ def test_there_are_skills_to_check() -> None:
         "add-report-fixture",
         "add-frontend-adapter",
         "diagnose-missing-bios",
+        "cut-release",
     }
 
 
@@ -364,3 +367,5 @@ def test_ci_commands_come_apart_correctly() -> None:
 def test_a_new_ci_command_is_not_taken_for_a_runner_step() -> None:
     assert commands_to_compare("      - run: uv run something-new\n") == ["uv run something-new"]
     assert commands_to_compare("      - run: curl -sSf example\n") == []
+    assert commands_to_compare('      - run: test "$RESULT" = "success"\n') == []
+    assert commands_to_compare('      - run: test "$(beck --version)" = "x"\n') != []

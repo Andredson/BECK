@@ -36,7 +36,7 @@ network, with its SMB shares on, as they are on a fresh install.
 
 ## Quick start
 
-1. **On your Recalbox,** [generate the report](docs/user-guide/generate-report.md): main menu → **BIOS CHECKING** → **REPORT**.
+1. **On your Recalbox,** [generate the report](https://github.com/Andredson/BECK/blob/main/docs/user-guide/generate-report.md): main menu → **BIOS CHECKING** → **REPORT**.
 2. **On your computer,** create your settings:
 
    ```sh
@@ -68,30 +68,30 @@ network, with its SMB shares on, as they are on a fresh install.
 ## Safety
 
 - **Nothing is deleted unless you ask.** BECK copies your files and leaves them where they were. Only `--move` and `--clean-unmatched` delete anything, and they ask first. Read
-  [what they delete](docs/cli.md#what-beck-deletes-and-when) before you use them: `--clean-unmatched` can delete good files.
+  [what they delete](https://github.com/Andredson/BECK/blob/main/docs/cli.md#what-beck-deletes-and-when) before you use them: `--clean-unmatched` can delete good files.
 - **Nothing on your Recalbox is replaced unless you ask.** A file already there is kept and reported, unless you add `--overwrite`.
 - **Your password stays out of files.** BECK asks for it, or reads it from `BECK_SMB_PASSWORD`. It can't go in the settings file.
-- **SMB isn't encrypted,** so use BECK on a network you trust. [The threat model](docs/threat-model.md) says what BECK protects, and what it doesn't.
+- **SMB isn't encrypted,** so use BECK on a network you trust. [The threat model](https://github.com/Andredson/BECK/blob/main/docs/threat-model.md) says what BECK protects, and what it doesn't.
 
 ## Configuration
 
-Flags beat environment variables, which beat the settings file. [The guide to the `beck` command](docs/cli.md) has [every setting](docs/cli.md#settings) and every option.
+Flags beat environment variables, which beat the settings file. [The guide to the `beck` command](https://github.com/Andredson/BECK/blob/main/docs/cli.md) has [every setting](https://github.com/Andredson/BECK/blob/main/docs/cli.md#settings) and every option.
 
 ## Automation and AI agents
 
-Add `--json` to any command to get [one JSON document](docs/json-output.md) on stdout, and branch on [the exit code](docs/cli.md#exit-codes). `--json` never asks a question. To have an AI agent do this for you, see [Using BECK with an agent](docs/agents.md#using-beck-with-an-agent). For AI
-agents, [`AGENTS.md`](AGENTS.md#using-beck-as-a-tool) has the rules for using BECK safely.
+Add `--json` to any command to get [one JSON document](https://github.com/Andredson/BECK/blob/main/docs/json-output.md) on stdout, and branch on [the exit code](https://github.com/Andredson/BECK/blob/main/docs/cli.md#exit-codes). `--json` never asks a question. To have an AI agent do this for you, see [Using BECK with an agent](https://github.com/Andredson/BECK/blob/main/docs/agents.md#using-beck-with-an-agent). For AI
+agents, [`AGENTS.md`](https://github.com/Andredson/BECK/blob/main/AGENTS.md#using-beck-as-a-tool) has the rules for using BECK safely.
 
 ## Troubleshooting
 
-BECK says what went wrong, and its [exit code](docs/cli.md#exit-codes) says what kind of problem it is. [The troubleshooting guide](docs/troubleshooting.md) goes through each message, with why it happens and what to do.
+BECK says what went wrong, and its [exit code](https://github.com/Andredson/BECK/blob/main/docs/cli.md#exit-codes) says what kind of problem it is. [The troubleshooting guide](https://github.com/Andredson/BECK/blob/main/docs/troubleshooting.md) goes through each message, with why it happens and what to do.
 
 The most common one is that your computer can't find `recalbox.local`: use your Recalbox's IP address in `url` instead.
 
 ## Project status
 
 BECK is a prototype, with no release yet. It's been tested on Recalbox 10.1.1 in a virtual machine, but not yet on real hardware. Its automatic tests run on Linux only, so Windows and macOS
-are untested. [The changelog](CHANGELOG.md) lists what has changed.
+are untested. [The changelog](https://github.com/Andredson/BECK/blob/main/CHANGELOG.md) lists what has changed.
 
 **If you used an older copy,** note that BECK no longer deletes every file it copies, and no longer reads `config/config.yml`. If you still have that file, BECK prints what to put in
 the new settings. Delete it afterwards, because it may hold your password in plain text. Older copies tracked it in git, so if you edited it, `git pull` refuses to update until
@@ -99,13 +99,13 @@ you move it out of the way.
 
 ## Contributing
 
-[`AGENTS.md`](AGENTS.md) has the commands and rules for working on BECK, for people and for AI agents. [The roadmap](roadmap/README.md) is the plan, and
-[the design](docs/ARCHITECTURE.md) explains how it fits together.
+[`AGENTS.md`](https://github.com/Andredson/BECK/blob/main/AGENTS.md) has the commands and rules for working on BECK, for people and for AI agents. [The roadmap](https://github.com/Andredson/BECK/blob/main/roadmap/README.md) is the plan, and
+[the design](https://github.com/Andredson/BECK/blob/main/docs/ARCHITECTURE.md) explains how it fits together.
 
 ## Security
 
-To report a problem, see [the security policy](SECURITY.md).
+To report a problem, see [the security policy](https://github.com/Andredson/BECK/blob/main/SECURITY.md).
 
 ## License
 
-GPL-3.0-only. See [LICENSE](LICENSE).
+GPL-3.0-only. See [LICENSE](https://github.com/Andredson/BECK/blob/main/LICENSE).

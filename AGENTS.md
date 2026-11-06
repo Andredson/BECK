@@ -28,7 +28,8 @@ CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against
 | `tests/` | pytest suite: `tests/unit/` has a test file per module, full runs through `cli.main` (`test_cli.py`), and the architecture rules checked on the source (`test_architecture.py`). `tests/` has the package and shim tests, the Markdown link checker, and tests for the hygiene guard and the workflow pins. `tests/factories.py` builds test data (always random bytes, and reports in the real format), and `tests/fakes.py` is the in-memory SMB server the application tests use. `tests/fixtures/reports/` holds real and derived Recalbox reports, with provenance in `tests/fixtures/README.md`; the real report keeps its CRLF line endings byte-exact. |
 | `tests/integration/samba/` | The Samba test server for integration tests, built with **Podman, never Docker** (DEC-55). See [its README](tests/integration/samba/README.md). |
 | `scripts/check_repo_hygiene.py` | Fails if git tracks BIOS/ROM-like files, files over 1 MiB, config files, or a TOML file with a password in it (each allowed exception has a reason). |
-| `.github/workflows/ci.yml` | CI on every PR and push to `main`: `quality`, the `tests` matrix (Linux × Python 3.11–3.14; Windows and macOS removed, DEC-49) summarized by `tests-passed`, `integration` (a real Samba server, with Podman), `commits`, `secrets`, `sca`. |
+| `.github/workflows/ci.yml` | CI on every PR and push to `main`: `quality`, the `tests` matrix (Linux × Python 3.11–3.14; Windows and macOS removed, DEC-49) summarized by `tests-passed`, `package` (builds and smoke-installs the wheel), `integration` (a real Samba server, with Podman), `commits`, `secrets`, `sca`. |
+| `.github/workflows/release.yml` | Publishes a pushed tag: rc tags to TestPyPI, final tags to PyPI after the owner approves, then a GitHub Release with an SBOM. No stored tokens. `tests/test_release_workflow.py` checks who gets which permission. |
 | `.github/workflows/security.yml` | Weekly (Mondays 06:00 UTC): full-history secret scan and dependency scan. |
 | `.gitleaks.toml`, `.trivyignore` | gitleaks settings (fake `beck-test-*` values allowed only under `tests/`); accepted Trivy findings, each with a link and an expiry date. |
 | `.editorconfig`, `.gitattributes` | Editor settings; LF line endings in the repository. |
@@ -44,6 +45,7 @@ CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against
 | `docs/json-output.md`, `docs/schemas/` | [The `--json` output](docs/json-output.md) and its JSON Schema files: a **public contract** (DEC-23). Ask the owner before changing an existing field. `tests/unit/test_json_contract.py` checks every kind of document against the schemas, and its `V1_FIELDS` records what version 1 promises, so a new field goes in the output, the schema, the guide and that record. |
 | `SECURITY.md`, `docs/threat-model.md` | [How to report a vulnerability](SECURITY.md), and [what BECK protects and the risks it accepts](docs/threat-model.md). Update the threat model when a change alters a defense it names. |
 | `docs/spikes/` | Results of technical experiments, such as [`smbprotocol` vs `pysmb`](docs/spikes/smbprotocol.md). |
+| `docs/releasing.md` | [Versions, tags and the release checklist](docs/releasing.md): who does each step, and what to check. Agents stop before the push; the owner tags and approves. |
 | `docs/maintenance.md` | [Monthly maintenance routine](docs/maintenance.md): dependency upgrades, pin refreshes, security review (replaces an update bot, DEC-29). Follow it when asked to update dependencies, or when the weekly *Security* run or an expired `.trivyignore` entry fails. |
 | `.github/pull_request_template.md` | PR description template with the roadmap checklist. Fill it in when preparing a PR description for the human. |
 | `docs/adr/` | [Architecture Decision Records](docs/adr/README.md): the reasoning and rejected alternatives behind every DEC. Read the relevant ADR before proposing to change a decision. |
@@ -201,6 +203,7 @@ Agent Skills live in `.agents/skills/<name>/SKILL.md` (open agentskills.io forma
 | `add-report-fixture` | [`.agents/skills/add-report-fixture/SKILL.md`](.agents/skills/add-report-fixture/SKILL.md) | Someone provides a `missing_bios_report.txt`, or a new Recalbox version needs support. |
 | `add-frontend-adapter` | [`.agents/skills/add-frontend-adapter/SKILL.md`](.agents/skills/add-frontend-adapter/SKILL.md) | Asked to support another system, such as Batocera or RetroBat. |
 | `diagnose-missing-bios` | [`.agents/skills/diagnose-missing-bios/SKILL.md`](.agents/skills/diagnose-missing-bios/SKILL.md) | A user asks why a BIOS file is missing, or asks you to run BECK on their files. |
+| `cut-release` | [`.agents/skills/cut-release/SKILL.md`](.agents/skills/cut-release/SKILL.md) | Asked to cut, prepare or publish a release or a release candidate. |
 
 ## Code style
 
