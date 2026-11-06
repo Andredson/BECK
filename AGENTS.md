@@ -38,6 +38,7 @@ CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against
 | `docs/troubleshooting.md` | [Each message BECK prints](docs/troubleshooting.md), with why and what to do. A new error needs an entry here, which `tests/test_troubleshooting.py` checks for its code. |
 | `docs/user-guide/` | Guides for people using BECK, such as [generating the report](docs/user-guide/generate-report.md). |
 | `docs/cli.md` | [The `beck` command](docs/cli.md): commands, flags, exit codes and what gets deleted. |
+| `docs/cli-reference.md`, `scripts/gen_cli_reference.py` | [What each `--help` prints](docs/cli-reference.md), **generated** by that script. Don't edit it by hand; `tests/test_cli_reference.py` fails if it's out of date. |
 | `docs/json-output.md`, `docs/schemas/` | [The `--json` output](docs/json-output.md) and its JSON Schema files: a **public contract** (DEC-23). Ask the owner before changing an existing field. `tests/unit/test_json_contract.py` checks every kind of document against the schemas, and its `V1_FIELDS` records what version 1 promises, so a new field goes in the output, the schema, the guide and that record. |
 | `SECURITY.md`, `docs/threat-model.md` | [How to report a vulnerability](SECURITY.md), and [what BECK protects and the risks it accepts](docs/threat-model.md). Update the threat model when a change alters a defense it names. |
 | `docs/spikes/` | Results of technical experiments, such as [`smbprotocol` vs `pysmb`](docs/spikes/smbprotocol.md). |
@@ -75,6 +76,7 @@ Before committing, this must pass; it's what the `quality` and `tests` CI jobs r
 uv lock --check && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest && uv run python scripts/check_repo_hygiene.py
 ```
 
+- **After changing a flag or its help**, regenerate the reference: `uv run python scripts/gen_cli_reference.py`.
 - **After any change to dependencies**, regenerate the pip file: `uv export --no-dev --no-hashes --no-emit-project -o requirements.txt`.
   Adding a dependency needs a DEC first (see [Hard rules](#hard-rules)); `uv add` and `uv lock` respect the cooldown.
 - **The other CI checks**, if you have the tools installed (the pinned versions are in the `env:` block of

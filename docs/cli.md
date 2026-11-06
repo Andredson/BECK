@@ -1,6 +1,6 @@
 # The `beck` command
 
-The reference for using BECK from the command line.
+The guide to using BECK from the command line. [The command reference](cli-reference.md) has what each command's `--help` prints.
 
 
 ```text

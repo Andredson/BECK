@@ -70,7 +70,8 @@ DEC-13, DEC-20, DEC-30, DEC-42, DEC-43.
 - **Commit message:** `docs: add troubleshooting guide keyed by error message`
 
 ### 08.4 — Generated CLI reference with a sync test
-- [ ] Done
+- [x] Done (2026-11-06: `argparse` wraps one usage line differently on Python 3.13 and later, so the script re-wraps the usage block itself, and the file is byte-identical on 3.11–3.14, which was run on each. Standard library only, plus
+  `beck`'s own parser, and it reads two private `argparse` names to find the subcommands. Changing a real flag's help made the test fail, and regenerating fixed it. Beyond the list below: `docs/cli.md`, `AGENTS.md`.)
 - **What:** `scripts/gen_cli_reference.py` renders `beck --help` and every subcommand's `--help` into
   `docs/cli-reference.md` (standard library only, with a fixed terminal width via the `COLUMNS` env var so the
   output is stable). Add `tests/test_cli_reference.py`, which fails if the file is out of date. The
