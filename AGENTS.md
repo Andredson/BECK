@@ -137,6 +137,34 @@ uv lock --check && uv run ruff check . && uv run ruff format --check . && uv run
 - **Vendor-neutral.** Project knowledge goes in this file, `docs/`, or `.agents/skills/`, never in
   vendor-specific files.
 
+## Using BECK as a tool
+
+For an agent asked to run BECK on someone's files, rather than to change its code. [JSON output](docs/json-output.md) has every
+field, with [the schemas](docs/schemas/), and [the `beck` command](docs/cli.md) has every flag.
+
+1. **Look first.** Always run `beck --json check --dry-run …` first, and show the human the plan: `uploads` (with `replaces` and
+   `warning`), `incorrect`, `still_missing`, `unreadable` and `deleted`. A dry run changes nothing, but it does connect to the target,
+   so use only a target the human named. `beck --json scan --source DIR` and `beck --json report --report-file FILE` work with no
+   network.
+2. **Parse stdout as JSON, and branch on the exit code.** Stdout holds one document, even for an error or a bad flag, and logs go to
+   stderr. Check that `schema_version` is `1`. The exceptions: `--help` and `--version` print text, and Ctrl-C prints no document.
+
+   | Exit code | What it means | What to do |
+   |---|---|---|
+   | 0 | The run finished. Files may still be missing. | Tell the human what's in `still_missing` and `incorrect`. |
+   | 1 | A bug in BECK. | Stop, and show the human stderr. The lists can't be trusted, because a bug can stop a run partway. |
+   | 2 | A bad flag or setting, or a deletion nobody confirmed. Nothing changed. | Read `errors`. Don't answer a refused deletion by adding `--yes`. |
+   | 3 | The target failed, or some items did, and the others finished. | Read `errors`, and `uploads[].status`, before running it again. |
+   | 4 | No report, or one BECK can't read. | Ask the human to generate a new one on the device. |
+   | 5 | `--fail-if-missing` found required files missing or incorrect. `errors` is empty. | Tell the human what's in `still_missing` and `incorrect`. |
+
+3. **Never add `--yes`, `--overwrite`, `--move` or `--clean-unmatched` without the human's explicit approval in this session,** for
+   this run. `--overwrite` keeps no copy of what it replaces. `--move` and `--clean-unmatched` delete local files, and `--clean-unmatched` can
+   delete [good BIOS files](docs/cli.md#what-beck-deletes-and-when) after a rescan. First run the same command with `--dry-run`, and
+   show the human `deleted` and `replaces`. `--json` never asks, so `--yes` would be what confirms the deletion, on the human's behalf.
+4. **Never pass passwords on the command line,** where anyone can read them. BECK refuses a `--target` URL holding a password, with exit
+   code 2. Don't show the human or a log what's in `config/config.yml`.
+
 ## Agent tooling notes
 
 - **AGENTS.md is read natively** by most coding agents. For Claude Code (≥ 2.1.277) this only holds while there

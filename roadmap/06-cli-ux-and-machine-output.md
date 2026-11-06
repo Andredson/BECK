@@ -348,7 +348,7 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `fix(output): escape control characters in names shown to people`
 
 ### 06.12 — Agent guidance for driving BECK
-- [ ] Done
+- [x] Done (2026-11-06: beyond the list below, the section says what to do for each exit code, and that a dry run still connects to the target.)
 - **What:** Add a **"Using BECK as a tool"** section to AGENTS.md:
   - always run `beck --json check --dry-run …` first and show the plan to the human;
   - parse stdout as JSON and branch on the exit code;
