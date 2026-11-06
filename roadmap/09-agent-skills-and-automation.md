@@ -104,7 +104,9 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
 - **Commit message:** `feat(skills): add quality-gates skill`
 
 ### 09.5 — Skill: `add-report-fixture`
-- [ ] Done
+- [x] Done (2026-11-06: step 5's rules, written as a throwaway script with no `beck` imports, gave exactly the committed expected file for all seven reports. The whole skill was then followed in a clone on the owner's VM report, adding two passing tests, and a wrong expected file failed; none of that was
+  committed. The skill allows such a script as well as reading by hand, because that's how the existing files were made, with the tricky entries checked by hand. Step 1's check, which also finds personal data, printed nothing on all eight reports, and flagged made-up lines. An agent hasn't followed the skill yet: that's 09.10. Beyond the
+  list below: the pointer in `tests/fixtures/README.md`.)
 - **What:** Turn a report provided by a human into a fixture:
   1. ask for the Recalbox version and the menu path used;
   2. anonymize (with a list of what to look for);
