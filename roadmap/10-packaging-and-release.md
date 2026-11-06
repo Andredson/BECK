@@ -124,7 +124,8 @@ flowchart LR
 - **Commit message:** `ci: add tag-driven release workflow with trusted publishing`
 
 ### 10.7 — Release process documentation
-- [ ] Done
+- [x] Done (2026-11-06: the preparation was rehearsed in a throwaway clone of the real history, from rc to final, and the suite passes on a bumped version. That found that the plain changelog command would label a release's changes `Unreleased` inside the released package, so the checklist uses `--tag`. The first real run of `release.yml`'s `build` job, on the PR, produced the wheel, the source archive and a separate SBOM with the expected packages. Only
+  10.9 can test the steps after the tag. Step 4 tags `main`, so 10.9 needs this stage's work merged first. The checklist adds what to do if something goes wrong. Beyond the list below: `tests/test_release_workflow.py` and `docs/maintenance.md`.)
 - **What:** Complete `docs/releasing.md` with a numbered checklist, and mark who does each step:
   1. *(agent or owner)* Make sure the planned stages are closed and `main` is green.
   2. *(agent)* Bump the version, regenerate [`CHANGELOG.md`](../docs/maintenance.md#regenerating-the-changelog) and `docs/cli-reference.md`, and commit

@@ -1,6 +1,6 @@
 # Releasing BECK
 
-How versions and tags work. The owner tags and publishes, and an agent never does (DEC-43).
+How versions and tags work, and the checklist for a release. Agents do the preparation. Only the owner pushes a tag or approves a publish (DEC-43), so an agent stops at step 3.
 
 ## Version numbers
 
@@ -73,3 +73,44 @@ trivy fs --format cyclonedx --skip-dirs .venv --skip-files requirements.txt --ou
 - **Dev dependencies are left out.** They never reach a user's computer, and Trivy has no way to label them as dev, so including them would make them look like part of BECK.
 - **It goes in `sbom/`, not `dist/`.** `twine check dist/*` fails on anything that isn't a package, and the upload to PyPI takes the whole folder.
 - **What it doesn't have:** licenses, because `uv.lock` doesn't hold them. Its top-level name is `.`, from the path Trivy was given, so the file's name and the `beck-bios` entry are what say what it describes.
+
+## The release checklist
+
+`X.Y.Z` is the version, which can be a release candidate like `0.6.0rc1`. A release candidate goes through the same steps, except that it publishes to TestPyPI with no approval.
+
+1. **Check that it's ready.** *(Agent or owner)* The planned stages are closed, `main` is green, and for a final release, its release candidate went well. Look at any open `.trivyignore` expiry.
+
+2. **Prepare the release.** *(Agent)* On a branch the owner has created, bump the version as [above](#where-the-version-lives), regenerate what depends on it, and commit:
+
+   ```sh
+   uv run python scripts/gen_cli_reference.py
+   uvx --exclude-newer "14 days" git-cliff@2.14.2 --tag "v$(uv version --short)" -o CHANGELOG.md
+   git add pyproject.toml uv.lock CHANGELOG.md docs/cli-reference.md
+   git commit -m "chore(release): $(uv version --short)"
+   ```
+
+   `--tag` is what puts the changes under this version, not under `Unreleased`, which would then be in the released package. The commit needs [the quality gates](../.agents/skills/quality-gates/SKILL.md) to pass first. **Check:** `CHANGELOG.md` starts with this version, and its `Breaking` lines say what a user needs to know.
+
+3. **Merge it.** *(Owner)* Push the branch, open the PR, and merge it with a merge commit. **Check:** CI is green, including `package`.
+
+4. **Tag it.** *(Owner)* The workflow starts from this:
+
+   ```sh
+   git switch main && git pull && git tag -a vX.Y.Z -m "beck-bios X.Y.Z" && git push origin vX.Y.Z
+   ```
+
+   **Check:** in the *Release* workflow, the `build` job passes. It fails if the tag isn't the project's version, and then nothing has been published.
+
+5. **Approve the publish.** *(Owner, final releases only)* The `pypi` environment waits for you. **Check:** it's the tag you meant, and `build` passed.
+
+6. **Check the result.** *(Anyone)*
+   - **The project's page** on [PyPI](https://pypi.org/project/beck-bios/) or [TestPyPI](https://test.pypi.org/project/beck-bios/): the version, the description, its links, and that the files show attestations.
+   - **That it installs:** in a new environment, `pipx install beck-bios==X.Y.Z` or `uv tool install beck-bios==X.Y.Z`, then `beck --version`. A release candidate installs from TestPyPI, with its dependencies from PyPI: `uvx --index https://test.pypi.org/simple/ --index-strategy unsafe-best-match --from "beck-bios==X.Y.Z" beck --version`.
+   - **The [GitHub Release](https://github.com/Andredson/BECK/releases):** it has the notes, the wheel, the source archive and the SBOM, and a release candidate is marked as a pre-release. Commit messages are short, so if a `Breaking` line doesn't say enough, add to the notes with `gh release edit vX.Y.Z --notes-file <file>`.
+
+### If something goes wrong
+
+- **`build` failed:** nothing was published. Fix it in a new PR. If the fix changes files in the release, it needs a new version and a new tag.
+- **A publish job failed:** read why. If it's a setting, such as the trusted publisher or the environment, fix that and re-run the failed jobs.
+- **The GitHub Release failed, after publishing:** the package is out. Re-run that job.
+- **A published version is wrong:** you can't replace it. Publish a fix as a new version, and [yank the bad one](https://pypi.org/help/#yanked) on PyPI if it could harm someone.

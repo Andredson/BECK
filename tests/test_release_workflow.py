@@ -12,6 +12,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 MAINTENANCE = (ROOT / "docs" / "maintenance.md").read_text(encoding="utf-8")
+RELEASING = (ROOT / "docs" / "releasing.md").read_text(encoding="utf-8")
 PUBLISHERS = ("publish-testpypi", "publish-pypi")
 
 
@@ -116,11 +117,33 @@ def test_release_notes_run_from_the_last_final_release() -> None:
 
 def test_git_cliff_has_one_version_here_and_in_the_routine() -> None:
     pinned = re.search(r'GIT_CLIFF_VERSION: "([^"]+)"', WORKFLOW)
-    documented = re.search(r"git-cliff@([0-9.]+) -o CHANGELOG\.md", MAINTENANCE)
+    documented = re.findall(r"git-cliff@([0-9.]+)", MAINTENANCE + RELEASING)
 
     assert pinned is not None
-    assert documented is not None
-    assert pinned.group(1) == documented.group(1)
+    assert len(documented) >= 2
+    assert set(documented) == {pinned.group(1)}
+
+
+def test_the_checklist_names_who_does_each_step() -> None:
+    steps = re.findall(r"^\d\. \*\*.+$", RELEASING.split("## The release checklist", 1)[1], re.M)
+
+    assert len(steps) == 6
+    assert all(re.search(r"\*\((Agent|Owner|Anyone)", step) for step in steps)
+
+
+def test_the_checklist_puts_the_changes_under_the_version() -> None:
+    # Without --tag, a released CHANGELOG.md calls them Unreleased (step 10.7).
+    assert '--tag "v$(uv version --short)" -o CHANGELOG.md' in RELEASING
+
+
+def test_only_the_owner_pushes_a_tag_or_approves() -> None:
+    steps = RELEASING.split("## The release checklist", 1)[1].split("### If something", 1)[0]
+    tagging = steps[steps.index("4. **Tag it.**") : steps.index("5. **Approve")]
+    approving = steps[steps.index("5. **Approve") : steps.index("6. **Check the result")]
+
+    assert "*(Owner)*" in tagging
+    assert "git push origin vX.Y.Z" in tagging
+    assert "*(Owner, final releases only)*" in approving
 
 
 def test_a_job_list_comes_apart_correctly() -> None:

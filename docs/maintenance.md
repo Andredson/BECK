@@ -85,7 +85,7 @@ uv run pytest --cov --cov-report=xml
 | Trivy | `TRIVY_VERSION`, `TRIVY_SHA256` | [4a](#4a-list-releases-with-their-age) on `aquasecurity/trivy`; must show `immutable=true` | Three matching hashes ([4c](#4c-hash-a-release-binary)), and Trivy's advisories |
 | commitizen | `COMMITIZEN_VERSION` | [4d](#4d-list-pypi-releases-with-their-age) | Release notes |
 | twine | `TWINE_VERSION` | [4d](#4d-list-pypi-releases-with-their-age) | Release notes |
-| git-cliff | `GIT_CLIFF_VERSION` in `release.yml`, and [the changelog command](#regenerating-the-changelog) | [4d](#4d-list-pypi-releases-with-their-age) | Release notes, then regenerate: only the expected lines should change |
+| git-cliff | `GIT_CLIFF_VERSION` in `release.yml`, [the changelog command](#regenerating-the-changelog), and [the release checklist](releasing.md#the-release-checklist) | [4d](#4d-list-pypi-releases-with-their-age) | Release notes, then regenerate: only the expected lines should change |
 
 All of them but git-cliff are in the `env:` block or the `uses:` lines of **both** `.github/workflows/ci.yml` and
 `.github/workflows/security.yml` (commitizen, twine and `upload-artifact` only in `ci.yml`). `.github/workflows/release.yml` repeats uv, twine, Trivy, checkout, setup-uv and `upload-artifact`, and has the only copy of `download-artifact` and `pypa/gh-action-pypi-publish`. Update the version, the hash
@@ -225,7 +225,7 @@ git push -u origin deps/YYYY-MM && gh pr create --base main --title "build(deps)
 
 ## Regenerating the changelog
 
-`CHANGELOG.md` is generated from the commit messages, by the rules in `cliff.toml` (DEC-20), so it's never edited by hand. It's regenerated for each release, so `Unreleased` falls behind between releases, and it can't include the commit that updates it. This version was pinned on 2026-11-06:
+`CHANGELOG.md` is generated from the commit messages, by the rules in `cliff.toml` (DEC-20), so it's never edited by hand. It's regenerated for each release, with `--tag`, as in [the checklist](releasing.md#the-release-checklist), so `Unreleased` falls behind between releases, and it can't include the commit that updates it. This version was pinned on 2026-11-06:
 
 ```sh
 uvx --exclude-newer "14 days" git-cliff@2.14.2 -o CHANGELOG.md
