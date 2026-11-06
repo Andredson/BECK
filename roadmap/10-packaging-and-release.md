@@ -64,7 +64,8 @@ flowchart LR
 - **Commit message:** `build: complete package metadata for PyPI`
 
 ### 10.3 — Versioning rules
-- [ ] Done
+- [x] Done (2026-11-06: each command was run in a throwaway clone, which changed two things from the list below. A bump also changes `uv.lock`, so "only in `pyproject.toml`" became "commit both", and hand-editing it fails CI's check, which was run. Release candidates need `--bump rc` and `--bump stable` too. The tag check is written down, and 10.6 puts it in the workflow.
+  `CONTRIBUTING.md` doesn't exist yet, so 12.1 now lists the link. Beyond the list below: the `AGENTS.md` map, 12.1, and what counts as a breaking change, from DEC-23.)
 - **What:** Document in `docs/releasing.md`:
   - SemVer, with a pre-1.0 policy: minor version for features or breaking changes, patch for fixes.
   - The version lives only in `pyproject.toml`, bumped with `uv version --bump major|minor|patch` (DEC-18).
