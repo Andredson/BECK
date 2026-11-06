@@ -2272,6 +2272,19 @@ def test_exit_2_a_password_that_is_not_text_is_never_repeated(
     assert "quotes" in out.out
 
 
+def test_exit_2_a_yaml_error_stays_on_one_line(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write(app / "config" / "config.yml", b"smb: {unclosed\n")
+
+    assert cli.main(["check"], base_dir=app) == 2
+
+    output = capsys.readouterr().out
+    assert "isn't valid YAML" in output
+    assert output.count("\n") == 1
+    assert "\\x0a" not in output
+
+
 def test_exit_2_a_config_that_is_not_utf8(
     server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

@@ -10,6 +10,7 @@ import io
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -762,3 +763,39 @@ def test_a_real_terminal_shows_the_counter_during_a_scan(tmp_path: Path) -> None
     assert b"Hashing files: 1" in shown
     assert b"Hashing" not in done.stdout
     assert md5_of(GOOD).encode() in done.stdout
+
+
+# Control characters in names (D24), in the bytes of a real process
+
+
+HOSTILE = b"evil\x1b[2J\x1b]0;title\x07\r\tname.bin"
+
+
+def test_a_real_process_writes_no_control_character_from_a_name(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / os.fsdecode(HOSTILE)).write_bytes(GOOD)
+    (source / "new\nline.bin").write_bytes(os.urandom(64))
+
+    done = run_beck("scan", "--source", str(source))
+
+    assert done.returncode == 0
+    assert not re.search(rb"[\x00-\x09\x0b-\x1f\x7f]", done.stdout)
+    assert done.stdout.count(b"\n") == 3
+    assert rb"evil\x1b[2J\x1b]0;title\x07\x0d\x09name.bin" in done.stdout
+
+
+def test_a_real_terminal_gets_the_prompt_escaped(tmp_path: Path) -> None:
+    source, device = tmp_path / "source", tmp_path / "device"
+    source.mkdir()
+    device.mkdir()
+    (source / os.fsdecode(HOSTILE)).write_bytes(GOOD)
+    write_report(device, make_missing("good.bin", md5_of(GOOD)))
+    flags = ["--source", str(source), "--target-dir", str(device)]
+
+    done = on_a_terminal("check", "--move", *flags, typed=b"n\n")
+
+    assert done.returncode == 2
+    assert not re.search(rb"[\x00-\x09\x0b-\x1f\x7f]", done.stderr)
+    assert rb"evil\x1b[2J\x1b]0;title\x07\x0d\x09name.bin" in done.stderr
+    assert (source / os.fsdecode(HOSTILE)).exists()

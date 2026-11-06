@@ -25,7 +25,7 @@ from beck.models import (
     RunResult,
     Unreadable,
 )
-from beck.output import console, upload_status
+from beck.output import console, escaped_for_terminal, upload_status
 from beck.output.console import ConsoleRenderer, configure_logging, enable_windows_ansi, wants_color
 from beck.output.json import JsonRenderer
 from beck.transports.local import LocalTransport
@@ -1327,3 +1327,361 @@ def test_without_q_an_incorrect_file_has_only_its_usual_line(
     lines = capsys.readouterr().out.splitlines()
     assert "INCORRECT: bad.bin is on the device with a wrong MD5, and was kept" in lines
     assert "INCORRECT: bad.bin" not in lines
+
+
+# Control characters in names (D24): what comes from outside BECK reaches a terminal escaped
+
+# Clears the screen, sets the title, rings the bell, uses a one-byte escape, moves the cursor back
+# to overwrite the line, reverses the text after it, and more. A report can't hold a line break.
+HOSTILE = "evil\x1b[2J\x1b]0;title\x07\x9b31m\r\t‮gnp.\x7f"
+HOSTILE_SHOWN = "evil\\x1b[2J\\x1b]0;title\\x07\\x9b31m\\x0d\\x09\\u202egnp.\\x7f"
+OWN_COLORS = re.compile(r"\x1b\[(?:0|91|92|93|94|35|36)m")
+UNSAFE = re.compile("[\x00-\x09\x0b-\x1f\x7f-\x9f‪-‮⁦-⁩\udc80-\udcff]")
+
+
+@pytest.fixture
+def colors(monkeypatch: pytest.MonkeyPatch) -> None:
+    """With colors on, BECK's own codes must be the only escape sequences left."""
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setenv("FORCE_COLOR", "1")
+
+
+def assert_safe(text: str) -> None:
+    assert not UNSAFE.search(OWN_COLORS.sub("", text)), repr(text)
+    assert "_Painted" not in text, "a colored part was put inside an f-string"
+
+
+def shown_by(capsys: pytest.CaptureFixture[str]) -> str:
+    """What reached stdout and stderr, which must both be safe."""
+    out = capsys.readouterr()
+    assert_safe(out.out)
+    assert_safe(out.err)
+    return OWN_COLORS.sub("", out.out + out.err)
+
+
+@pytest.mark.parametrize(
+    ("raw", "shown"),
+    [
+        ("plain.bin", "plain.bin"),
+        ("ü/é-日本語-🎮.bin", "ü/é-日本語-🎮.bin"),
+        ("a\nb", "a\\x0ab"),
+        ("a\tb", "a\\x09b"),
+        ("a\rb", "a\\x0db"),
+        ("a\x00b", "a\\x00b"),
+        ("a\x1bb", "a\\x1bb"),
+        ("a\x1fb", "a\\x1fb"),
+        ("a b", "a b"),
+        ("a\x7fb", "a\\x7fb"),
+        ("a\x80b", "a\\x80b"),
+        ("a\x9fb", "a\\x9fb"),
+        ("a\xa0b", "a\xa0b"),
+        ("a‪b", "a\\u202ab"),
+        ("a‮b", "a\\u202eb"),
+        ("a⁦b", "a\\u2066b"),
+        ("a⁩b", "a\\u2069b"),
+        ("a⁥b", "a⁥b"),
+        (os.fsdecode(b"a\xffb"), "a\\xffb"),
+        (os.fsdecode(b"a\x80b"), "a\\x80b"),
+    ],
+)
+def test_what_gets_escaped(raw: str, shown: str) -> None:
+    assert escaped_for_terminal(raw) == shown
+
+
+def test_a_hostile_name_shows_as_this() -> None:
+    assert escaped_for_terminal(HOSTILE) == HOSTILE_SHOWN
+
+
+def test_check_shows_local_names_escaped_in_every_outcome(
+    folders: tuple[Path, Path], colors: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source, device = folders
+    good = make_bios_file(source, f"{HOSTILE}.bin")
+    make_bios_file(source, f"z-{HOSTILE}-copy.bin", good.path.read_bytes())
+    make_bios_file(source, f"junk-{HOSTILE}.bin")
+    own = make_bios_file(source, "own.bin")
+    other = make_bios_file(source, f"filled-{HOSTILE}.bin")
+    fix = make_bios_file(source, f"fix-{HOSTILE}.bin")
+    (source / f"broken-{HOSTILE}").symlink_to(source / "nowhere")
+    make_bios_file(device, "bad.bin")
+    put_report(
+        device,
+        make_missing("good.zip", good.md5),
+        make_missing("own.bin", own.md5, other.md5),
+        make_missing("bad.bin", fix.md5, incorrect=True),
+    )
+
+    assert cli.main(check(folders)) == 0
+
+    shown = shown_by(capsys)
+    for line in (
+        f"{HOSTILE_SHOWN}.bin: copied -> good.zip",
+        f"z-{HOSTILE_SHOWN}-copy.bin: duplicate of {HOSTILE_SHOWN}.bin, kept",
+        f"junk-{HOSTILE_SHOWN}.bin: no match, kept",
+        f"filled-{HOSTILE_SHOWN}.bin: target already filled, kept",
+        f"fix-{HOSTILE_SHOWN}.bin: valid for bad.bin, which is incorrect on the device, kept",
+        f"broken-{HOSTILE_SHOWN}: can't be read, skipped",
+        f"Warning: {HOSTILE_SHOWN}.bin has a different extension from good.zip",
+    ):
+        assert line in shown
+
+
+def test_check_shows_names_from_the_report_escaped(
+    folders: tuple[Path, Path], colors: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source, device = folders
+    file = make_bios_file(source, "good.bin")
+    make_bios_file(device, "x")
+    put_report(
+        device,
+        make_missing(f"up-{HOSTILE}.bin", file.md5),
+        make_missing(f"gone-{HOSTILE}.bin", A),
+        make_missing(f"bad-{HOSTILE}.bin", B, incorrect=True),
+    )
+
+    assert cli.main(check(folders, "--fail-if-missing", "--dry-run")) == 5
+
+    shown = shown_by(capsys)
+    assert f"good.bin: would copy -> up-{HOSTILE_SHOWN}.bin" in shown
+    assert f"MISSING: gone-{HOSTILE_SHOWN}.bin" in shown
+    assert f"INCORRECT: bad-{HOSTILE_SHOWN}.bin is on the device" in shown
+
+
+def test_a_real_upload_shows_the_name_from_the_report_escaped(
+    folders: tuple[Path, Path], colors: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source, device = folders
+    file = make_bios_file(source, "good.bin")
+    put_report(device, make_missing(f"up-{HOSTILE}.bin", file.md5))
+
+    assert cli.main(check(folders)) == 0
+
+    assert f"FOUND: up-{HOSTILE_SHOWN}.bin -> up-{HOSTILE_SHOWN}.bin" in shown_by(capsys)
+
+
+@pytest.mark.parametrize(
+    ("flags", "line"),
+    [
+        (("-q", "--move", "--yes"), "deleted"),
+        (("-q", "--move", "--dry-run"), "would be deleted"),
+        (("--move", "--yes"), "deleted"),
+    ],
+    ids=["quiet", "quiet-dry-run", "normal"],
+)
+def test_a_deletion_shows_the_name_escaped(
+    folders: tuple[Path, Path],
+    colors: None,
+    capsys: pytest.CaptureFixture[str],
+    flags: tuple[str, ...],
+    line: str,
+) -> None:
+    source, device = folders
+    file = make_bios_file(source, f"{HOSTILE}.bin")
+    put_report(device, make_missing("good.bin", file.md5))
+
+    assert cli.main(check(folders, *flags)) == 0
+
+    assert f"{HOSTILE_SHOWN}.bin: {line}" in shown_by(capsys)
+
+
+def test_quiet_shows_names_from_the_report_escaped(
+    folders: tuple[Path, Path], colors: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    device = folders[1]
+    make_bios_file(folders[0], "junk.bin")
+    put_report(
+        device,
+        make_missing(f"gone-{HOSTILE}.bin", A),
+        make_missing(f"bad-{HOSTILE}.bin", B, incorrect=True),
+    )
+
+    assert cli.main(["-q", *check(folders, "--fail-if-missing")]) == 5
+
+    shown = shown_by(capsys)
+    assert f"MISSING: gone-{HOSTILE_SHOWN}.bin" in shown
+    assert f"INCORRECT: bad-{HOSTILE_SHOWN}.bin" in shown
+
+
+def test_report_shows_names_escaped(
+    folders: tuple[Path, Path], colors: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    device = folders[1]
+    put_report(
+        device,
+        make_missing(f"ps1-{HOSTILE}/gone-{HOSTILE}.bin", A),
+        make_missing(f"bad-{HOSTILE}.bin", B, incorrect=True),
+    )
+
+    assert cli.main(["report", "--target-dir", str(device)]) == 0
+
+    shown = shown_by(capsys)
+    assert f"ps1-{HOSTILE_SHOWN}/\n" in shown
+    assert f"  gone-{HOSTILE_SHOWN}.bin (required)" in shown
+    assert f"INCORRECT: bad-{HOSTILE_SHOWN}.bin (required)" in shown
+
+
+def test_scan_keeps_one_line_per_file(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], colors: None
+) -> None:
+    make_bios_file(tmp_path, "new\nline.bin")
+    make_bios_file(tmp_path, f"{HOSTILE}.bin")
+    (tmp_path / "broken\nlink").symlink_to(tmp_path / "nowhere")
+
+    assert cli.main(["scan", "--source", str(tmp_path)]) == 0
+
+    lines = shown_by(capsys).splitlines()
+    assert len(lines) == 4
+    assert lines[0].endswith(f"  {HOSTILE_SHOWN}.bin")
+    assert lines[1].endswith("  new\\x0aline.bin")
+    assert lines[2].startswith("broken\\x0alink: can't be read")
+
+
+def test_an_error_that_stops_a_run_shows_the_name_escaped(
+    folders: tuple[Path, Path], colors: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    device = folders[1]
+    (device / "missing_bios_report.txt").write_text(
+        f"MISSING BIOS REPORT\n  MISSING REQUIRED BIOS: {HOSTILE}\n", encoding="utf-8"
+    )
+
+    assert cli.main(["report", "--target-dir", str(device)]) == 4
+
+    assert f"Error: No Path line in report block: MISSING REQUIRED BIOS: {HOSTILE_SHOWN}" in (
+        shown_by(capsys)
+    )
+
+
+def test_an_error_about_one_item_shows_the_name_escaped(
+    folders: tuple[Path, Path],
+    colors: None,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source, device = folders
+    file = make_bios_file(source, "good.bin")
+    put_report(device, make_missing(f"up-{HOSTILE}.bin", file.md5))
+
+    def refuse(_self: LocalTransport, _local: Path, remote: PurePosixPath) -> int:
+        raise TransportError(f"Can't write {remote}")
+
+    monkeypatch.setattr(LocalTransport, "upload", refuse)
+
+    assert cli.main(check(folders)) == 3
+
+    assert f"Error: Can't write up-{HOSTILE_SHOWN}.bin" in shown_by(capsys)
+
+
+def test_a_folder_named_on_the_command_line_shows_escaped(
+    tmp_path: Path, colors: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    folder = tmp_path / f"folder-{HOSTILE}"
+    folder.mkdir()
+
+    assert cli.main(["scan", "--source", str(folder)]) == 0
+    assert f"folder-{HOSTILE_SHOWN}" in shown_by(capsys)
+
+    assert cli.main(["scan", "--source", f"{folder}-nope"]) == 2
+    assert f"folder-{HOSTILE_SHOWN}-nope" in shown_by(capsys)
+
+
+def test_a_rejected_command_line_shows_the_argument_escaped(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with pytest.raises(SystemExit) as stop:
+        cli.main(["check", HOSTILE])
+
+    assert stop.value.code == 2
+    assert HOSTILE_SHOWN in shown_by(capsys)
+
+
+def test_v_logs_show_names_escaped(
+    folders: tuple[Path, Path], colors: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source, device = folders
+    file = make_bios_file(source, f"{HOSTILE}.bin")
+    put_report(device, make_missing(f"up-{HOSTILE}.bin", file.md5))
+
+    assert cli.main(["-v", *check(folders)]) == 0
+
+    out = capsys.readouterr()
+    assert_safe(out.err)
+    assert f"Plan: {HOSTILE_SHOWN}.bin -> up-{HOSTILE_SHOWN}.bin" in out.err
+    assert f"Copied up-{HOSTILE_SHOWN}.bin" in out.err
+
+
+def test_a_log_line_cannot_pretend_to_be_two(capsys: pytest.CaptureFixture[str]) -> None:
+    configure_logging().warning("Using %s", "a\nb")
+
+    assert capsys.readouterr().err == "Using a\\x0ab\n"
+
+
+def test_a_traceback_keeps_its_lines_and_loses_only_what_is_unsafe(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    try:
+        raise RuntimeError(f"a bug with {HOSTILE}")
+    except RuntimeError:
+        configure_logging().exception("Unexpected error")
+
+    err = capsys.readouterr().err
+    assert_safe(err)
+    assert err.startswith("Unexpected error\nTraceback (most recent call last):\n")
+    assert f"RuntimeError: a bug with {HOSTILE_SHOWN}\n" in err
+
+
+def test_the_prompt_shows_what_it_would_delete_escaped(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    preview = RunResult(plan=Plan(), deleted=(make_local_file(f"{HOSTILE}.bin", A),))
+    monkeypatch.setattr(sys, "stdin", io.StringIO("n\n"))
+
+    assert ConsoleRenderer(io.StringIO(), {}).confirm_deletion(preview) is False
+
+    err = capsys.readouterr().err
+    assert_safe(err)
+    assert f"  {HOSTILE_SHOWN}.bin\n" in err
+
+
+def test_a_prompt_cannot_list_a_file_as_if_it_were_two(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = "harmless.bin\n  also-harmless.bin"
+    preview = RunResult(plan=Plan(), deleted=(make_local_file(fake, A),))
+    monkeypatch.setattr(sys, "stdin", io.StringIO("n\n"))
+
+    ConsoleRenderer(io.StringIO(), {}).confirm_deletion(preview)
+
+    assert capsys.readouterr().err.splitlines() == [
+        "  harmless.bin\\x0a  also-harmless.bin",
+        "Delete 1 files? [y/N] ",
+    ]
+
+
+def test_json_keeps_the_exact_name(
+    folders: tuple[Path, Path], colors: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source, device = folders
+    name = f"{HOSTILE}\n.bin"
+    make_bios_file(source, name)
+    put_report(device, make_missing(f"gone-{HOSTILE}.bin", A))
+
+    assert cli.main(["--json", *check(folders)]) == 0
+
+    out = capsys.readouterr().out
+    assert_safe(out)
+    document = json.loads(out)
+    assert document["unmatched"][0]["path"] == name
+    assert document["still_missing"][0]["target"] == f"gone-{HOSTILE}.bin"
+
+
+def test_colors_still_go_on_around_escaped_text(
+    tmp_path: Path, colors: None, capsys: pytest.CaptureFixture[str]
+) -> None:
+    folder = tmp_path / f"empty{HOSTILE}"
+    folder.mkdir()
+
+    assert cli.main(["scan", "--source", str(folder)]) == 0
+
+    out = capsys.readouterr().out
+    assert out.startswith(console.CYAN)
+    assert f"empty{HOSTILE_SHOWN}{console.RESET}\n" in out

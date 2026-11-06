@@ -74,8 +74,9 @@ While hashing, a counter shows on stderr, but only on a terminal, and not with `
 
 Colors follow `NO_COLOR`, then `FORCE_COLOR`, and otherwise appear only on a terminal. An empty value counts as not set.
 
-A file name that isn't valid UTF-8, or that your terminal can't show, appears escaped, like `x\xff.bin`, and BECK carries on. `--json`
-keeps the exact name.
+A name can hold anything, so human output and logs show it safely. Bytes that aren't valid UTF-8, characters your terminal can't show,
+control characters and the controls for the direction of text all appear escaped, like `x\xff.bin` or `new\x0aline.bin`, so a name can't
+act on your terminal, or look like something else. `--json` keeps the exact name.
 
 ### Choosing what BECK works on
 

@@ -19,7 +19,7 @@ from beck.frontends.base import FrontendAdapter
 from beck.hashing import scan
 from beck.matcher import plan
 from beck.models import MissingBios, Plan, RunResult, ScanResult
-from beck.output import LOGGER_NAME, finish_output
+from beck.output import LOGGER_NAME, escaped_for_terminal, finish_output
 from beck.output.console import ConsoleRenderer, configure_logging
 from beck.output.json import JsonRenderer, write_rejected_command
 from beck.targets import URL_FORM, parse_smb_url
@@ -65,7 +65,7 @@ class _Parser(argparse.ArgumentParser):
     def error(self, message: str) -> NoReturn:
         if self.json_errors:
             raise UsageError(message)
-        super().error(message)
+        super().error(escaped_for_terminal(message))  # it repeats what it was given
 
 
 def _asks_for_json(argv: list[str]) -> bool:
@@ -86,7 +86,8 @@ def load_legacy_config(file: Path) -> dict[str, Any]:
             f"{file} not found. Copy config/config.example.yml to config/config.yml and fill it in."
         ) from e
     except yaml.YAMLError as e:
-        raise ConfigError(f"{file} isn't valid YAML: {e}") from e
+        where = " ".join(str(e).split())  # on one line: its line breaks would show escaped
+        raise ConfigError(f"{file} isn't valid YAML: {where}") from e
     except UnicodeDecodeError as e:  # its message is left out, because it can show the file's bytes
         raise ConfigError(f"{file} isn't UTF-8 text") from e
     except OSError as e:

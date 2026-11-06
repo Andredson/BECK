@@ -3,17 +3,18 @@
 import ctypes
 import logging
 import os
-import re
 import sys
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import TextIO
+from typing import Any, TextIO
 
 from beck.errors import BeckError
 from beck.models import SHARE_ROOT, LocalFile, MissingBios, RunResult, ScanResult, Unreadable
 from beck.output import (
     LOGGER_NAME,
     distinct_targets,
+    escaped_for_terminal,
     extension_warning,
     print_safely,
     upload_status,
@@ -26,9 +27,6 @@ YELLOW = "\033[93m"
 BLUE = "\033[94m"
 MAGENTA = "\033[35m"
 CYAN = "\033[36m"
-
-# How Python holds a byte of a file name that isn't valid UTF-8: 0xff becomes the character U+DCFF.
-UNDECODABLE_BYTE = re.compile("[\udc80-\udcff]")
 
 # What people read for each status of an upload. "planned" depends on more, so it isn't here.
 OUTCOMES = {
@@ -46,6 +44,17 @@ UNMATCHED_WARNING = (
 )
 
 
+class _EscapingFormatter(logging.Formatter):
+    """A log line can hold a name, which can be anything. A traceback keeps its line breaks."""
+
+    def formatMessage(self, record: logging.LogRecord) -> str:
+        return escaped_for_terminal(super().formatMessage(record))
+
+    def formatException(self, ei: Any) -> str:
+        lines = super().formatException(ei).split("\n")
+        return "\n".join(escaped_for_terminal(line) for line in lines)
+
+
 def configure_logging(level: int = logging.WARNING) -> logging.Logger:
     """Send BECK's diagnostics to stderr, so that stdout only has the human output.
 
@@ -55,8 +64,8 @@ def configure_logging(level: int = logging.WARNING) -> logging.Logger:
     logger = logging.getLogger(LOGGER_NAME)
     logger.setLevel(level)
     handler = logging.StreamHandler(sys.stderr)
-    if level <= logging.DEBUG:
-        handler.setFormatter(logging.Formatter("%(relativeCreated)6d ms  %(message)s"))
+    timed = "%(relativeCreated)6d ms  %(message)s"
+    handler.setFormatter(_EscapingFormatter(timed if level <= logging.DEBUG else None))
     logger.handlers[:] = [handler]  # replaced, so lines never repeat
     return logger
 
@@ -89,15 +98,25 @@ def wants_color(stream: TextIO, environ: Mapping[str, str]) -> bool:
     return stream.isatty() and enable_windows_ansi()
 
 
-def _printable(line: str, stream: TextIO | None) -> str:
-    """A line with what the stream can't encode escaped, so that a name can't crash a run.
+def _printable(text: str, stream: TextIO | None) -> str:
+    """Text that can't act on a terminal, or crash on a stream that can't encode it.
 
     A name can be anything, and this runs after the uploads and deletions: a crash here would report
     a failure for work that's done. ``--json`` has the exact name, if someone needs it.
     """
-    readable = UNDECODABLE_BYTE.sub(lambda byte: f"\\x{ord(byte[0]) - 0xDC00:02x}", line)
     encoding = getattr(stream, "encoding", None) or "utf-8"  # a StringIO has none
-    return readable.encode(encoding, "backslashreplace").decode(encoding)
+    return escaped_for_terminal(text).encode(encoding, "backslashreplace").decode(encoding)
+
+
+@dataclass(frozen=True, slots=True)
+class _Painted:
+    """Part of a line to show in a color. Its text is escaped too: only the color goes out raw."""
+
+    text: object
+    color: str
+
+
+_Part = str | _Painted
 
 
 def _required_by_target(entries: list[MissingBios]) -> dict[PurePosixPath, bool]:
@@ -146,15 +165,25 @@ class ConsoleRenderer:
         self.progress = progress and not quiet and sys.stderr is not None and sys.stderr.isatty()
         self._counter = ""
 
-    def _paint(self, text: object, color: str) -> str:
-        return f"{color}{text}{RESET}" if self.color else str(text)
+    def _paint(self, text: object, color: str) -> _Painted:
+        return _Painted(text, color)
 
-    def _print(self, line: str) -> None:
-        print_safely(_printable(line, self.stream), self.stream)
+    def _rendered(self, part: _Part) -> str:
+        if isinstance(part, str):
+            return _printable(part, self.stream)
+        text = _printable(str(part.text), self.stream)
+        return f"{part.color}{text}{RESET}" if self.color else text
 
-    def _detail(self, line: str) -> None:
+    def _print(self, *parts: _Part) -> None:
+        """Print a line. This is the one way to stdout, so nothing can skip the escaping.
+
+        A line takes parts because of it: colors can't be inside a text that's about to be escaped.
+        """
+        print_safely("".join(self._rendered(part) for part in parts), self.stream)
+
+    def _detail(self, *parts: _Part) -> None:
         if not self.quiet:
-            self._print(line)
+            self._print(*parts)
 
     def _show_counter(self, text: str) -> None:
         """On stderr, to leave stdout as the result. If it fails, the run carries on without it."""
@@ -175,21 +204,23 @@ class ConsoleRenderer:
             self._show_counter(f"\r{' ' * len(self._counter)}\r")
 
     def missing_count(self, count: int) -> None:
-        self._detail(f"There are {self._paint(count, MAGENTA)} missing bios in your RECALBOX")
+        self._detail("There are ", self._paint(count, MAGENTA), " missing bios in your RECALBOX")
 
     def nothing_missing(self) -> None:
         self._print(self._paint("No missing bios were found in your RECALBOX!", CYAN))
 
     def files_found(self, count: int) -> None:
         self._detail(
-            f"There are {self._paint(count, MAGENTA)} possible bios to be analysed in your system"
+            "There are ",
+            self._paint(count, MAGENTA),
+            " possible bios to be analysed in your system",
         )
 
     def no_files(self, folder: Path) -> None:
         self._print(self._paint(f"No BIOS files found in {folder}", CYAN))
 
     def error(self, message: BeckError | str) -> None:
-        self._print(f"{self._paint('Error', RED)}: {message}")
+        self._print(self._paint("Error", RED), f": {message}")
 
     def unexpected_error(self) -> None:
         """Nothing on stdout: the traceback goes to stderr, for the bug report."""
@@ -226,13 +257,13 @@ class ConsoleRenderer:
         """Local files and folders that couldn't be read. The run carries on without them."""
         for item in items:
             label = self._paint("can't be read", RED)
-            self._detail(f"{item.relative}: {label}, skipped: {item.reason}")
+            self._detail(f"{item.relative}: ", label, f", skipped: {item.reason}")
 
     def incorrect(self, entries: list[MissingBios]) -> None:
         """Files on the device with a wrong hash, which BECK keeps (DEC-54). One line per target."""
         for target in sorted({entry.target for entry in entries}):
             label = self._paint("INCORRECT:", RED)
-            self._detail(f"{label} {target} is on the device with a wrong MD5, and was kept")
+            self._detail(label, f" {target} is on the device with a wrong MD5, and was kept")
 
     def report(self, entries: list[MissingBios]) -> None:
         """What a report lists, grouped by folder. One line per target."""
@@ -242,8 +273,8 @@ class ConsoleRenderer:
         incorrect = _required_by_target([entry for entry in entries if entry.incorrect])
         for target in sorted(incorrect):
             self._print(
-                f"{self._paint('INCORRECT:', RED)} {target} ({_kind(incorrect[target])}) "
-                "is on the device with a wrong MD5"
+                self._paint("INCORRECT:", RED),
+                f" {target} ({_kind(incorrect[target])}) is on the device with a wrong MD5",
             )
         by_target = _required_by_target([entry for entry in entries if not entry.incorrect])
         if by_target:
@@ -270,9 +301,9 @@ class ConsoleRenderer:
     def result(self, result: RunResult, failing: Sequence[MissingBios] = ()) -> None:
         """What happened: uploads, then one or more lines per local file, then the summary."""
         for upload in result.completed:
-            self._detail(f"{self._paint('FOUND:', GREEN)} {upload.entry.name} -> {upload.target}")
+            self._detail(self._paint("FOUND:", GREEN), f" {upload.entry.name} -> {upload.target}")
         for line in self._deleted_lines(result) if self.quiet else self._file_lines(result):
-            self._print(line)
+            self._print(*line)
         for error in result.errors:
             self.error(error.message)
         if result.kept:
@@ -288,58 +319,59 @@ class ConsoleRenderer:
         if not failing:
             return
         for target in sorted({entry.target for entry in failing if not entry.incorrect}):
-            self._print(f"{self._paint('MISSING:', RED)} {target}")
+            self._print(self._paint("MISSING:", RED), f" {target}")
         if self.quiet:
             for target in sorted({entry.target for entry in failing if entry.incorrect}):
-                self._print(f"{self._paint('INCORRECT:', RED)} {target}")
+                self._print(self._paint("INCORRECT:", RED), f" {target}")
         state = "that would still be" if dry_run else "still"
         self._print(
             f"Required files {state} missing or incorrect: {len({e.target for e in failing})}. "
             "Exit code 5, because of --fail-if-missing."
         )
 
-    def _deleted_lines(self, result: RunResult) -> list[str]:
+    def _deleted_lines(self, result: RunResult) -> list[list[_Part]]:
         """Quiet never hides a deletion: the result lists every one (docs/cli.md)."""
         gone = "would be deleted" if result.dry_run else "deleted"
         paths = sorted(file.relative.as_posix() for file in result.deleted)
-        return [f"{path}: {gone}" for path in paths]
+        return [[f"{path}: {gone}"] for path in paths]
 
-    def _file_lines(self, result: RunResult) -> list[str]:
+    def _file_lines(self, result: RunResult) -> list[list[_Part]]:
         plan = result.plan
         gone = "would be deleted" if result.dry_run else "deleted"
         duplicate_of = {duplicate.file: duplicate.of for duplicate in plan.duplicates}
-        lines = []
+        lines: list[list[_Part]] = []
 
         for file in _files_analysed(result):
             path = file.relative.as_posix()
             uploads = [upload for upload in plan.uploads if upload.source == file]
             if file in duplicate_of:
-                lines.append(f"{path}: duplicate of {duplicate_of[file].relative.as_posix()}, kept")
+                of = duplicate_of[file].relative.as_posix()
+                lines.append([f"{path}: duplicate of {of}, kept"])
             elif file in plan.already_filled:
-                lines.append(f"{path}: target already filled, kept")
+                lines.append([f"{path}: target already filled, kept"])
             elif not uploads:
                 fits = sorted({e.target for e in plan.incorrect if file.md5 in e.md5s})
                 if fits:
                     targets = ", ".join(str(target) for target in fits)
                     lines.append(
-                        f"{path}: valid for {targets}, which is incorrect on the device, kept"
+                        [f"{path}: valid for {targets}, which is incorrect on the device, kept"]
                     )
                 elif file in result.deleted:
-                    lines.append(f"{path}: no match, {gone}")
+                    lines.append([f"{path}: no match, {gone}"])
                 else:
-                    lines.append(f"{path}: no match, kept")
+                    lines.append([f"{path}: no match, kept"])
             for upload in uploads:
                 status = upload_status(upload, result)
                 if status == "planned":
                     outcome = "would replace" if upload in result.replaced else "would copy"
                 else:
                     outcome = OUTCOMES[status]
-                lines.append(f"{path}: {outcome} -> {upload.target}")
+                lines.append([f"{path}: {outcome} -> {upload.target}"])
                 if upload in result.extension_changes:
                     label = self._paint("Warning", YELLOW)
-                    lines.append(f"{label}: {extension_warning(upload)}")
+                    lines.append([label, f": {extension_warning(upload)}"])
             if uploads and file in result.deleted:
-                lines.append(f"{path}: {gone}")
+                lines.append([f"{path}: {gone}"])
 
         return lines
 
@@ -351,15 +383,22 @@ class ConsoleRenderer:
         if result.dry_run:
             would = self._paint(len(result.skipped), GREEN)
             self._print(
-                f"Dry run: {would}/{total} missing entries would be satisfied, "
-                f"{files} files analysed"
+                "Dry run: ",
+                would,
+                "/",
+                total,
+                f" missing entries would be satisfied, {files} files analysed",
             )
             if result.deleted:
                 self._print(f"Dry run: would delete {len(result.deleted)} local files")
             return
         done = self._paint(len(result.completed), GREEN)
         self._print(
-            f"Final result: {done}/{total} missing entries satisfied, {files} files analysed"
+            "Final result: ",
+            done,
+            "/",
+            total,
+            f" missing entries satisfied, {files} files analysed",
         )
         if result.deleted:
             self._print(f"Deleted {len(result.deleted)} local files.")

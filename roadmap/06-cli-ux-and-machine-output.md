@@ -311,7 +311,10 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `feat(cli): add read-only scan and report commands`
 
 ### 06.11a — Control characters in names can't reach the terminal (D24)
-- [ ] Done
+- [x] Done (2026-11-06: `ConsoleRenderer._print` now takes parts, and only a color it's given goes out raw, so a new line of output can't skip the
+  escaping. Beyond the list below: argparse's error, which repeats what it was given, goes through the same escaping, and a YAML error is put on
+  one line, so that BECK's own message doesn't show `\x0a`. So `src/beck/output/__init__.py`, `src/beck/cli.py`, `docs/ARCHITECTURE.md` and
+  `tests/unit/test_cli.py` change too.)
 - **What:** The end-to-end runs of 06.11 found this. BECK prints names as they are, so a name holding an escape sequence reaches the terminal
   as a live code, and a newline splits its line in two. Measured with a name holding `ESC[31m`:
 

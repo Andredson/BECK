@@ -7,12 +7,32 @@ stderr goes through ``print_safely``, and ``cli.main`` ends with ``finish_output
 import contextlib
 import logging
 import os
+import re
 import sys
 from typing import TextIO
 
 from beck.models import Plan, PlannedUpload, RunResult
 
 LOGGER_NAME = "beck"
+
+# What can act on a terminal or change how a line reads: control characters, the controls for the
+# direction of text, and how Python holds a byte of a file name that isn't valid UTF-8.
+UNSAFE_ON_A_TERMINAL = re.compile("[\x00-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069\udc80-\udcff]")
+
+
+def _shown(match: re.Match[str]) -> str:
+    code = ord(match[0])
+    if 0xDC80 <= code <= 0xDCFF:  # the byte that was in the name: 0xff is U+DCFF
+        return f"\\x{code - 0xDC00:02x}"
+    return f"\\x{code:02x}" if code <= 0xFF else f"\\u{code:04x}"
+
+
+def escaped_for_terminal(text: str) -> str:
+    """Text from outside BECK, safe to show: a name can be anything, and can't act on a terminal.
+
+    ``--json`` doesn't need this, and keeps the exact name.
+    """
+    return UNSAFE_ON_A_TERMINAL.sub(_shown, text)
 
 
 def _output_lost(stream: TextIO, error: OSError) -> None:
