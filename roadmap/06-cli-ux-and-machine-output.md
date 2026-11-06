@@ -310,6 +310,40 @@ beck config  init | show | path                     # added in stage 07
 - **Verify:** `uv run beck scan --source tests && uv run beck --json scan --source tests | python3 -m json.tool`
 - **Commit message:** `feat(cli): add read-only scan and report commands`
 
+### 06.11a — Control characters in names can't reach the terminal (D24)
+- [ ] Done
+- **What:** The end-to-end runs of 06.11 found this. BECK prints names as they are, so a name holding an escape sequence reaches the terminal
+  as a live code, and a newline splits its line in two. Measured with a name holding `ESC[31m`:
+
+  | Output | Where the name comes from | Reaches the terminal raw? |
+  |---|---|---|
+  | `beck check`, `beck scan` | Local files | Yes, on stdout |
+  | `beck report`, `beck check` | The report, so the device | Yes, on stdout |
+  | The deletion prompt | Local files | Yes, on stderr |
+  | `-v` logs | Local files | Yes, on stderr |
+  | Error messages | The report, or a folder named on the command line | Yes, on stdout |
+  | `--json` | Either | No: `json.dumps` escapes it |
+
+  The worst is the prompt: a crafted file name could hide or fake the list someone is asked to confirm before files are deleted. It can also
+  change colors or the title, or make output misleading, and it breaks `beck scan`'s one line per file.
+
+  The rule to build: **in human output and logs, whatever comes from outside BECK is shown escaped,** the way `x\xff.bin` already is. That covers
+  the control characters (U+0000 to U+001F, U+007F and U+0080 to U+009F) and the bidirectional controls (U+202A to U+202E and U+2066 to
+  U+2069), which can make a name read as something else. So a newline shows as `\x0a`, and BECK's own colors and line breaks still work.
+
+  Why this isn't a one-liner: BECK's colors share a line with the names, so the line can't be escaped as a whole, as `_printable` does today. Names
+  must be escaped before colors go on. Prefer one place that a new line of output can't forget, because that's how this bug would come back.
+  Logs can do it in the handler's formatter, keeping a traceback's line breaks. `--json` stays exact, because scripts need the real name.
+
+  This step changes only what's shown. Refusing such a name in a report, so that no file with that name is created on the device, is
+  [07.6](07-configuration-and-security.md#076--path-safety-for-report-derived-targets).
+- **Files:** `src/beck/output/console.py`, `tests/unit/test_console.py`, `tests/unit/test_output_streams.py`, `docs/cli.md`, `roadmap/00-assessment.md`
+- **Done when:** Tests cover each row of the table with real runs, checking the bytes on stdout and stderr: with `FORCE_COLOR`, BECK's own color
+  codes are the only escape sequences there, and each file still takes one line in `beck scan`. The prompt still shows the name, escaped, and
+  `--json` still has the exact name.
+- **Verify:** `uv run pytest tests/unit/test_console.py tests/unit/test_output_streams.py -q`
+- **Commit message:** `fix(output): escape control characters in names shown to people`
+
 ### 06.12 — Agent guidance for driving BECK
 - [ ] Done
 - **What:** Add a **"Using BECK as a tool"** section to AGENTS.md:

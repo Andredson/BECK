@@ -115,6 +115,10 @@ locked folder, or with a name too long, stopped the whole run with exit 1 instea
 `False` for any failure, a report BECK couldn't read looked like no report. Both were found by running odd
 inputs through the real command in step [06.9](06-cli-ux-and-machine-output.md#069--exit-codes-and---fail-if-missing), and fixed there.
 
+**Found later, still open:** D24, control characters in a name reach the terminal raw, from local files and from the report, in all human
+output, in `-v` logs and in the deletion prompt, where a crafted name could hide or fake the list to confirm. It's for
+[06.11a](06-cli-ux-and-machine-output.md#0611a--control-characters-in-names-cant-reach-the-terminal-d24). Found by the end-to-end runs of step 06.11.
+
 ### Hygiene findings (not numbered, fixed in [03.12](03-critical-fixes-and-data-safety.md#0312--cleanup-messages-imports-exceptions-typos-d12))
 - `import json` is unused, and so are `ITALIC`, `UNDERLINE`, `BLINK`, `BLACK` and `WHITE`.
 - Bare `except:` at lines 31 and 225; `exit()` (the `site` builtin) instead of `sys.exit()` or exceptions.
