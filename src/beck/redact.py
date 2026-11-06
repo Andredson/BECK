@@ -10,7 +10,8 @@ import re
 MASK = "***"
 # A password can hold an @, so this runs to the last one before the path. One with a slash in it
 # isn't a valid URL, and can't be told apart from a path.
-URL_CREDENTIALS = re.compile(r"\b([a-zA-Z][a-zA-Z0-9+.-]*://)[^/\s]*@")
+# The lookahead is for BECK's own way of writing a target, smb://[user@]host, in its messages.
+URL_CREDENTIALS = re.compile(r"\b([a-zA-Z][a-zA-Z0-9+.-]*://)(?!\[user@\])[^/\s]*@")
 
 _secrets: set[str] = set()
 

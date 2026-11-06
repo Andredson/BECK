@@ -18,6 +18,7 @@ from beck.errors import ConfigError
 from beck.models import Plan, RunResult
 from beck.output.console import ConsoleRenderer, configure_logging
 from beck.redact import add_secret, forget_secrets, redact, without_url_credentials
+from beck.targets import URL_FORM
 from tests.factories import (
     make_bios_file,
     make_local_file,
@@ -631,3 +632,36 @@ def test_a_problem_in_the_file_still_gets_the_warning(
         config.load(path)
 
     assert "can read" in caplog.text
+
+
+# BECK's own words
+
+
+def test_the_form_of_a_target_url_is_not_mistaken_for_credentials() -> None:
+    assert redact(f"Use {URL_FORM}") == f"Use {URL_FORM}"
+
+
+@pytest.mark.parametrize(
+    "url",
+    ["http://beck-test-server/bios", "smb://", "smb://user:beck-test-password@host/bios"],
+    ids=["scheme", "no-host", "password"],
+)
+@pytest.mark.parametrize("mode", [[], ["--json"]], ids=["human", "json"])
+def test_an_error_about_a_target_shows_its_form_whole(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], mode: list[str], url: str
+) -> None:
+    assert cli.main([*mode, "check", "--target", url], base_dir=tmp_path) == 2
+
+    assert URL_FORM in capsys.readouterr().out
+
+
+def test_a_url_with_a_password_says_what_to_do_instead(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    url = f"smb://user:{SENTINEL}@beck-test-server/bios"
+
+    assert cli.main(["check", "--target", url], base_dir=tmp_path) == 2
+
+    out = capsys.readouterr().out
+    assert "BECK_SMB_PASSWORD" in out
+    assert "later version" not in out
