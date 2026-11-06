@@ -69,7 +69,9 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
 - **Commit message:** `docs(agents): add skills folder and index`
 
 ### 09.3 — Skill: `execute-roadmap-step`
-- [x] Done
+- [x] Done (2026-11-06: tested with two `claude -p` sessions limited to reading, told only to do the next roadmap step, and that it was a dry exercise. Both found the skill through the AGENTS.md index, chose the right step and no other, wrote its commit with no trailer, and left the
+  PR to the human. The first found that the skill didn't say what to do with changes it hadn't made, which is fixed. It had also read the owner's private notes on git, so the second ran in a fresh clone without them. These were plans, not real commits, from one vendor: 09.10 adds a second. The
+  skill also has the human open a draft PR early, because CI only runs on a PR, where the step only mentions the closing step.)
 - **What:** Encodes the protocol from [roadmap README](README.md#how-to-execute-a-step-humans-and-agents):
   1. find the next step; check its blockers;
   2. confirm there is no missing decision; if there is, ask the owner with alternatives;
@@ -94,7 +96,7 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
   coverage, hygiene script, link test; integration tests if the Samba container is available) and explains how
   to read and fix each kind of failure. Never "fix" a failure by disabling a rule, lowering coverage or adding an
   ignore without the owner's approval.
-- **Files:** `.agents/skills/quality-gates/SKILL.md`, `AGENTS.md`
+- **Files:** `.agents/skills/quality-gates/SKILL.md`, `AGENTS.md` (also its pre-commit line, which says it's what CI runs but has no `--cov` and no `requirements.txt` check, as 09.3's exercise found)
 - **Done when:** The commands match the CI workflow exactly.
 - **Verify:** Run every command listed in the skill; all pass.
 - **Commit message:** `feat(skills): add quality-gates skill`
