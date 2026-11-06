@@ -219,6 +219,7 @@ def app(samba: Samba, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     folder = tmp_path / "app"
     (folder / "bios").mkdir(parents=True)
     (folder / "settings.toml").write_text(samba.settings(), encoding="utf-8")
+    (folder / "settings.toml").chmod(0o600)
     monkeypatch.setenv("BECK_CONFIG", str(folder / "settings.toml"))
     return folder
 
@@ -477,6 +478,35 @@ def test_end_to_end_v_never_shows_the_credentials_on_a_real_server(
     assert "with a user name" in out.err
     with samba.guest() as transport:
         assert transport.read_bytes(PurePosixPath(target)) == good.path.read_bytes()
+
+
+@pytest.mark.parametrize("mode", [[], ["-v"], ["--json"], ["--json", "-v"]], ids=str)
+@pytest.mark.parametrize(
+    ("password", "code"), [(ACCOUNT_CREDENTIAL, 0), (BAD_CREDENTIAL, 3)], ids=["right", "wrong"]
+)
+def test_end_to_end_no_output_holds_the_password_on_a_real_server(
+    samba: Samba,
+    tmp_path: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    mode: list[str],
+    password: str,
+    code: int,
+) -> None:
+    monkeypatch.setenv("BECK_SMB_PASSWORD", password)
+    monkeypatch.setenv("BECK_CONFIG", str(tmp_path / "settings.toml"))
+    (tmp_path / "settings.toml").write_text(samba.settings("beck"), encoding="utf-8")
+    (tmp_path / "settings.toml").chmod(0o600)
+    good = make_bios_file(tmp_path / "bios", "good.bin")
+    put_report(make_report_text([make_missing((folder / "good.bin").as_posix(), good.md5)]))
+
+    assert cli.main([*mode, "check"], base_dir=tmp_path) == code
+
+    out = capsys.readouterr()
+    assert password not in out.out + out.err
+    assert "beck-test-password" not in out.out + out.err
 
 
 def at_a_real_prompt(

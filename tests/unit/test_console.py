@@ -706,6 +706,7 @@ def account(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     folder = tmp_path / "app"
     (folder / "bios").mkdir(parents=True)
     (folder / "settings.toml").write_text(ACCOUNT, encoding="utf-8")
+    (folder / "settings.toml").chmod(0o600)
     monkeypatch.setenv("BECK_CONFIG", str(folder / "settings.toml"))
     monkeypatch.setenv("BECK_SMB_PASSWORD", SENTINEL)
     return folder

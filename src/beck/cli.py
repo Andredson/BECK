@@ -32,6 +32,7 @@ from beck.models import MissingBios, Plan, RunResult, ScanResult
 from beck.output import LOGGER_NAME, escaped_for_terminal, finish_output
 from beck.output.console import ConsoleRenderer, configure_logging
 from beck.output.json import JsonRenderer, write_rejected_command
+from beck.redact import add_secret, forget_secrets, redact
 from beck.targets import URL_FORM, parse_smb_url
 from beck.transports.base import Transport
 from beck.transports.local import LocalTransport
@@ -79,7 +80,7 @@ class _Parser(argparse.ArgumentParser):
     def error(self, message: str) -> NoReturn:
         if self.json_errors:
             raise UsageError(message)
-        super().error(escaped_for_terminal(message))  # it repeats what it was given
+        super().error(escaped_for_terminal(redact(message)))  # it repeats what it was given
 
 
 def _asks_for_json(argv: list[str]) -> bool:
@@ -548,6 +549,8 @@ def main(argv: list[str] | None = None, *, base_dir: Path | None = None) -> int:
 
 
 def _main(argv: list[str] | None, base_dir: Path | None) -> int:
+    forget_secrets()
+    add_secret(os.environ.get("BECK_SMB_PASSWORD", ""))
     parser = _build_parser(json_errors=_asks_for_json(sys.argv[1:] if argv is None else argv))
     try:
         args = parser.parse_args(argv)

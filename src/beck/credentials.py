@@ -9,6 +9,7 @@ import warnings
 
 from beck.errors import ConfigError
 from beck.output import escaped_for_terminal, print_safely
+from beck.redact import add_secret
 
 CANT_ASK = (
     "A user is set, but no password, and BECK can't ask for one here. "
@@ -28,12 +29,14 @@ def _ask(user: str, host: str) -> str:
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error", getpass.GetPassWarning)
-            return getpass.getpass(prompt)
+            password = getpass.getpass(prompt)
     except (EOFError, KeyboardInterrupt) as e:
         print_safely("", sys.stderr)  # the cursor is still at the end of the prompt
         raise ConfigError(NO_ANSWER) from e
     except (getpass.GetPassWarning, OSError, UnicodeDecodeError) as e:
         raise ConfigError(CANT_ASK) from e
+    add_secret(password)
+    return password
 
 
 def password_for(user: str, host: str, configured: str, *, can_ask: bool) -> str:

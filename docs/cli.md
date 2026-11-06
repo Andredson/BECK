@@ -162,7 +162,8 @@ dir = "~/beck/bios"
 ```
 
 A `dir` must be an absolute path or start with `~`, so that it means the same folder wherever you run BECK. **Passwords can't go in this
-file:** BECK refuses one, in any setting and in a URL. `beck config init` writes a file like this one, with comments.
+file:** BECK refuses one, in any setting and in a URL. `beck config init` writes a file like this one, with comments, which only you can read.
+If others can read the file, BECK warns you, because it says who you are and where your device is.
 
 ### Passwords
 
@@ -172,6 +173,10 @@ which never asks, BECK exits with 2 and changes nothing. So does pressing Ctrl-C
 
 A password can't go in the settings file, or in a URL, and BECK keeps it only in memory. Setting the variable on the command line, as in
 `BECK_SMB_PASSWORD=secret beck check`, leaves it in your shell's history.
+
+BECK never prints a password. If something else repeats one, such as a library's error message, it shows as `***` in human output, logs and error
+messages. A URL always appears without its user and password, even one you put in the wrong place. A file named after your password shows as `***`
+too, except in `--json`, which keeps exact names. A very short password can mask ordinary text in what you read, but it doesn't change what BECK does.
 
 ### The old `config/config.yml`
 

@@ -63,6 +63,7 @@ def app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """A folder with settings for a guest and an empty bios folder. It's the current directory."""
     folder = tmp_path / "app"
     write(folder / "settings.toml", settings_text(SERVER_URL).encode())
+    (folder / "settings.toml").chmod(0o600)
     monkeypatch.setenv("BECK_CONFIG", str(folder / "settings.toml"))
     (folder / "bios").mkdir()
     monkeypatch.chdir(folder)

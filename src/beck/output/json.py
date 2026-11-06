@@ -29,6 +29,7 @@ from beck.output import (
     upload_errors,
     upload_status,
 )
+from beck.redact import redact
 
 SCHEMA_VERSION = 1
 INTERNAL_ERROR = {
@@ -55,7 +56,7 @@ def _header(command: str | None, *, ok: bool) -> dict[str, Any]:
 def write_rejected_command(message: str, stream: TextIO | None = None) -> None:
     """The command line itself was wrong, so no command ran. This has only the common fields."""
     document = _header(None, ok=False)
-    document["errors"] = [{"code": UsageError.code, "message": message, "item": None}]
+    document["errors"] = [{"code": UsageError.code, "message": redact(message), "item": None}]
     _write(document, sys.stdout if stream is None else stream)
 
 
@@ -104,7 +105,14 @@ def _file_items(files: Iterable[LocalFile]) -> list[dict[str, Any]]:
 
 
 def _error_items(errors: Iterable[ItemError]) -> list[dict[str, str]]:
-    return [{"code": error.code, "message": error.message, "item": error.item} for error in errors]
+    return [
+        {"code": error.code, "message": redact(error.message), "item": error.item}
+        for error in errors
+    ]
+
+
+def _redacted(text: str | None) -> str | None:
+    return None if text is None else redact(text)
 
 
 def _upload_items(result: RunResult) -> list[dict[str, Any]]:
@@ -116,7 +124,7 @@ def _upload_items(result: RunResult) -> list[dict[str, Any]]:
             "md5": upload.source.md5,
             "status": upload_status(upload, result),
             "replaces": upload in result.replaced,
-            "error": errors.get(upload.target.as_posix()),
+            "error": _redacted(errors.get(upload.target.as_posix())),
             "warning": (extension_warning(upload) if upload in result.extension_changes else None),
         }
         for upload in result.plan.uploads
@@ -137,8 +145,8 @@ class JsonRenderer:
     ) -> None:
         self.command = command
         self.action = action
+        self.frontend = redact(frontend)
         self.file: dict[str, Any] | None = None
-        self.frontend = frontend
         self.dry_run = dry_run
         self.stream = sys.stdout if stream is None else stream
         self.target: str | None = None
@@ -157,7 +165,7 @@ class JsonRenderer:
         self.target = target
 
     def uses_frontend(self, name: str) -> None:
-        self.frontend = name
+        self.frontend = redact(name)
 
     def missing_count(self, count: int) -> None:
         """Nothing yet: the document has it at the end."""
@@ -217,7 +225,7 @@ class JsonRenderer:
 
     def error(self, error: BeckError) -> None:
         """An error that stopped the run: the lists stay empty, and the document is still valid."""
-        self._stopped({"code": error.code, "message": str(error), "item": None})
+        self._stopped({"code": error.code, "message": redact(str(error)), "item": None})
 
     def unexpected_error(self) -> None:
         """A bug in BECK. Its message could hold anything, so it stays on stderr."""

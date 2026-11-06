@@ -111,6 +111,19 @@ The roadmap gives the four cases. Building them raised these details, which the 
 - **An empty answer is an empty password,** which BECK sends, because a server may allow one. An empty variable still counts as not set, as every other one does.
 - **Only what connects asks.** `beck config show` and `report --report-file` never do, and a dry run does, because it connects.
 
+### Details settled in step 07.5
+The roadmap asks for one `redact()` helper. A probe with a sentinel password shaped it, and the agent reported these to the owner:
+
+- **The leak was a URL in the wrong place.** Nothing printed `BECK_SMB_PASSWORD`, but a URL holding a password came back whenever it wasn't given to `--target`: as a stray argument, in
+  `--source`, `--report-file`, `--config` or `--frontend`, or in the environment. So `redact` takes credentials out of any URL, with its user too.
+- **A value that's going to be a path loses its credentials first.** `Path` turns `smb://` into `smb:/`, and a `file://` URL encodes the rest, so afterwards nothing can tell it was a URL.
+- **It masks known passwords as well,** for what can't be predicted: a library's message, or a bug's traceback. This never changes which file BECK reads: it's only on what's shown.
+- **`--json` masks only free text, not every field,** because it promises exact file names. So a file named after the password appears in `path`, because it's the user's own file. People see `***`.
+- **A short password masks whatever it appears in,** which is ugly, but the other way round isn't safe.
+- **A settings-file `frontend` is no longer repeated,** following the rule from 07.1. A setting's *name* still is: nobody types a password as one.
+- **The warning for a file others can read is only a warning,** because the file can't hold a password, and it appears when the file is read, so `beck config path` doesn't give it.
+- **One limit:** a password with a literal `/` in a URL can't be told apart from a path, so that part stays. It isn't a valid URL, and BECK refuses it as a target.
+
 ### Deleting is always explicit
 Nothing is deleted without `--move` or `--clean-unmatched`, and off a terminal not without `--yes` too. `--json` never prompts, so that
 a consumer can't hang on a question or confirm one by accident.

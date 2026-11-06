@@ -119,7 +119,9 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 - **Commit message:** `feat(config): support guest, environment and prompted SMB credentials`
 
 ### 07.5 — Secret redaction everywhere
-- [ ] Done
+- [x] Done (2026-11-06: a probe found that a URL holding a password came back whenever it wasn't given to `--target`, which this fixes. The choices it needed are in
+  [ADR-0007](../docs/adr/0007-cli-contract.md#details-settled-in-step-075). The sentinel test runs 22 scenarios in 5 modes, with the mask and without it, so that no path relies on the mask. Beyond the list
+  below: `src/beck/frontends/__init__.py`, the docs, and the integration test.)
 - **What:** One `redact()` helper used by logging, `config show`, the JSON output and error messages; URLs
   are always printed without credentials. A **sentinel test** sets a unique password value, runs every command
   with `-v` and `--json` (success and failure paths), and asserts the sentinel never appears in stdout, stderr or

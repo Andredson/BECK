@@ -53,7 +53,7 @@ The [schemas](schemas/) describe each document. They allow extra fields on purpo
 | `beck_version` | The BECK that wrote this. |
 | `command` | `check`, `report`, `scan` or `config`. `null` if the command line was rejected, because no command ran. Running `beck` with no command counts as `check`. |
 | `ok` | `true` only when the exit code is 0. |
-| `errors[]` | What went wrong: `code`, `message` and `item`. See [Errors](#errors). |
+| `errors[]` | What went wrong: `code`, `message` and `item`. See [Errors](#errors). A password in a message, which BECK doesn't put there itself, shows as `***`. |
 
 ## `beck --json check`
 

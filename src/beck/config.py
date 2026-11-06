@@ -8,6 +8,8 @@ value that could be one: someone may have typed it in the wrong place.
 import json
 import logging
 import os
+import shlex
+import stat
 import tomllib
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
@@ -17,7 +19,8 @@ from typing import Any
 from platformdirs import user_config_path
 
 from beck.errors import ConfigError, UsageError
-from beck.frontends import get_adapter
+from beck.frontends import known_frontends
+from beck.redact import without_url_credentials
 from beck.targets import parse_smb_url
 
 SCHEMA_VERSION = 1
@@ -28,6 +31,7 @@ KNOWN_SETTINGS = {
     "source": {"dir"},
 }
 PASSWORD_KEYS = {"password", "passwd"}
+IS_POSIX = os.name == "posix"
 TEMPLATE = """\
 # BECK's settings. Flags and environment variables beat what's here: see docs/cli.md.
 # Passwords can't go in this file: BECK asks for one, or set BECK_SMB_PASSWORD.
@@ -198,6 +202,22 @@ def _check_version(path: Path, data: dict[str, Any], problems: list[str]) -> Non
         problems.append(f"schema_version: expected {SCHEMA_VERSION}, got {_shown(version)}")
 
 
+def _warn_if_others_can_read(path: Path) -> None:
+    """It can't hold a password, but it says who you are and where your device is."""
+    if not IS_POSIX:
+        return
+    try:
+        mode = path.stat().st_mode
+    except OSError:
+        return
+    if mode & (stat.S_IRGRP | stat.S_IROTH):
+        _log.warning(
+            "%s: other users can read this file. To stop them, run: chmod 600 %s",
+            path,
+            shlex.quote(str(path)),
+        )
+
+
 def _warn_about_unknown_settings(path: Path, data: dict[str, Any]) -> None:
     def warn(place: str) -> None:
         _log.warning("%s: ignoring the unknown setting %s", path, place)
@@ -224,6 +244,7 @@ def load(path: Path, *, may_be_missing: bool = False) -> Config:
     data = _read(path, may_be_missing=may_be_missing)
     if data is None:
         return Config()
+    _warn_if_others_can_read(path)
     problems: list[str] = []
     _check_version(path, data, problems)
     for place in dict.fromkeys(_password_keys(data)):
@@ -238,11 +259,9 @@ def load(path: Path, *, may_be_missing: bool = False) -> Config:
     source = _table(data, "source", problems)
 
     frontend = _text(target, "target.frontend", problems)
-    if frontend is not None:
-        try:
-            get_adapter(frontend)
-        except UsageError as e:
-            problems.append(f"target.frontend: {e}")
+    if frontend is not None and frontend not in known_frontends():
+        known = ", ".join(known_frontends())
+        problems.append(f"target.frontend: that isn't a frontend BECK knows, which are: {known}")
     url = _text(target, "target.url", problems)
     if url is not None:
         try:
@@ -269,16 +288,21 @@ def load(path: Path, *, may_be_missing: bool = False) -> Config:
     return config
 
 
+def _named_path(value: str) -> Path:
+    """A path someone typed, which may be a URL in the wrong place, with a password in it."""
+    return Path(without_url_credentials(value))
+
+
 def find_config(flag: str | None, environ: Mapping[str, str]) -> ConfigLocation:
     """The file to read: the flag, then ``BECK_CONFIG``, then the folder the system says (DEC-19).
 
     This creates nothing. An empty variable counts as not set.
     """
     if flag is not None:
-        return ConfigLocation(Path(flag), "flag")
+        return ConfigLocation(_named_path(flag), "flag")
     named = environ.get("BECK_CONFIG")
     if named:
-        return ConfigLocation(Path(named), "environment")
+        return ConfigLocation(_named_path(named), "environment")
     folder = user_config_path("beck", appauthor=False, roaming=True)
     return ConfigLocation(folder / "config.toml", "default")
 
@@ -290,7 +314,7 @@ def _target(
     if flags.target is not None:
         return flags.target, None, "flag"
     if flags.target_dir is not None:
-        return None, Path(flags.target_dir), "flag"
+        return None, _named_path(flags.target_dir), "flag"
     url, folder = environ.get("BECK_TARGET"), environ.get("BECK_TARGET_DIR")
     if url and folder:
         raise ConfigError("Set BECK_TARGET or BECK_TARGET_DIR, not both")
@@ -301,7 +325,7 @@ def _target(
             raise ConfigError(f"BECK_TARGET: {e}") from e
         return url, None, "environment"
     if folder:
-        return None, Path(folder), "environment"
+        return None, _named_path(folder), "environment"
     named_in_file = file.target_url is not None or file.target_dir is not None
     return file.target_url, file.target_dir, "file" if named_in_file else "default"
 
@@ -330,7 +354,7 @@ def resolve(flags: Flags, environ: Mapping[str, str], file: Config) -> Settings:
     return Settings(
         target_url=target_url,
         target_dir=target_dir,
-        source_dir=Path(source) if source else file.source_dir,
+        source_dir=_named_path(source) if source else file.source_dir,
         frontend=flags.frontend or file.frontend or DEFAULT_FRONTEND,
         smb_user="" if user is None else user,
         smb_password=password,

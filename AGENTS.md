@@ -21,7 +21,7 @@ CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against
 | Path | What it is |
 |---|---|
 | `check_bios.py` | A deprecated shim: it prints a notice and runs `beck.cli.main` with its own folder, importing from `src/` so that the pip route works. |
-| `src/beck/` | The application ([design](docs/ARCHITECTURE.md)): `cli`, `config`, `credentials`, `models`, `hashing`, `matcher`, `executor`, `errors`, and `frontends/`, `transports/`, `output/`. `beck` finds its [settings](docs/cli.md#settings) from any folder, and `bios/` in the current one. |
+| `src/beck/` | The application ([design](docs/ARCHITECTURE.md)): `cli`, `config`, `credentials`, `redact`, `models`, `hashing`, `matcher`, `executor`, `errors`, and `frontends/`, `transports/`, `output/`. `beck` finds its [settings](docs/cli.md#settings) from any folder, and `bios/` in the current one. |
 | `bios/` | Input folder for the user's BIOS files. Everything except `bios/.keep` is gitignored. |
 | `pyproject.toml`, `uv.lock`, `.python-version` | Project metadata, runtime and dev dependencies, tool settings (ruff, mypy, pytest, coverage, commitizen), the lockfile, and Python 3.11 for local work. Managed with uv; `exclude-newer` is the 14-day cooldown (DEC-45). The distribution is `beck-bios`, built with `uv_build` (DEC-18), and it installs the `beck` command. |
 | `requirements.txt` | Runtime dependencies for pip users, **generated** from `uv.lock` (see [Commands](#commands)). Don't edit it by hand; CI fails if it drifts. |

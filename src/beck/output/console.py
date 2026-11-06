@@ -20,6 +20,7 @@ from beck.output import (
     print_safely,
     upload_status,
 )
+from beck.redact import redact
 
 RESET = "\033[0m"
 RED = "\033[91m"
@@ -56,11 +57,11 @@ class _EscapingFormatter(logging.Formatter):
     """A log line can hold a name, which can be anything. A traceback keeps its line breaks."""
 
     def formatMessage(self, record: logging.LogRecord) -> str:
-        return escaped_for_terminal(super().formatMessage(record))
+        return escaped_for_terminal(redact(super().formatMessage(record)))
 
     def formatException(self, ei: Any) -> str:
         lines = super().formatException(ei).split("\n")
-        return "\n".join(escaped_for_terminal(line) for line in lines)
+        return "\n".join(escaped_for_terminal(redact(line)) for line in lines)
 
 
 def configure_logging(level: int = logging.WARNING) -> logging.Logger:
@@ -113,7 +114,8 @@ def _printable(text: str, stream: TextIO | None) -> str:
     a failure for work that's done. ``--json`` has the exact name, if someone needs it.
     """
     encoding = getattr(stream, "encoding", None) or "utf-8"  # a StringIO has none
-    return escaped_for_terminal(text).encode(encoding, "backslashreplace").decode(encoding)
+    safe = escaped_for_terminal(redact(text))
+    return safe.encode(encoding, "backslashreplace").decode(encoding)
 
 
 @dataclass(frozen=True, slots=True)

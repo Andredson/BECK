@@ -29,6 +29,7 @@ dir = "/srv/beck/bios"
 def config_file(tmp_path: Path, text: str) -> Path:
     path = tmp_path / "config.toml"
     path.write_text(text, encoding="utf-8")
+    path.chmod(0o600)
     return path
 
 
@@ -222,7 +223,7 @@ def test_a_file_from_a_newer_beck_warns_about_nothing(
         ('[target]\ndir = "./a"\n', "target.dir: expected an absolute path or one starting with ~"),
         ('[source]\ndir = "/a\\u0000b"\n', "source.dir: can't hold a NUL character"),
         ('[target]\ndir = "/a\\u0000b"\n', "target.dir: can't hold a NUL character"),
-        ('[target]\nfrontend = "nope"\n', "target.frontend: Unknown frontend 'nope'"),
+        ('[target]\nfrontend = "nope"\n', "target.frontend: that isn't a frontend BECK knows"),
         ('[target]\nurl = "http://a/b"\n', "target.url: The target must start with smb://"),
         ('[target]\nurl = ""\n', "target.url: The target must start with smb://"),
         ('[target]\nurl = "smb://host"\n', "target.url: The target has no share"),
