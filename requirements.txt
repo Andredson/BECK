@@ -2,11 +2,11 @@
 #    uv export --no-dev --no-hashes --no-emit-project -o requirements.txt
 colorama==0.4.6 ; sys_platform == 'win32'
     # via tqdm
+platformdirs==4.13.5
+    # via beck-bios
 pyasn1==0.6.4
     # via pysmb
 pysmb==1.2.15
-    # via beck-bios
-pyyaml==6.0.3
     # via beck-bios
 tqdm==4.70.1
     # via pysmb

@@ -15,18 +15,18 @@ from beck.models import Unreadable
 from beck.output.json import JsonRenderer
 from beck.transports.local import LocalTransport
 from tests.conftest import REAL_REPORT, REPORTS, load_report
-from tests.factories import make_bios_file, make_missing, make_report_text, md5_of, snapshot
+from tests.factories import (
+    make_bios_file,
+    make_missing,
+    make_report_text,
+    md5_of,
+    settings_text,
+    snapshot,
+)
 from tests.fakes import FakeSMBServer, install_fake_smb
 
 A, B = "a" * 32, "b" * 32
 SENTINEL = "beck-test-password-sentinel"
-ACCOUNT = f"""\
-smb:
-  user: "beck-test-user"
-  passwd: "{SENTINEL}"
-  server: "beck-test-server"
-  port: 445
-"""
 
 
 @pytest.fixture
@@ -44,12 +44,14 @@ def device(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def app(tmp_path: Path) -> Path:
-    """A folder with a config holding a password that must never appear anywhere."""
+def app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """A folder with settings for a user whose password must never appear anywhere."""
     folder = tmp_path / "app"
-    (folder / "config").mkdir(parents=True)
-    (folder / "config" / "config.yml").write_text(ACCOUNT, encoding="utf-8")
-    (folder / "bios").mkdir()
+    (folder / "bios").mkdir(parents=True)
+    settings = settings_text("smb://beck-test-server/bios", "beck-test-user")
+    (folder / "settings.toml").write_text(settings, encoding="utf-8")
+    monkeypatch.setenv("BECK_CONFIG", str(folder / "settings.toml"))
+    monkeypatch.setenv("BECK_SMB_PASSWORD", SENTINEL)
     return folder
 
 
@@ -450,7 +452,7 @@ def test_an_upload_skipped_by_a_failed_folder_is_skipped(
     assert [(e["code"], e["item"]) for e in doc["errors"]] == [("transport", "blocked")]
 
 
-def test_a_size_mismatch_is_on_the_upload_and_has_its_own_code(
+def test_a_size_mismatch_fails_the_upload_and_has_its_own_code(
     source: Path,
     device: Path,
     capsys: pytest.CaptureFixture[str],
@@ -463,7 +465,7 @@ def test_a_size_mismatch_is_on_the_upload_and_has_its_own_code(
     assert cli.main(check(source, device, "--move", "--yes")) == 3
 
     doc = document(capsys)
-    assert statuses(doc) == {"a.bin": "uploaded"}
+    assert statuses(doc) == {"a.bin": "failed"}
     assert doc["errors"][0]["code"] == "size_mismatch"
     assert doc["uploads"][0]["error"] == doc["errors"][0]["message"]
     assert doc["deleted"] == []

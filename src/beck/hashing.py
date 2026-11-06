@@ -14,6 +14,11 @@ def md5_file(path: Path) -> str:
         return hashlib.file_digest(file, lambda: hashlib.md5(usedforsecurity=False)).hexdigest()
 
 
+def md5_bytes(data: bytes) -> str:
+    """The MD5 of some bytes, in the same form as ``md5_file``."""
+    return hashlib.md5(data, usedforsecurity=False).hexdigest()
+
+
 def _describe_file(path: Path, relative: PurePosixPath) -> LocalFile | Unreadable:
     # Checked before opening it, because opening a named pipe would wait forever.
     try:

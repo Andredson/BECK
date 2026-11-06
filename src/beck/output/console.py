@@ -9,8 +9,17 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, TextIO
 
+from beck.config import ConfigLocation
 from beck.errors import BeckError
-from beck.models import SHARE_ROOT, LocalFile, MissingBios, RunResult, ScanResult, Unreadable
+from beck.models import (
+    SHARE_ROOT,
+    ItemError,
+    LocalFile,
+    MissingBios,
+    RunResult,
+    ScanResult,
+    Unreadable,
+)
 from beck.output import (
     LOGGER_NAME,
     distinct_targets,
@@ -19,6 +28,7 @@ from beck.output import (
     print_safely,
     upload_status,
 )
+from beck.redact import redact
 
 RESET = "\033[0m"
 RED = "\033[91m"
@@ -37,6 +47,13 @@ OUTCOMES = {
     "skipped": "skipped",
 }
 
+# Why BECK reads the settings file it reads.
+WHY_THIS_FILE = {
+    "flag": "named by --config",
+    "environment": "named by BECK_CONFIG",
+    "default": "the default place on this system",
+}
+
 # DEC-56: the risk of --clean-unmatched, wherever it's about to delete something.
 UNMATCHED_WARNING = (
     "These files aren't in the current report. That doesn't mean they're junk: after an upload and "
@@ -48,11 +65,11 @@ class _EscapingFormatter(logging.Formatter):
     """A log line can hold a name, which can be anything. A traceback keeps its line breaks."""
 
     def formatMessage(self, record: logging.LogRecord) -> str:
-        return escaped_for_terminal(super().formatMessage(record))
+        return escaped_for_terminal(redact(super().formatMessage(record)))
 
     def formatException(self, ei: Any) -> str:
         lines = super().formatException(ei).split("\n")
-        return "\n".join(escaped_for_terminal(line) for line in lines)
+        return "\n".join(escaped_for_terminal(redact(line)) for line in lines)
 
 
 def configure_logging(level: int = logging.WARNING) -> logging.Logger:
@@ -105,7 +122,8 @@ def _printable(text: str, stream: TextIO | None) -> str:
     a failure for work that's done. ``--json`` has the exact name, if someone needs it.
     """
     encoding = getattr(stream, "encoding", None) or "utf-8"  # a StringIO has none
-    return escaped_for_terminal(text).encode(encoding, "backslashreplace").decode(encoding)
+    safe = escaped_for_terminal(redact(text))
+    return safe.encode(encoding, "backslashreplace").decode(encoding)
 
 
 @dataclass(frozen=True, slots=True)
@@ -228,8 +246,13 @@ class ConsoleRenderer:
     def opened(self, target: str) -> None:
         """Nothing: human output names the target only when something goes wrong with it."""
 
+    def uses_frontend(self, name: str) -> None:
+        """Nothing: human output doesn't name the frontend."""
+
     def ended_early(self, result: RunResult, failing: Sequence[MissingBios] = ()) -> None:
         """The lines before this one already said why there's nothing to upload."""
+        for error in result.errors:
+            self.error(error.message)
         self._failing_if_missing(failing, dry_run=result.dry_run)
 
     def can_ask(self) -> bool:
@@ -265,9 +288,9 @@ class ConsoleRenderer:
             label = self._paint("INCORRECT:", RED)
             self._detail(label, f" {target} is on the device with a wrong MD5, and was kept")
 
-    def report(self, entries: list[MissingBios]) -> None:
-        """What a report lists, grouped by folder. One line per target."""
-        if not entries:
+    def report(self, entries: list[MissingBios], rejected: Sequence[ItemError] = ()) -> None:
+        """What a report lists, grouped by folder. One line per target, then what it refused."""
+        if not entries and not rejected:
             self.nothing_missing()
             return
         incorrect = _required_by_target([entry for entry in entries if entry.incorrect])
@@ -284,6 +307,8 @@ class ConsoleRenderer:
             for target in sorted(by_target, key=PurePosixPath.as_posix):
                 if target.parent == folder:
                     self._print(f"  {target.name} ({_kind(by_target[target])})")
+        for error in rejected:
+            self.error(error.message)
 
     def scan(self, scanned: ScanResult, folder: Path) -> None:
         """Each local file, in the order of ``md5sum``: the name last, as it can be anything."""
@@ -297,6 +322,29 @@ class ConsoleRenderer:
             total = f"Files: {len(scanned.files)}"
             unreadable = f", can't be read: {len(scanned.unreadable)}" if scanned.unreadable else ""
             self._print(f"{total}{unreadable}")
+
+    def config_path(self, location: ConfigLocation, exists: bool) -> None:
+        """The path alone on the first line, so that ``$(beck config path | head -1)`` works."""
+        self._print(str(location.path))
+        self._print(f"This is {WHY_THIS_FILE[location.source]}.")
+        if not exists:
+            self._print("It doesn't exist yet. To create it, run beck config init.")
+
+    def config_created(self, location: ConfigLocation, exists: bool) -> None:
+        self._print(f"Wrote {location.path}, which only you can read. Edit it to suit you.")
+
+    def config_file(self, location: ConfigLocation, exists: bool) -> None:
+        """Nothing yet: ``config_settings`` says it, if the file can be read."""
+
+    def config_settings(
+        self, location: ConfigLocation, exists: bool, settings: dict[str, dict[str, Any]]
+    ) -> None:
+        state = "" if exists else ", which doesn't exist"
+        self._print(f"Settings file: {location.path} ({WHY_THIS_FILE[location.source]}{state})")
+        for name, setting in settings.items():
+            value = "not set" if setting["value"] is None else setting["value"]
+            shown = "(a guest)" if name == "smb_user" and value == "" else value
+            self._print(f"{name}: {shown} ({setting['source']})")
 
     def result(self, result: RunResult, failing: Sequence[MissingBios] = ()) -> None:
         """What happened: uploads, then one or more lines per local file, then the summary."""

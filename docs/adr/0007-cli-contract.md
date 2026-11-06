@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-05
-- **Decisions covered:** DEC-59, DEC-62. The rest of the contract follows from DEC-02, DEC-05, DEC-17, DEC-23 and DEC-54 (rows in the
+- **Decisions covered:** DEC-59, DEC-62, DEC-64. The rest of the contract follows from DEC-02, DEC-05, DEC-17, DEC-23 and DEC-54 (rows in the
   [decision log](../../roadmap/README.md#decision-log)).
 
 ## Context
@@ -71,6 +71,72 @@ the owner:
 - **`-v` names no user,** as `--json` doesn't, and turns on only BECK's own logs, because pysmb's debug logs show what crosses the network.
 - **No counter with `-v`,** because it would break up the log lines, or with `--json`, because a counter is for people.
 
+### Details settled in step 07.2
+The roadmap gives the order of the sources. Building it raised these details, which the agent settled and reported to the owner:
+
+- **A target is one setting with two forms,** so a higher source wins even in the other form: `--target-dir` beats `BECK_TARGET`, and
+  `BECK_TARGET_DIR` beats a `url` in the file. Two targets in the environment are refused, unless a flag makes them not matter.
+- **An empty variable counts as not set,** as it does for `NO_COLOR` and `FORCE_COLOR`, except `BECK_SMB_USER`, where the roadmap says it means
+  a guest. So an empty one beats a user in the file.
+- **A user in a target URL beats `BECK_SMB_USER`,** because it's the most specific thing anyone said about that target.
+- **A broken settings file stops every command,** even one that wouldn't use it, such as `beck scan --source DIR`, because a typo should
+  be noticed at once. A default file that doesn't exist is fine, and one that can't be read isn't taken for one that doesn't exist.
+- **A source named anywhere must exist,** as `--source` already had to, so that a typo can't read as an empty folder.
+- **The default timeout stays 30 seconds,** as it is today. The roadmap's sample file said 10, with no reason given, so the guide's sample says 30.
+- **`config/config.yml` stayed until 07.3,** only when no other source named a target, and its password only went to its own server.
+
+### Details settled in step 07.3
+The roadmap lists the commands. Building them raised these details, which the agent settled and reported to the owner:
+
+- **`BECK_SMB_PASSWORD` works from this step, not 07.4.** `beck config show` has to say whether it's set, and removing the old file would
+  otherwise leave no way to log in. 07.4 adds the prompt, and the error when there's no password and no terminal.
+- **A guest sends no password,** even if the variable is set, so that it can't go to a server nobody meant to log in to.
+- **The notice isn't literally one-time.** That would need BECK to remember, by writing a marker file somewhere nobody asked for. Instead, it
+  appears while the old file is there and the new one isn't, and it stops as soon as there's a new one.
+- **`beck config init` writes where BECK would read,** so `--config` and `BECK_CONFIG` decide, not only the default place. It writes real settings,
+  not only comments, so that `init` and a BIOS folder are enough for a guest on `recalbox.local`, which is what the stage asks for.
+- **`beck config` has `--json`,** with a fifth schema, because stage 06 says every command has it. `settings.smb_user` is the one place a document
+  names the user: asking what the settings are is the point of the command.
+- **Only `show` reads the file,** so that `path` can find a broken one and `init --force` can replace it.
+- **The first line of `beck config path` is only the path,** so that scripts can use it.
+- **An old file whose `server` isn't a host name gets the default in the suggestion,** so that what BECK suggests always loads.
+
+### Details settled in step 07.4
+The roadmap gives the four cases. Building them raised these details, which the agent settled and reported to the owner:
+
+- **`--json` never asks, even on a terminal,** because that's its promise, so it needs `BECK_SMB_PASSWORD`, or exits with 2.
+- **A password that would show isn't asked for.** `getpass` only warns when it can't turn the echo off, and then reads it anyway, for anyone to see.
+  That's a refusal here, with exit 2.
+- **Ctrl-C or Ctrl-D at the question exits with 2, with no traceback,** because nothing has happened yet, and it's the same as refusing to answer.
+- **An empty answer is an empty password,** which BECK sends, because a server may allow one. An empty variable still counts as not set, as every other one does.
+- **Only what connects asks.** `beck config show` and `report --report-file` never do, and a dry run does, because it connects.
+
+### Details settled in step 07.5
+The roadmap asks for one `redact()` helper. A probe with a sentinel password shaped it, and the agent reported these to the owner:
+
+- **The leak was a URL in the wrong place.** Nothing printed `BECK_SMB_PASSWORD`, but a URL holding a password came back whenever it wasn't given to `--target`: as a stray argument, in
+  `--source`, `--report-file`, `--config` or `--frontend`, or in the environment. So `redact` takes credentials out of any URL, with its user too.
+- **A value that's going to be a path loses its credentials first.** `Path` turns `smb://` into `smb:/`, and a `file://` URL encodes the rest, so afterwards nothing can tell it was a URL.
+- **It masks known passwords as well,** for what can't be predicted: a library's message, or a bug's traceback. This never changes which file BECK reads: it's only on what's shown.
+- **`--json` masks only free text, not every field,** because it promises exact file names. So a file named after the password appears in `path`, because it's the user's own file. People see `***`.
+- **A short password masks whatever it appears in,** which is ugly, but the other way round isn't safe.
+- **A settings-file `frontend` is no longer repeated,** following the rule from 07.1. A setting's *name* still is: nobody types a password as one.
+- **The warning for a file others can read is only a warning,** because the file can't hold a password, and it appears when the file is read, so `beck config path` doesn't give it.
+- **One limit:** a password with a literal `/` in a URL can't be told apart from a path, so that part stays. It isn't a valid URL, and BECK refuses it as a target.
+
+### Details settled in step 07.6
+The roadmap says a rejected entry is an error item. Before this step, some of those stopped the whole run, so building it raised these details, which the agent settled and reported to the owner:
+
+- **One bad entry no longer stops the rest.** A path that climbs, or a name with a slash, used to refuse the whole report with exit 4, so one damaged line blocked every upload. Now it's one failed item, as the roadmap
+  says. A report that can be read with one bad line in it isn't a report BECK can't read.
+- **A block with no `Path` line or no MD5 still stops everything,** with exit 4, because then BECK can't trust how it's reading the format.
+- **It exits with 3,** like every other item that failed while the run carried on, and it has its own code, `unsafe_path`.
+- **`--clean-unmatched` deletes nothing if an entry was refused,** because a file that seems to match nothing could be the one that entry asked for.
+- **A backslash is refused,** because SMB takes it as a separator. On the Samba test server, a report naming `folder\file.bin` wrote into that folder, while `..\` was refused by Samba itself.
+- **The controls for the direction of text are refused too,** along with control characters and U+FFFD, the same set 06.11a escapes, because they'd make a file whose name reads as something else.
+- **`a//b` and `./a` stay allowed.** They normalize to something safe, and refusing them would only risk refusing a real report.
+- **`SmbTransport` refuses these paths too,** as `LocalTransport` does, whoever calls it. A failure there is one failed item as well.
+
 ### Deleting is always explicit
 Nothing is deleted without `--move` or `--clean-unmatched`, and off a terminal not without `--yes` too. `--json` never prompts, so that
 a consumer can't hang on a question or confirm one by accident.
@@ -121,3 +187,12 @@ The one-document-on-stdout rule and the `--json` no-prompt rule came from the ro
   - With `--move --yes | head`, files can be deleted without the user seeing the list, though `--yes` confirmed that.
   - A JSON document saved to a full disk is cut short while the exit code says 0, so the guide says to check that a saved document parses.
   - The deletion prompt is the one exception: a question that can't be shown can't be answered, so BECK can't ask, and deletes nothing.
+
+## DEC-64 — An upload that doesn't match is `failed`
+- **Date:** 2026-11-06 (step 07.7).
+- **Context:** Until 07.7, only `--move` checked the size on the target, and the JSON guide said such an upload stayed `uploaded`, with an `error`. Step 07.7 checks every
+  upload, so that would have counted a damaged file as satisfied, and shown `copied` beside an error. This changes what a public field says, so the agent asked. Nothing is released yet.
+- **Decision:** An upload whose size, or with `--verify` whose MD5, doesn't match has the status `failed`, isn't counted in `satisfied` or `uploaded`, and exits with 3.
+- **Alternatives considered:** *Keep `uploaded` with an `error`:* no change to the guide's wording, but a damaged file would count as satisfied, and human output would say `copied` next to an error. Not
+  chosen. The agent recommended `failed`, and the owner gave no further reason.
+- **Consequences:** The damaged file stays on the device, because BECK has no way to delete there. A later run would keep it, so the message says to use `--overwrite`.

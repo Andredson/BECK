@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Andredson/BECK/main/docs/schemas/config-result.v1.json",
+  "title": "Result of beck --json config",
+  "description": "See docs/json-output.md. Within schema_version 1, fields are only added, so ignore fields you don't know.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "beck_version",
+    "command",
+    "ok",
+    "action",
+    "file",
+    "created",
+    "settings",
+    "errors"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "beck_version": {
+      "type": "string"
+    },
+    "command": {
+      "const": "config"
+    },
+    "ok": {
+      "type": "boolean",
+      "description": "False when the exit code isn't 0."
+    },
+    "action": {
+      "enum": [
+        "path",
+        "init",
+        "show"
+      ]
+    },
+    "file": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "The settings file. Null only if a bug stopped BECK before it found out which one.",
+      "required": [
+        "path",
+        "source",
+        "exists"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "source": {
+          "description": "Why this file: named by --config, named by BECK_CONFIG, or the default place.",
+          "enum": [
+            "flag",
+            "environment",
+            "default"
+          ]
+        },
+        "exists": {
+          "type": "boolean"
+        }
+      }
+    },
+    "created": {
+      "type": "boolean",
+      "description": "Whether this run wrote the file. Only beck config init does."
+    },
+    "settings": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "What a run would use. Only beck config show has it, and otherwise it's null.",
+      "required": [
+        "target",
+        "source",
+        "frontend",
+        "smb_user",
+        "smb_password",
+        "smb_timeout"
+      ],
+      "properties": {
+        "target": {
+          "type": "object",
+          "required": [
+            "value",
+            "source"
+          ],
+          "properties": {
+            "value": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The target as a URL, with no user name or password. Null if nothing names one."
+            },
+            "source": {
+              "type": "string"
+            }
+          }
+        },
+        "source": {
+          "type": "object",
+          "required": [
+            "value",
+            "source"
+          ],
+          "properties": {
+            "value": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string"
+            }
+          }
+        },
+        "frontend": {
+          "type": "object",
+          "required": [
+            "value",
+            "source"
+          ],
+          "properties": {
+            "value": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string"
+            }
+          }
+        },
+        "smb_user": {
+          "type": "object",
+          "required": [
+            "value",
+            "source"
+          ],
+          "properties": {
+            "value": {
+              "type": "string",
+              "description": "Empty means a guest."
+            },
+            "source": {
+              "type": "string"
+            }
+          }
+        },
+        "smb_password": {
+          "type": "object",
+          "description": "Only whether there is one, never the password.",
+          "required": [
+            "value",
+            "source"
+          ],
+          "properties": {
+            "value": {
+              "enum": [
+                "set",
+                "not set"
+              ]
+            },
+            "source": {
+              "type": "string"
+            }
+          }
+        },
+        "smb_timeout": {
+          "type": "object",
+          "required": [
+            "value",
+            "source"
+          ],
+          "properties": {
+            "value": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "In seconds."
+            },
+            "source": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/error"
+      }
+    }
+  },
+  "$defs": {
+    "error": {
+      "type": "object",
+      "required": [
+        "code",
+        "message",
+        "item"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "usage, config, transport, report_not_found, report_parse, internal, size_mismatch, md5_mismatch, delete_failed or unsafe_path. New codes may be added."
+        },
+        "message": {
+          "type": "string"
+        },
+        "item": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The target, folder or local file this is about. Null for an error that stopped the run."
+        }
+      }
+    }
+  }
+}

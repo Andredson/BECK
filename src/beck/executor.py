@@ -3,6 +3,7 @@
 from pathlib import PurePosixPath
 
 from beck.errors import TransportError
+from beck.hashing import md5_bytes
 from beck.models import ItemError, LocalFile, Plan, PlannedUpload, RunResult
 from beck.transports.base import Transport
 
@@ -12,44 +13,38 @@ def _changes_extension(upload: PlannedUpload) -> bool:
     return upload.source.relative.suffix.casefold() != upload.target.suffix.casefold()
 
 
-def _size_matches(upload: PlannedUpload, transport: Transport, errors: list[ItemError]) -> bool:
-    """Whether the file on the target has the local file's size. A failure counts as no."""
+def _damage(upload: PlannedUpload, transport: Transport, *, verify: bool) -> ItemError | None:
+    """What's wrong with what arrived, if anything: its size, and with ``verify`` its MD5 too.
+
+    It compares with what the scan found, because the local file could have changed since. A
+    damaged file stays on the target, and a later run would keep it, so the message says what to do.
+    """
     item = upload.target.as_posix()
-    try:
-        size = transport.size(upload.target)
-    except TransportError as e:
-        errors.append(ItemError(item=item, message=str(e)))
-        return False
+    size = transport.size(upload.target)
     if size != upload.source.size:
-        errors.append(
-            ItemError(
-                item=item,
-                message=f"{item} has {size} bytes on the target, not {upload.source.size}, "
-                f"so {upload.source.relative} wasn't deleted",
-                code="size_mismatch",
-            )
+        return ItemError(
+            item=item,
+            message=f"{item} has {size} bytes on the target, not {upload.source.size}. "
+            "To try again, use --overwrite.",
+            code="size_mismatch",
         )
-        return False
-    return True
+    if verify and md5_bytes(transport.read_bytes(upload.target)) != upload.source.md5:
+        return ItemError(
+            item=item,
+            message=f"{item} has a different MD5 on the target. To try again, use --overwrite.",
+            code="md5_mismatch",
+        )
+    return None
 
 
-def _files_to_move(
-    plan: Plan,
-    transport: Transport,
-    *,
-    dry_run: bool,
-    done: set[PlannedUpload],
-    errors: list[ItemError],
-) -> list[LocalFile]:
-    """Files uploaded to all their targets. In a real run, each remote size must match too."""
-    files = []
-    for file in dict.fromkeys(upload.source for upload in plan.uploads):
-        uploads = [upload for upload in plan.uploads if upload.source == file]
-        if not all(upload in done for upload in uploads):
-            continue
-        if dry_run or all(_size_matches(upload, transport, errors) for upload in uploads):
-            files.append(file)
-    return files
+def _files_to_move(plan: Plan, done: set[PlannedUpload]) -> list[LocalFile]:
+    """Files uploaded to all their targets. What's done has already been checked on the target."""
+    files = dict.fromkeys(upload.source for upload in plan.uploads)
+    return [
+        file
+        for file in files
+        if all(upload in done for upload in plan.uploads if upload.source == file)
+    ]
 
 
 def _files_to_clean(plan: Plan) -> list[LocalFile]:
@@ -77,14 +72,18 @@ def execute(
     overwrite: bool = False,
     move: bool = False,
     clean_unmatched: bool = False,
+    verify: bool = False,
 ) -> RunResult:
     """Create the folders, upload, then delete what was asked. A failed item is recorded.
 
     A file already on the target is kept, unless ``overwrite`` asks to replace it (DEC-61).
 
-    ``move`` deletes a local file once it's uploaded to all its targets and each remote size
-    matches. ``clean_unmatched`` deletes local files that matched nothing, but not after any failure
-    in this run. Without these flags, nothing local is ever deleted or renamed (DEC-02).
+    Each upload is checked on the target: its size always, and with ``verify`` its MD5 too, by
+    reading it back. One that doesn't match counts as failed.
+
+    ``move`` deletes a local file once it's uploaded to all its targets. ``clean_unmatched`` deletes
+    local files that matched nothing, but not after any failure in this run. Without these flags,
+    nothing local is ever deleted or renamed (DEC-02).
 
     An upload that changes the file's extension goes ahead, and is listed in ``extension_changes``:
     the MD5 is valid, but an emulator may not be able to read the file.
@@ -93,7 +92,7 @@ def execute(
     ``deleted`` has what it would delete. An upload whose folder couldn't be created is skipped too.
     Only a TransportError counts as an item failure: anything else is a bug, and stops the run.
     """
-    errors: list[ItemError] = []
+    errors = list(plan.rejected)  # so ``clean_unmatched`` stops: the report wasn't fully read
     failed_folders: set[PurePosixPath] = set()
     if not dry_run:
         for folder in plan.directories:
@@ -120,6 +119,10 @@ def execute(
                 skipped.append(upload)
             else:
                 transport.upload(upload.source.path, upload.target)
+                damage = _damage(upload, transport, verify=verify)
+                if damage is not None:
+                    errors.append(damage)
+                    continue
                 completed.append(upload)
             if already_there:
                 replaced.append(upload)
@@ -129,7 +132,7 @@ def execute(
     done = skipped if dry_run else completed
     to_delete: list[LocalFile] = []
     if move:
-        to_delete += _files_to_move(plan, transport, dry_run=dry_run, done=set(done), errors=errors)
+        to_delete += _files_to_move(plan, set(done))
     if clean_unmatched and not errors:
         to_delete += _files_to_clean(plan)
     deleted = [file for file in to_delete if dry_run or _delete(file, errors)]

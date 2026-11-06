@@ -133,7 +133,7 @@ def test_a_current_md5_must_be_a_valid_md5() -> None:
 def test_plan_is_empty_by_default() -> None:
     plan = Plan()
 
-    assert dataclasses.astuple(plan) == ((), (), (), (), (), (), ())
+    assert dataclasses.astuple(plan) == ((), (), (), (), (), (), (), ())
 
 
 def test_plan_sorts_every_field_whatever_the_input_order() -> None:

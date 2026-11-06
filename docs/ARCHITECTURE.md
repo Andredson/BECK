@@ -14,7 +14,10 @@ the outside world.
 src/beck/
 ├── __init__.py          # __version__ from importlib.metadata
 ├── __main__.py          # python -m beck
-├── cli.py               # argparse wiring and exit codes (minimal here, full in stage 06)
+├── cli.py               # argparse wiring and exit codes
+├── config.py            # the TOML settings file: read and checked, with no password in it
+├── credentials.py       # the SMB password: from the environment or a prompt, kept in memory
+├── redact.py            # keeps credentials out of what BECK shows
 ├── errors.py            # BeckError hierarchy, each with an exit code
 ├── models.py            # frozen dataclasses: MissingBios, LocalFile, PlannedUpload, Plan, RunResult
 ├── hashing.py           # chunked MD5, local folder scan
@@ -108,6 +111,8 @@ These are the boundaries to keep when changing the code:
 8. **Output can't change the run** (DEC-62). What BECK does, and its exit code, don't depend on whether its output can be written. Output goes
    through `print_safely`, and `cli.main` ends with `finish_output`. The deletion prompt is the one exception, because a question nobody saw
    can't be answered: if it can't be shown, BECK can't ask, and nothing is deleted.
+9. **No output holds a password.** BECK never prints one, and `redact` is there for what repeats one by accident. It's in `_printable`, the log formatter
+   and the free text of the JSON output, and `tests/unit/test_redaction.py` runs every command in every mode, with and without the mask.
 
 ## Errors
 

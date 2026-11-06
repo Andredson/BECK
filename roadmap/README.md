@@ -18,7 +18,7 @@ executed **one step at a time**, by a human or an AI agent, in the order below. 
 | 04 | [Architecture refactor](04-architecture-refactor.md) | 03 | `stage/04-architecture` | L | Done (2026-11-04) |
 | 05 | [Testing hardening](05-testing-hardening.md) | 04 | `stage/05-testing` | M | Done (2026-11-05) |
 | 06 | [CLI, UX & machine-readable output](06-cli-ux-and-machine-output.md) | 05 | `stage/06-cli` | M | Done (2026-11-06) |
-| 07 | [Configuration & security](07-configuration-and-security.md) | 06 | `stage/07-config-security` | M | Not started |
+| 07 | [Configuration & security](07-configuration-and-security.md) | 06 | `stage/07-config-security` | M | Done (2026-11-06) |
 | 08 | [Documentation](08-documentation.md) | 07 | `stage/08-docs` | M | Not started |
 | 09 | [Agent Skills & automation](09-agent-skills-and-automation.md) | 08 | `stage/09-agent-skills` | M | Not started |
 | 10 | [Packaging & release](10-packaging-and-release.md) | 09 | `stage/10-release` | M | Not started |
@@ -150,6 +150,7 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-61 | A file already on the device is **kept and reported**, and `--overwrite` replaces it, including files listed as `INCORRECT` (the flag DEC-54 left open). *(2026-11-05, step 06.5)* |
 | DEC-62 | What BECK does, and its exit code, **don't depend on whether its output can be written**. The run carries on when stdout fails: a closed pipe is silent, and any other failure prints one line on stderr. *(2026-11-05, step 06.7b)* |
 | DEC-63 | `types-jsonschema` is a dev-only dependency, so that mypy can check the tests that use `jsonschema`, which ships no type hints. *(2026-11-06, step 06.8)* |
+| DEC-64 | An upload whose size, or with `--verify` whose MD5, doesn't match has the status `failed`, not `uploaded` with an `error`. *(2026-11-06, step 07.7)* |
 
 ### CI/CD, security, and release
 

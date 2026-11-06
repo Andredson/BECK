@@ -9,11 +9,15 @@ from beck.frontends.recalbox import RecalboxAdapter
 _ADAPTERS: dict[str, Callable[[], FrontendAdapter]] = {"recalbox": RecalboxAdapter}
 
 
+def known_frontends() -> list[str]:
+    return sorted(_ADAPTERS)
+
+
 def get_adapter(name: str) -> FrontendAdapter:
     """The adapter with this name. Raises UsageError, listing the known names, if there's none."""
     try:
         factory = _ADAPTERS[name]
     except KeyError as e:
-        known = ", ".join(sorted(_ADAPTERS))
+        known = ", ".join(known_frontends())
         raise UsageError(f"Unknown frontend {name!r}. Known frontends: {known}") from e
     return factory()

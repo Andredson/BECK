@@ -106,6 +106,15 @@ class Duplicate:
 
 
 @dataclass(frozen=True, slots=True)
+class ItemError:
+    """One item that failed while the rest of the run continued."""
+
+    item: str
+    message: str
+    code: str = "transport"  # part of the JSON output: see docs/json-output.md
+
+
+@dataclass(frozen=True, slots=True)
 class Plan:
     """What a run will do. Every field is sorted, so the same input always gives the same plan.
 
@@ -119,6 +128,7 @@ class Plan:
     already_filled: tuple[LocalFile, ...] = ()  # matched, but other files fill all its targets
     still_missing: tuple[MissingBios, ...] = ()
     incorrect: tuple[MissingBios, ...] = ()  # on the device with a wrong hash, and being kept
+    rejected: tuple[ItemError, ...] = ()  # entries of the report that aren't safe to act on
 
     def __post_init__(self) -> None:
         fields: dict[str, list[Any]] = {
@@ -129,18 +139,10 @@ class Plan:
             "already_filled": sorted(self.already_filled, key=lambda f: f.relative.as_posix()),
             "still_missing": sorted(self.still_missing, key=lambda e: e.target),
             "incorrect": sorted(self.incorrect, key=lambda e: e.target),
+            "rejected": sorted(self.rejected, key=lambda e: e.item),
         }
         for name, value in fields.items():
             object.__setattr__(self, name, tuple(value))  # the only write: this class is frozen
-
-
-@dataclass(frozen=True, slots=True)
-class ItemError:
-    """One item that failed while the rest of the run continued."""
-
-    item: str
-    message: str
-    code: str = "transport"  # part of the JSON output: see docs/json-output.md
 
 
 @dataclass(frozen=True, slots=True)

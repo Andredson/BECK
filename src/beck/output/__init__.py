@@ -14,6 +14,7 @@ from typing import TextIO
 from beck.models import Plan, PlannedUpload, RunResult
 
 LOGGER_NAME = "beck"
+NOT_ABOUT_AN_UPLOAD = {"delete_failed", "unsafe_path"}
 
 # What can act on a terminal or change how a line reads: control characters, the controls for the
 # direction of text, and how Python holds a byte of a file name that isn't valid UTF-8.
@@ -81,9 +82,9 @@ def distinct_targets(plan: Plan) -> int:
 
 def upload_errors(result: RunResult) -> dict[str, str]:
     """What went wrong on the target, by target. A failed delete is about a local file instead,
-    and that file can have the same name as a target.
+    and that file can have the same name as a target. A rejected entry never got that far.
     """
-    return {e.item: e.message for e in result.errors if e.code != "delete_failed"}
+    return {e.item: e.message for e in result.errors if e.code not in NOT_ABOUT_AN_UPLOAD}
 
 
 def upload_status(upload: PlannedUpload, result: RunResult) -> str:

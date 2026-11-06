@@ -6,12 +6,14 @@ in the git index (committed or staged) for:
 - BIOS/ROM-type files: copyrighted, never allowed (see AGENTS.md "Legal");
 - anything inside ``bios/`` except ``bios/.keep``;
 - files larger than 1 MiB;
-- a real (non-example) BECK config file, which may contain credentials.
+- a real BECK settings file, whatever it holds, because the real one lives outside the repository;
+- a TOML file of any name with a password in it, which BECK refuses anyway.
 
 Usage: ``uv run python scripts/check_repo_hygiene.py``.
 Exits 0 when clean, or 1 after printing one line per problem.
 """
 
+import re
 import shutil
 import subprocess
 import sys
@@ -22,6 +24,7 @@ ROOT = Path(__file__).resolve().parent.parent
 MAX_BYTES = 1024 * 1024
 BIOS_EXTENSIONS = frozenset({".bin", ".rom", ".img", ".zip", ".7z", ".pup", ".chd", ".iso"})
 CONFIG_NAMES = frozenset({"config.yml", "config.yaml", "config.toml"})
+PASSWORD_KEY = re.compile(r"^\s*(?:password|passwd)\s*=", re.IGNORECASE | re.MULTILINE)
 
 # Temporary exceptions. Each entry says which roadmap step removes it. Empty since step 03.2.
 ALLOWED: dict[str, str] = {}
@@ -41,9 +44,19 @@ def find_problems(entries: Iterable[tuple[str, int]]) -> list[str]:
         if size > MAX_BYTES:
             problems.append(f"{path}: {size:,} bytes is over the {MAX_BYTES:,}-byte limit")
         if posix.name in CONFIG_NAMES and posix.parts[0] != ".github":
-            problems.append(
-                f"{path}: real config file may hold credentials; track an *.example.* copy"
-            )
+            problems.append(f"{path}: real config file may hold credentials; never track one")
+    return problems
+
+
+def find_passwords(root: Path, paths: Iterable[str]) -> list[str]:
+    """One message per TOML file with a password key. A message never repeats what it holds."""
+    problems: list[str] = []
+    for path in paths:
+        file = root / path
+        if file.suffix.lower() == ".toml" and file.is_file():
+            text = file.read_bytes().decode("utf-8", errors="replace")
+            if PASSWORD_KEY.search(text):
+                problems.append(f"{path}: holds a password; use BECK_SMB_PASSWORD")
     return problems
 
 
@@ -64,7 +77,7 @@ def tracked_entries(root: Path = ROOT) -> list[tuple[str, int]]:
 
 def main() -> int:
     entries = tracked_entries()
-    problems = find_problems(entries)
+    problems = find_problems(entries) + find_passwords(ROOT, [path for path, _size in entries])
     for problem in problems:
         print(f"hygiene: {problem}", file=sys.stderr)
     if problems:

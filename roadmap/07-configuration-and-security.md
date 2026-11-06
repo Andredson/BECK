@@ -1,6 +1,6 @@
 # Stage 07 — Configuration & security
 
-**Status:** Not started · **Depends on:** 06 · **Branch:** `stage/07-config-security` · **Effort:** M
+**Status:** Done (2026-11-06) · **Depends on:** 06 · **Branch:** `stage/07-config-security` · **Effort:** M
 
 ## Goal
 Make configuration predictable and safe: one TOML file in the OS-correct folder, environment-variable
@@ -51,7 +51,11 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 ## Steps
 
 ### 07.1 — TOML loader, schema and validation
-- [ ] Done
+- [x] Done (2026-11-06: nothing reads this file yet, which is 07.2. Choices beyond the list below: `schema_version` is required; a relative
+  `dir` is refused, because it would mean something different from each folder, and the stage wants BECK to work from any folder; `passwd` and
+  any case of `password` are refused too, anywhere in the file; a message never repeats a value that could be a password, so it gives the kind of
+  value instead, except for `schema_version` and `smb.timeout`; and every problem is on one line, because a line break would show as `\x0a` since
+  06.11a. Beyond the list below: `docs/ARCHITECTURE.md` and `AGENTS.md` name the new module.)
 - **What:** `src/beck/config.py`:
   - A frozen `Config` dataclass.
   - `load(path) -> Config` using `tomllib`.
@@ -65,7 +69,10 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 - **Commit message:** `feat(config): load and validate a TOML configuration file`
 
 ### 07.2 — Discovery and precedence
-- [ ] Done
+- [x] Done (2026-11-06: `platformdirs` 4.13.5, with no dependencies of its own. The choices it needed are in
+  [ADR-0007](../docs/adr/0007-cli-contract.md#details-settled-in-step-072). `BECK_SMB_PASSWORD` is 07.4, so until then a user with no password can't
+  log in. Beyond the list below: `requirements.txt`, `docs/cli.md`, `tests/conftest.py`, so that tests can't read the settings of whoever runs them,
+  `tests/unit/test_json_contract.py`, and the renderers, because the frontend in a JSON document can now come from the file.)
 - **What:** `uv add platformdirs` (DEC-19). Implement discovery and the precedence order above as a pure function
   `resolve(flags, env, file_config) -> Settings`, so it can be tested without touching the real environment.
   Tests monkeypatch `platformdirs` and the environment.
@@ -75,7 +82,10 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 - **Commit message:** `feat(config): resolve settings from flags, environment, file and defaults`
 
 ### 07.3 — `beck config` commands and the legacy migration
-- [ ] Done
+- [x] Done (2026-11-06: the choices it needed are in [ADR-0007](../docs/adr/0007-cli-contract.md#details-settled-in-step-073). `BECK_SMB_PASSWORD` works from
+  here, because `config show` needs it and the old file was the only other way to log in, so 07.4 is left with the prompt and its error. The notice stops
+  once there's a new file, rather than literally being one-time, which would need a marker file. Beyond the list below: a fifth JSON schema and its docs,
+  `README.md`, `AGENTS.md` and `docs/cli.md`, and every test that wrote the old file, now through `settings_text` in `tests/factories.py`.)
 - **What:**
   - `beck config path` prints the file that would be used and why (flag, env or default).
   - `beck config init` writes a commented template like the one above to the default location. It refuses to
@@ -93,7 +103,9 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 - **Commit message:** `feat(config)!: switch to TOML config with migration from config.yml`
 
 ### 07.4 — Credentials: environment, prompt, guest (DEC-10)
-- [ ] Done
+- [x] Done (2026-11-06: the choices it needed are in [ADR-0007](../docs/adr/0007-cli-contract.md#details-settled-in-step-074). Beyond the list below: tests with a real
+  pseudo-terminal against the Samba test server, in `tests/integration/`, with `getpass` not monkeypatched, and in `docs/cli.md`, `docs/json-output.md`, `README.md`
+  and `AGENTS.md` what to do about a password.)
 - **What:**
   - Empty user → guest login.
   - User set and `BECK_SMB_PASSWORD` set → use it.
@@ -107,7 +119,9 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 - **Commit message:** `feat(config): support guest, environment and prompted SMB credentials`
 
 ### 07.5 — Secret redaction everywhere
-- [ ] Done
+- [x] Done (2026-11-06: a probe found that a URL holding a password came back whenever it wasn't given to `--target`, which this fixes. The choices it needed are in
+  [ADR-0007](../docs/adr/0007-cli-contract.md#details-settled-in-step-075). The sentinel test runs 22 scenarios in 5 modes, with the mask and without it, so that no path relies on the mask. Beyond the list
+  below: `src/beck/frontends/__init__.py`, the docs, and the integration test.)
 - **What:** One `redact()` helper used by logging, `config show`, the JSON output and error messages; URLs
   are always printed without credentials. A **sentinel test** sets a unique password value, runs every command
   with `-v` and `--json` (success and failure paths), and asserts the sentinel never appears in stdout, stderr or
@@ -118,7 +132,8 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 - **Commit message:** `fix(security): redact credentials in logs, errors and JSON output`
 
 ### 07.6 — Path safety for report-derived targets
-- [ ] Done
+- [x] Done (2026-11-06: until now some of these stopped the whole run, and others were uploaded. On the Samba test server, `folder\\file.bin` wrote into that folder. The choices it needed are in
+  [ADR-0007](../docs/adr/0007-cli-contract.md#details-settled-in-step-076). Beyond the list below: a new `unsafe_path` error code in the JSON output and its docs, `Plan.rejected`, and the renderers.)
 - **What:** Every target path built from the report must be relative and normalized. Reject absolute paths,
   `..` segments, empty names, and names with path separators *after* stripping the device BIOS root. Also reject a name or
   folder containing `\ufffd`: a byte that wasn't valid UTF-8 was replaced there, and uploading would leave a useless file on
@@ -133,7 +148,8 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 - **Commit message:** `fix(security): reject unsafe target paths from reports`
 
 ### 07.7 — Upload integrity and SMB options
-- [ ] Done
+- [x] Done (2026-11-06: the owner chose that such an upload is `failed` (DEC-64). `--move` no longer has its own size check, because every upload has one. `smb.timeout` was exposed in 07.2. Beyond the
+  list below: the JSON docs and a new `md5_mismatch` code, `docs/cli.md`, and `src/beck/hashing.py`.)
 - **What:**
   - After each upload, compare the remote size with the local size; a mismatch is an item error.
   - `--verify` additionally reads the remote file back and compares its MD5. It's slower, so it's off by default.
@@ -144,7 +160,8 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 - **Commit message:** `feat(transfer): verify uploads by size and optionally by MD5`
 
 ### 07.8 — `SECURITY.md` and threat model
-- [ ] Done
+- [x] Done (2026-11-06: private vulnerability reporting isn't on yet (12.6), so the policy also says what to do if the option isn't there. It promises best effort rather than deadlines, because a
+  commitment is the owner's to make. The threat model lists the risks BECK accepts, and marks attestations and the SBOM as planned for stage 10. Beyond the list below: `README.md`.)
 - **What:**
   - `SECURITY.md`: supported versions (latest minor), how to report a vulnerability (GitHub **private
     vulnerability reporting**, which the owner enables in 12.6), response expectations, and what is out of scope
@@ -160,7 +177,8 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 - **Commit message:** `docs(security): add security policy and threat model`
 
 ### 07.9 — Close the stage
-- [ ] Done
+- [x] Done (2026-11-06: the acceptance criteria below hold. The stage scores 7/10, with a sum of 135, up from 128. The hygiene check stays, because the old file may still hold a password, and it now also
+  refuses a TOML file of any name with a password in it. Draft PR #8 already exists, so the owner marks it ready and merges it with a merge commit.)
 - **What:** Update AGENTS.md: the config and credentials rules ("never print, log or commit passwords; use
   `BECK_SMB_PASSWORD`"), and the security docs links. Remove the `config/config.yml` check from the hygiene script
   if no longer relevant, or extend it to catch `config.toml` files containing a `password`. Re-score

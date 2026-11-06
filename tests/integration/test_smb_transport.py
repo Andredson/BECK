@@ -3,11 +3,16 @@
 Run with BECK_TEST_SMB_HOST=127.0.0.1 BECK_TEST_SMB_PORT=4450 uv run pytest -m integration
 """
 
+import contextlib
 import json
 import os
+import pty
+import select
+import signal
 import socket
 import subprocess
 import sys
+import termios
 from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -210,11 +215,12 @@ def test_direct_tcp_is_chosen_for_port_445_and_works(
 
 
 @pytest.fixture
-def app(samba: Samba, tmp_path: Path) -> Path:
+def app(samba: Samba, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     folder = tmp_path / "app"
-    (folder / "config").mkdir(parents=True)
-    (folder / "bios").mkdir()
-    (folder / "config" / "config.yml").write_text(samba.config(), encoding="utf-8")
+    (folder / "bios").mkdir(parents=True)
+    (folder / "settings.toml").write_text(samba.settings(), encoding="utf-8")
+    (folder / "settings.toml").chmod(0o600)
+    monkeypatch.setenv("BECK_CONFIG", str(folder / "settings.toml"))
     return folder
 
 
@@ -455,11 +461,11 @@ def test_end_to_end_v_never_shows_the_credentials_on_a_real_server(
     folder: PurePosixPath,
     put_report: PutReport,
     capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    (tmp_path / "config").mkdir()
-    (tmp_path / "config" / "config.yml").write_text(
-        samba.config("beck", ACCOUNT_CREDENTIAL), encoding="utf-8"
-    )
+    (tmp_path / "settings.toml").write_text(samba.settings("beck"), encoding="utf-8")
+    monkeypatch.setenv("BECK_CONFIG", str(tmp_path / "settings.toml"))
+    monkeypatch.setenv("BECK_SMB_PASSWORD", ACCOUNT_CREDENTIAL)
     good = make_bios_file(tmp_path / "bios", "good.bin")
     target = (folder / "good.bin").as_posix()
     put_report(make_report_text([make_missing(target, good.md5)]))
@@ -474,15 +480,200 @@ def test_end_to_end_v_never_shows_the_credentials_on_a_real_server(
         assert transport.read_bytes(PurePosixPath(target)) == good.path.read_bytes()
 
 
-def test_end_to_end_blank_credentials_are_a_guest_on_a_real_server(
-    samba: Samba, tmp_path: Path, put_report: PutReport
+@pytest.mark.parametrize("mode", [[], ["-v"], ["--json"], ["--json", "-v"]], ids=str)
+@pytest.mark.parametrize(
+    ("password", "code"), [(ACCOUNT_CREDENTIAL, 0), (BAD_CREDENTIAL, 3)], ids=["right", "wrong"]
+)
+def test_end_to_end_no_output_holds_the_password_on_a_real_server(
+    samba: Samba,
+    tmp_path: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    mode: list[str],
+    password: str,
+    code: int,
 ) -> None:
-    """Real pysmb crashes on a blank YAML value, which is null, so the fake can't show this."""
-    (tmp_path / "config").mkdir()
-    (tmp_path / "config" / "config.yml").write_text(
-        f"smb:\n  user:\n  passwd:\n  server: {samba.host}\n  port: {samba.port}\n",
+    monkeypatch.setenv("BECK_SMB_PASSWORD", password)
+    monkeypatch.setenv("BECK_CONFIG", str(tmp_path / "settings.toml"))
+    (tmp_path / "settings.toml").write_text(samba.settings("beck"), encoding="utf-8")
+    (tmp_path / "settings.toml").chmod(0o600)
+    good = make_bios_file(tmp_path / "bios", "good.bin")
+    put_report(make_report_text([make_missing((folder / "good.bin").as_posix(), good.md5)]))
+
+    assert cli.main([*mode, "check"], base_dir=tmp_path) == code
+
+    out = capsys.readouterr()
+    assert password not in out.out + out.err
+    assert "beck-test-password" not in out.out + out.err
+
+
+@pytest.mark.parametrize("name", ["{folder}\\sideways.bin", "..\\climbed.bin"], ids=["into", "out"])
+def test_end_to_end_a_backslash_can_not_reach_another_folder_on_a_real_server(
+    samba: Samba, tmp_path: Path, folder: PurePosixPath, name: str
+) -> None:
+    """Before 07.6, the first of these wrote into that folder: SMB takes it as a separator."""
+    good = make_bios_file(tmp_path / "bios", "a.bin")
+    report = tmp_path / "report.txt"
+    target = name.format(folder=folder)
+    report.write_text(
+        f"MISSING BIOS REPORT\n  MISSING REQUIRED BIOS: {target}\n"
+        f"    Path: /recalbox/share/bios/{target}\n    Possible MD5 List:\n      {good.md5}\n",
         encoding="utf-8",
     )
+    url = f"smb://{samba.host}:{samba.port}/bios"
+    arguments = ["check", "--target", url, "--report-file", str(report)]
+
+    assert cli.main(arguments, base_dir=tmp_path) == 3
+
+    with samba.guest() as transport:
+        assert not transport.exists(folder / "sideways.bin")
+
+
+def test_verify_passes_on_a_real_server(
+    samba: Samba, tmp_path: Path, folder: PurePosixPath, put_report: PutReport
+) -> None:
+    good = make_bios_file(tmp_path / "bios", "good.bin")
+    target = folder / "good.bin"
+    put_report(make_report_text([make_missing(target.as_posix(), good.md5)]))
+    url = f"smb://{samba.host}:{samba.port}/bios"
+
+    assert cli.main(["check", "--target", url, "--verify"], base_dir=tmp_path) == 0
+
+    with samba.guest() as transport:
+        assert transport.read_bytes(target) == good.path.read_bytes()
+
+
+def test_verify_notices_a_damaged_upload_on_a_real_server(
+    samba: Samba,
+    tmp_path: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The same size, and other bytes, so that only reading it back from the server can tell."""
+    good = make_bios_file(tmp_path / "bios", "good.bin")
+    target = folder / "good.bin"
+    put_report(make_report_text([make_missing(target.as_posix(), good.md5)]))
+    url = f"smb://{samba.host}:{samba.port}/bios"
+    damaged = tmp_path / "damaged.bin"
+    damaged.write_bytes(bytes(reversed(good.path.read_bytes())))
+    real_upload = SmbTransport.upload
+
+    def upload(self: SmbTransport, _local: Path, remote: PurePosixPath) -> int:
+        return real_upload(self, damaged, remote)
+
+    monkeypatch.setattr(SmbTransport, "upload", upload)
+
+    assert cli.main(["--json", "check", "--target", url, "--verify"], base_dir=tmp_path) == 3
+
+    document = json.loads(capsys.readouterr().out)
+    assert document["uploads"][0]["status"] == "failed"
+    assert document["errors"][0]["code"] == "md5_mismatch"
+
+
+def test_the_size_check_passes_on_a_real_server(
+    samba: Samba, tmp_path: Path, folder: PurePosixPath, put_report: PutReport
+) -> None:
+    good = make_bios_file(tmp_path / "bios", "good.bin")
+    put_report(make_report_text([make_missing((folder / "good.bin").as_posix(), good.md5)]))
+    url = f"smb://{samba.host}:{samba.port}/bios"
+
+    assert cli.main(["check", "--target", url], base_dir=tmp_path) == 0
+
+
+def at_a_real_prompt(
+    arguments: list[str], *, typed: bytes = b"", interrupted: bool = False
+) -> tuple[int, bytes, bytes]:
+    """Run BECK on a pseudo-terminal, and answer once the prompt is up: exit code, stderr and echo.
+
+    In its own session, so that getpass can't open the terminal of whoever runs these tests, and
+    wait for them. With no terminal of its own, it uses stdin and prompts on stderr. That's also why
+    Ctrl-C is a signal here: only a controlling terminal turns the key into one.
+    """
+    master, slave = pty.openpty()
+    settings_before = termios.tcgetattr(master)
+    process = subprocess.Popen(  # noqa: S603 - fixed arguments, no external input
+        [sys.executable, "-m", "beck", *arguments],
+        stdin=slave,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        start_new_session=True,
+    )
+    os.close(slave)
+    try:
+        assert process.stderr is not None
+        seen = b""
+        while b": " not in seen:
+            ready, _, _ = select.select([process.stderr], [], [], 20)
+            assert ready, f"no prompt: {seen!r}"
+            seen += os.read(process.stderr.fileno(), 1024)
+        if interrupted:
+            process.send_signal(signal.SIGINT)
+        else:
+            os.write(master, typed)
+        _, rest = process.communicate(timeout=30)
+        assert termios.tcgetattr(master) == settings_before, "the terminal wasn't left as it was"
+        echoed = b""
+        os.set_blocking(master, False)
+        with contextlib.suppress(OSError):  # Linux reports the closed end as an I/O error
+            echoed = os.read(master, 4096)
+        return process.returncode, seen + rest, echoed
+    finally:
+        process.kill()
+        process.wait()
+        os.close(master)
+
+
+def test_a_real_prompt_logs_in_to_a_real_server_and_shows_nothing_typed(samba: Samba) -> None:
+    url = f"smb://beck@{samba.host}:{samba.port}/private"
+
+    code, stderr, echoed = at_a_real_prompt(
+        ["report", "--target", url], typed=ACCOUNT_CREDENTIAL.encode() + b"\n"
+    )
+
+    assert code == 4, stderr  # logged in, and that share has no report
+    assert b"Password for beck on" in stderr
+    assert ACCOUNT_CREDENTIAL.encode() not in stderr + echoed
+
+
+def test_a_wrong_answer_at_a_real_prompt_is_exit_3(samba: Samba) -> None:
+    url = f"smb://beck@{samba.host}:{samba.port}/private"
+
+    code, stderr, echoed = at_a_real_prompt(
+        ["report", "--target", url], typed=BAD_CREDENTIAL.encode() + b"\n"
+    )
+
+    assert code == 3, stderr
+    assert BAD_CREDENTIAL.encode() not in stderr + echoed
+
+
+def test_ctrl_d_at_a_real_prompt_is_exit_2(samba: Samba) -> None:
+    url = f"smb://beck@{samba.host}:{samba.port}/private"
+
+    code, stderr, _ = at_a_real_prompt(["report", "--target", url], typed=b"\x04")
+
+    assert code == 2, stderr
+    assert b"Traceback" not in stderr
+
+
+def test_ctrl_c_at_a_real_prompt_is_exit_2_and_leaves_the_terminal_as_it_was(samba: Samba) -> None:
+    url = f"smb://beck@{samba.host}:{samba.port}/private"
+
+    code, stderr, _ = at_a_real_prompt(["report", "--target", url], interrupted=True)
+
+    assert code == 2, stderr
+    assert b"Traceback" not in stderr
+
+
+def test_end_to_end_an_empty_user_is_a_guest_on_a_real_server(
+    samba: Samba, tmp_path: Path, put_report: PutReport, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "settings.toml").write_text(samba.settings(""), encoding="utf-8")
+    monkeypatch.setenv("BECK_CONFIG", str(tmp_path / "settings.toml"))
+    monkeypatch.setenv("BECK_SMB_PASSWORD", BAD_CREDENTIAL)  # a guest doesn't send it
     put_report(make_report_text([]))
 
     assert cli.main(["report"], base_dir=tmp_path) == 0
@@ -695,10 +886,10 @@ def test_end_to_end_no_report_is_exit_4(app: Path, capsys: pytest.CaptureFixture
 
 
 def test_end_to_end_wrong_password_is_exit_3_with_no_traceback(
-    samba: Samba, app: Path, capsys: pytest.CaptureFixture[str]
+    samba: Samba, app: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    config = samba.config(user="beck", password=BAD_CREDENTIAL)
-    (app / "config" / "config.yml").write_text(config, encoding="utf-8")
+    (app / "settings.toml").write_text(samba.settings("beck"), encoding="utf-8")
+    monkeypatch.setenv("BECK_SMB_PASSWORD", BAD_CREDENTIAL)
 
     assert cli.main(["check"], base_dir=app) == 3
 
@@ -711,8 +902,7 @@ def test_end_to_end_wrong_password_is_exit_3_with_no_traceback(
 def test_end_to_end_unreachable_server_is_exit_3_with_no_traceback(
     samba: Samba, app: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    config = f'smb: {{user: "", passwd: "", server: "{samba.host}", port: 1}}\n'
-    (app / "config" / "config.yml").write_text(config, encoding="utf-8")
+    (app / "settings.toml").write_text(samba.settings(port=1), encoding="utf-8")
 
     assert cli.main(["check"], base_dir=app) == 3
 

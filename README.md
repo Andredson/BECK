@@ -21,7 +21,7 @@ Run these from the folder you cloned BECK into. With pip, inside a virtual envir
 ```sh
 python3 -m venv .venv
 . .venv/bin/activate              # on Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pip install .
 ```
 
 On Debian or Ubuntu, if `python3 -m venv` says that `ensurepip` isn't available, install the `python3-venv` package
@@ -35,29 +35,29 @@ uv sync
 
 ## Configuration
 
-Copy the example settings, then edit your copy:
+Create a settings file, which you can then edit:
 
 ```sh
-cp config/config.example.yml config/config.yml
+uv run beck config init           # with pip: beck config init
+uv run beck config path           # where it is: ~/.config/beck/config.toml on Linux
 ```
 
-`server` is your Recalbox's address (`recalbox.local` by default, or its IP address), and `port` is `445`. `user`
-and `passwd` can stay empty if your Recalbox allows guest access. Git ignores `config/config.yml`, so your password
-is never committed.
+`url` is your Recalbox's address (`smb://recalbox.local/bios` by default), and `dir` under `[source]` is your folder of BIOS files. `user` can
+stay empty if your Recalbox allows guest access. If you name a user, BECK asks for the password, or you can set it in the `BECK_SMB_PASSWORD`
+environment variable. It can't go in the file. [The guide](docs/cli.md#settings) has the rest, including environment variables for every setting.
 
 ## Upgrading
 
-Older versions tracked `config/config.yml` in git. If you edited that file, `git pull` now refuses to update. Move
-your settings out of the way, pull, and put them back:
+BECK doesn't read `config/config.yml` any more. If you still have that file, BECK prints what to put in the new settings file, leaving out the
+password, which BECK now asks for. Delete the old file once you've moved your settings, because it may hold your password in plain text.
+
+Older versions tracked that file in git. If you edited it, `git pull` refuses to update, so move it out of the way first:
 
 ```sh
 cp config/config.yml ../beck-config.yml
 git checkout -- config/config.yml
 git pull
-cp ../beck-config.yml config/config.yml
 ```
-
-If you never edited it, `git pull` removes it; create it again as described in [Configuration](#configuration).
 
 ## Usage
 
@@ -69,8 +69,8 @@ If you never edited it, `git pull` removes it; create it again as described in [
    uv run beck check
    ```
 
-   With pip, run `pip install .` once to get the `beck` command, and leave out `uv run`. `python check_bios.py` still works
-   in place of `beck check`, with the same options, and prints a notice that it's deprecated.
+   With pip, leave out `uv run`. `python check_bios.py` still works in place of `beck check`, with the same options, and prints a
+   notice that it's deprecated.
 
 3. BECK lists what happened to each file: copied to the Recalbox, or kept because it's a duplicate, matches nothing,
    or its target was already filled.
@@ -99,9 +99,6 @@ to get [one JSON document](docs/json-output.md) instead.
 │ └── beck                  (the application)
 ├─┬─bios
 │ └── *
-├─┬─config
-│ ├── config.example.yml
-│ └── config.yml            (your copy, ignored by git)
 ├── requirements.txt
 ├── pyproject.toml
 ├── uv.lock
@@ -112,6 +109,10 @@ to get [one JSON document](docs/json-output.md) instead.
 ## Support
 
 Recalbox 9.1
+
+## Security
+
+To report a problem, see [the security policy](SECURITY.md). [The threat model](docs/threat-model.md) says what BECK protects, and the risks it accepts.
 
 ## Legal notice
 

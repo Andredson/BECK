@@ -4,16 +4,17 @@ The reference for using BECK from the command line.
 
 
 ```text
-beck [--version] [-v | -q] [--no-color] [--json] <command> [options]
+beck [--version] [-v | -q] [--no-color] [--json] [--config FILE] <command> [options]
 
 beck check   [--source DIR] [--target URL | --target-dir DIR] [--frontend recalbox]
              [--report-file FILE] [--overwrite] [--dry-run] [--move] [--clean-unmatched]
-             [--yes] [--fail-if-missing]
+             [--yes] [--verify] [--fail-if-missing]
 beck scan    [--source DIR]
 beck report  [--target URL | --target-dir DIR | --report-file FILE]
+beck config  path | init [--force] | show
 ```
 
-`beck config` arrives in stage 07, with TOML settings. Passwords never go on the command line.
+Passwords never go on the command line.
 
 ## Commands
 
@@ -54,6 +55,19 @@ beck report --target smb://recalbox.local/bios
 beck report --report-file missing_bios_report.txt     # a local copy: no network
 ```
 
+### `beck config`
+
+Finds, creates or shows [the settings](#settings). None of these connects to anything.
+
+```sh
+beck config path    # which settings file BECK reads, and why
+beck config init    # create that file, with comments
+beck config show    # the settings a run would use, and where each comes from
+```
+
+`init` refuses to replace a file unless you add `--force`, and only you can read the file it writes. `show` never shows a password, only
+whether one is `set`. `path` and `init` don't read the file, so `path` works even when the file is broken, and `init --force` can replace it.
+
 ## Options
 
 ### Global options
@@ -67,6 +81,7 @@ They work before or after the command.
 | `-q` | With `beck check`, prints only errors, deletions and how the run ended, including why `--fail-if-missing` failed. The deletion prompt still appears. It doesn't shorten `beck report` or `beck scan`, whose lists are what you asked for. |
 | `--no-color` | The same as setting `NO_COLOR`. |
 | `--json` | Prints one JSON document on stdout, and logs on stderr. It never asks anything. See [JSON output](#json-output). |
+| `--config FILE` | Reads the settings from this file, not the default one. See [Settings](#settings). |
 
 `-v` and `-q` can't be combined, and neither changes a `--json` document.
 
@@ -83,13 +98,13 @@ act on your terminal, or look like something else. `--json` keeps the exact name
 | Option | Commands | What it does |
 |---|---|---|
 | `--source DIR` | `check`, `scan` | Your folder of BIOS files. The default is `./bios`. Hidden files and folders are skipped. A folder you name must exist, or BECK exits with 2. |
-| `--target URL` | `check`, `report` | An SMB target: `smb://[user@]host[:port]/share[/sub/path]`. The port defaults to 445. A URL with a password is refused, and the password in `config/config.yml` isn't used, so this means guest access until stage 07 adds passwords for targets. |
+| `--target URL` | `check`, `report` | An SMB target: `smb://[user@]host[:port]/share[/sub/path]`. The port defaults to 445. A URL with a password is refused. See [Passwords](#passwords). |
 | `--target-dir DIR` | `check`, `report` | A folder: a mounted SD card or USB drive, or the device itself. It can't be combined with `--target`. |
 | `--frontend NAME` | `check` | The kind of device. Only `recalbox`, for now. |
 | `--report-file FILE` | `check`, `report` | Reads a local copy of the report, not the one on the target. `beck report` then needs no target, and can't take one. `beck check` still needs a target to upload to. |
 
-With no target, BECK uses the settings in `config/config.yml`. A blank `user` or `passwd` means guest access. A value that can't work,
-such as a `port` that isn't a number from 1 to 65535, exits with 2. Put a password made only of digits in quotes.
+All of these except `--report-file` can also come from [Settings](#settings). With no target anywhere, BECK exits with 2 and says how to
+name one.
 
 ### Safety
 
@@ -100,7 +115,80 @@ such as a `port` that isn't a number from 1 to 65535, exits with 2. Put a passwo
 | `--move` | Deletes a local file once it's uploaded to **all** its targets and each remote size matches. If any upload of that file failed, the file stays. |
 | `--clean-unmatched` | Deletes local files that matched nothing. Read the warning below first. |
 | `--yes` | Confirms deletions without asking. Required when BECK can't ask. |
+| `--verify` | Reads each upload back and compares its MD5, on top of the size check every upload gets. It's slower, because it transfers everything twice. |
 | `--fail-if-missing` | Exits with 5 if required files are still missing or incorrect after the run, and lists them. See [exit codes](#exit-codes). |
+
+## Settings
+
+Each setting comes from the first of these that has it:
+
+1. a flag on the command line;
+2. an environment variable;
+3. the settings file;
+4. BECK's default.
+
+A target is one setting, whether it's a URL or a folder, so `--target-dir` beats `BECK_TARGET`, and `BECK_TARGET_DIR` beats a `url` in the
+file. Two targets in the environment exit with 2, unless a flag decides.
+
+| Variable | What it does |
+|---|---|
+| `BECK_CONFIG` | The settings file. |
+| `BECK_TARGET` | The same as `--target`. |
+| `BECK_TARGET_DIR` | The same as `--target-dir`. |
+| `BECK_SOURCE` | The same as `--source`. |
+| `BECK_SMB_USER` | The SMB user. Empty means a guest, even if the file names a user. A user in the target URL beats this. |
+| `BECK_SMB_PASSWORD` | The SMB password. See [Passwords](#passwords). |
+
+Any other empty variable counts as not set.
+
+### The settings file
+
+BECK reads the file named by `--config`, then the one named by `BECK_CONFIG`, then `config.toml` in the folder your system uses for settings:
+`~/.config/beck/` on Linux. A file you name must exist, and the default one doesn't have to. A file that's broken stops every command with
+exit code 2, and BECK lists all its problems at once. A setting it doesn't know is only a warning.
+
+```toml
+schema_version = 1                 # required
+
+[target]
+frontend = "recalbox"
+url = "smb://recalbox.local/bios"  # or: dir = "/media/user/RECALBOX/bios", but not both
+
+[smb]
+user = ""                          # empty means a guest
+timeout = 30                       # seconds
+
+[source]
+dir = "~/beck/bios"
+```
+
+A `dir` must be an absolute path or start with `~`, so that it means the same folder wherever you run BECK. **Passwords can't go in this
+file:** BECK refuses one, in any setting and in a URL. `beck config init` writes a file like this one, with comments, which only you can read.
+If others can read the file, BECK warns you, because it says who you are and where your device is.
+
+### What crosses the network
+
+There's no `smb.encrypt` setting, because `pysmb`, which BECK uses, has no SMB encryption (DEC-53). The password isn't sent as plain text, but your files
+are. Use BECK on a network you trust, as you would for the Recalbox itself, whose default is a guest login.
+
+### Passwords
+
+With no user, BECK logs in as a guest, and sends no password even if one is set. With a user, it uses `BECK_SMB_PASSWORD`. If that isn't set,
+BECK asks on the terminal, with nothing you type showing, before it connects, including for a dry run. Without a terminal, or with `--json`,
+which never asks, BECK exits with 2 and changes nothing. So does pressing Ctrl-C or Ctrl-D at the question.
+
+A password can't go in the settings file, or in a URL, and BECK keeps it only in memory. Setting the variable on the command line, as in
+`BECK_SMB_PASSWORD=secret beck check`, leaves it in your shell's history.
+
+BECK never prints a password. If something else repeats one, such as a library's error message, it shows as `***` in human output, logs and error
+messages. A URL always appears without its user and password, even one you put in the wrong place. A file named after your password shows as `***`
+too, except in `--json`, which keeps exact names. A very short password can mask ordinary text in what you read, but it doesn't change what BECK does.
+
+### The old `config/config.yml`
+
+BECK doesn't read this file any more. While it's still in the folder you run BECK from, and there's no new settings file, BECK prints what to
+put in the new one, on stderr, and leaves its password out. `-q` hides this. Once you've moved your settings, delete the old file, because it
+may hold your password in plain text.
 
 ## What BECK deletes, and when
 
@@ -118,7 +206,7 @@ These are never deleted:
 - a file that's valid for a target listed as `INCORRECT`, because it's the fix for that file;
 - with `--move`, a file with a target that was already on the device and kept, because nothing proves that copy is good, or a file with
   any failed upload or a size that doesn't match;
-- with `--clean-unmatched`, anything at all if something failed in the run, or if the report lists nothing missing.
+- with `--clean-unmatched`, anything at all if something failed in the run, if a report entry was refused, or if the report lists nothing missing.
 
 BECK asks before uploading anything, so answering no leaves everything as it was, on both sides. Any answer but `y` or `yes` counts as
 no, and BECK exits with 2.
@@ -159,13 +247,16 @@ These are a stable contract (DEC-23), and scripts can rely on them.
 | 0 | The run completed. BIOS files may still be missing unless `--fail-if-missing` is used. |
 | 1 | Unexpected internal error (a bug, please report it). |
 | 2 | Usage or configuration error (bad flag, bad URL, invalid config, refused confirmation). |
-| 3 | Transport error: couldn't connect or authenticate, or at least one upload failed. |
+| 3 | Transport error: couldn't connect or authenticate, or at least one upload failed or report entry was refused. |
 | 4 | Report error: the missing-BIOS report wasn't found or couldn't be parsed. |
 | 5 | `--fail-if-missing` was given and required BIOS files are still missing after the run. |
 
 Some details:
 
-- A failed upload exits with 3 even though the other uploads finished.
+- A failed upload exits with 3 even though the other uploads finished. That includes one whose size on the device doesn't match, and with
+  `--verify`, one whose MD5 doesn't. Such a file stays on the device, so use `--overwrite` to try again: a later run would keep it.
+- A report entry that isn't safe to act on also exits with 3, while the others carry on: one whose target could leave the BIOS folder, or holds a
+  backslash, a control character or a byte that wasn't valid text. A report BECK can't read at all exits with 4, and nothing happens.
 - A local file or folder that can't be read, such as a broken symlink, is reported and skipped, and doesn't change the exit code.
 - `--fail-if-missing` counts entries that are required or whose status is unknown. A required file listed as `INCORRECT` counts too,
   because the device still can't use it. A file listed in several systems counts if any of them requires it.

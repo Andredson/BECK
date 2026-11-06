@@ -16,6 +16,7 @@ from smb.SMBConnection import SMBConnection
 
 from beck.errors import TransportError
 from beck.transports.smb import SmbTransport
+from tests.factories import settings_text
 
 SEEDED_FILE = PurePosixPath("seeded.txt")
 SEEDED_TEXT = b"seeded by the Containerfile\n"
@@ -34,11 +35,9 @@ class Samba:
     def account(self, share: str, password: str) -> SmbTransport:
         return SmbTransport(self.host, self.port, share, "beck", password, timeout=20)
 
-    def config(self, user: str = "", password: str = "") -> str:
-        return (
-            f'smb: {{user: "{user}", passwd: "{password}", '
-            f'server: "{self.host}", port: {self.port}}}\n'
-        )
+    def settings(self, user: str = "", *, port: int | None = None) -> str:
+        """A settings file for this server. A password goes in BECK_SMB_PASSWORD."""
+        return settings_text(f"smb://{self.host}:{port or self.port}/bios", user)
 
 
 @pytest.fixture(scope="session")

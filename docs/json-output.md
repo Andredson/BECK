@@ -7,6 +7,7 @@ adds more of them, `-q` changes nothing, and it never asks a question. The optio
 beck --json check --dry-run
 beck --json report --report-file missing_bios_report.txt
 beck --json scan --source ~/my-bios
+beck --json config show
 ```
 
 ## How to read the result
@@ -41,6 +42,7 @@ The [schemas](schemas/) describe each document. They allow extra fields on purpo
 | `beck --json check` | [`check-result.v1.json`](schemas/check-result.v1.json) |
 | `beck --json report` | [`report-result.v1.json`](schemas/report-result.v1.json) |
 | `beck --json scan` | [`scan-result.v1.json`](schemas/scan-result.v1.json) |
+| `beck --json config` | [`config-result.v1.json`](schemas/config-result.v1.json) |
 | A command line BECK rejected | [`rejected-command.v1.json`](schemas/rejected-command.v1.json) |
 
 ## Fields in every document
@@ -49,9 +51,9 @@ The [schemas](schemas/) describe each document. They allow extra fields on purpo
 |---|---|
 | `schema_version` | `1`. |
 | `beck_version` | The BECK that wrote this. |
-| `command` | `check`, `report` or `scan`. `null` if the command line was rejected, because no command ran. Running `beck` with no command counts as `check`. |
+| `command` | `check`, `report`, `scan` or `config`. `null` if the command line was rejected, because no command ran. Running `beck` with no command counts as `check`. |
 | `ok` | `true` only when the exit code is 0. |
-| `errors[]` | What went wrong: `code`, `message` and `item`. See [Errors](#errors). |
+| `errors[]` | What went wrong: `code`, `message` and `item`. See [Errors](#errors). A password in a message, which BECK doesn't put there itself, shows as `***`. |
 
 ## `beck --json check`
 
@@ -159,7 +161,7 @@ names.
 | `failed` | The upload failed, and `error` says why. |
 | `skipped` | Not tried, because its folder couldn't be created. That failure is in `errors`, with the folder as its `item`. |
 
-An `uploaded` item can still have an `error`: with `--move`, the size on the target may not match, and then the local file stays.
+A `failed` upload may have left a damaged file on the target: `error` says so, and `--overwrite` tries again. A later run would otherwise keep that file.
 
 ### `summary`
 
@@ -227,6 +229,41 @@ Hashes the local files. It uses no network and changes nothing.
 }
 ```
 
+## `beck --json config`
+
+`config path`, `config init` and `config show` all give this document. It connects to nothing.
+
+```json
+{
+  "schema_version": 1,
+  "beck_version": "0.1.0",
+  "command": "config",
+  "ok": true,
+  "action": "show",
+  "file": { "path": "/home/you/.config/beck/config.toml", "source": "default", "exists": true },
+  "created": false,
+  "settings": {
+    "target": { "value": "smb://recalbox.local:445/bios", "source": "file" },
+    "source": { "value": "/home/you/beck/bios", "source": "file" },
+    "frontend": { "value": "recalbox", "source": "file" },
+    "smb_user": { "value": "", "source": "file" },
+    "smb_password": { "value": "not set", "source": "default" },
+    "smb_timeout": { "value": 30, "source": "file" }
+  },
+  "errors": []
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `action` | `path`, `init` or `show`. |
+| `file` | The settings file: its `path`, `exists`, and `source`, which says why this one: `flag`, `environment` or `default`. It's `null` only if a bug stopped BECK before it knew. |
+| `created` | `true` if this run wrote the file, which only `init` does. |
+| `settings` | What a run would use, each with its `value` and its `source`: `flag`, `environment`, `file` or `default`. It's `null` unless the action is `show` and the file could be read. |
+| `settings.target` | The target as a URL, with no user name or password, or `null` if nothing names one. |
+| `settings.smb_user` | The SMB user, which is empty for a guest. This is the one place a document names the user. |
+| `settings.smb_password` | Only `set` or `not set`, never the password. |
+
 ## Errors
 
 An error that **stops the run** has `item` set to `null`, and the document has the same shape as a successful one, with empty lists and
@@ -238,12 +275,14 @@ An error about **one item** doesn't stop the run. `item` names the target, folde
 | `code` | Exit code | Stops the run? | Meaning |
 |---|---|---|---|
 | `usage` | 2 | Yes | A bad flag, URL or folder, or a deletion that wasn't confirmed. |
-| `config` | 2 | Yes | The settings are missing or invalid. |
+| `config` | 2 | Yes | The settings are missing or invalid, there's no target, or a user has no password. `--json` never asks for one, so set `BECK_SMB_PASSWORD`. |
 | `transport` | 3 | Yes, if `item` is `null` | Couldn't connect or log in, or one upload, folder or check failed. |
 | `report_not_found` | 4 | Yes | There's no report, so generate one on the device. |
 | `report_parse` | 4 | Yes | BECK can't read the report. |
-| `size_mismatch` | 3 | No | With `--move`, the size on the target doesn't match, so the local file stays. |
+| `size_mismatch` | 3 | No | The size of an upload on the target doesn't match, so the upload is `failed`, and with `--move` the local file stays. |
+| `md5_mismatch` | 3 | No | With `--verify`, the MD5 of an upload on the target doesn't match. It's handled the same way. |
 | `delete_failed` | 3 | No | A local file couldn't be deleted. |
+| `unsafe_path` | 3 | No | A report entry isn't safe to act on, so it was refused. `item` is its name. `beck --json report` can have it too. |
 | `internal` | 1 | Yes | A bug in BECK. The details are on stderr, and they aren't in the document because they could hold anything. Please report it. |
 
 A rejected command line is the one case with fewer fields, because no command ran:

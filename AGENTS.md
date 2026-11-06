@@ -10,7 +10,7 @@ BECK (BIOS checker for Recalbox) matches a user's BIOS files against the MD5 has
 report that Recalbox generates, then copies the matching files, under the expected names, into the right
 folders on the Recalbox over SMB.
 
-**Status (2026-11-06):** prototype, not published yet. The application is the `beck` package in `src/beck/`, with a pure
+**Status (2026-11-06, stage 07 closed):** prototype, not published yet. The application is the `beck` package in `src/beck/`, with a pure
 core and adapters around it ([design](docs/ARCHITECTURE.md)). Its [known defects are fixed](roadmap/00-assessment.md#defects),
 and it never renames local files, or deletes them unless `--move` or `--clean-unmatched` asks for it. The repository around it has tooling and
 CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against a real Samba server, commit-message, secret and dependency checks. It is being improved stage by stage following
@@ -21,14 +21,13 @@ CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against
 | Path | What it is |
 |---|---|
 | `check_bios.py` | A deprecated shim: it prints a notice and runs `beck.cli.main` with its own folder, importing from `src/` so that the pip route works. |
-| `src/beck/` | The application ([design](docs/ARCHITECTURE.md)): `cli`, `models`, `hashing`, `matcher`, `executor`, `errors`, and `frontends/`, `transports/`, `output/`. `beck` finds `config/` and `bios/` in the current folder. |
-| `config/config.example.yml` | Example SMB settings (`user`, `passwd`, `server`, `port`) with empty credentials. Users copy it to `config/config.yml`, which is **gitignored** (step 03.2); never track or commit the real file. |
+| `src/beck/` | The application ([design](docs/ARCHITECTURE.md)): `cli`, `config`, `credentials`, `redact`, `models`, `hashing`, `matcher`, `executor`, `errors`, and `frontends/`, `transports/`, `output/`. `beck` finds its [settings](docs/cli.md#settings) from any folder, and `bios/` in the current one. |
 | `bios/` | Input folder for the user's BIOS files. Everything except `bios/.keep` is gitignored. |
 | `pyproject.toml`, `uv.lock`, `.python-version` | Project metadata, runtime and dev dependencies, tool settings (ruff, mypy, pytest, coverage, commitizen), the lockfile, and Python 3.11 for local work. Managed with uv; `exclude-newer` is the 14-day cooldown (DEC-45). The distribution is `beck-bios`, built with `uv_build` (DEC-18), and it installs the `beck` command. |
 | `requirements.txt` | Runtime dependencies for pip users, **generated** from `uv.lock` (see [Commands](#commands)). Don't edit it by hand; CI fails if it drifts. |
 | `tests/` | pytest suite: `tests/unit/` has a test file per module, full runs through `cli.main` (`test_cli.py`), and the architecture rules checked on the source (`test_architecture.py`). `tests/` has the package and shim tests, the Markdown link checker, and tests for the hygiene guard and the workflow pins. `tests/factories.py` builds test data (always random bytes, and reports in the real format), and `tests/fakes.py` is the in-memory SMB server the application tests use. `tests/fixtures/reports/` holds real and derived Recalbox reports, with provenance in `tests/fixtures/README.md`; the real report keeps its CRLF line endings byte-exact. |
 | `tests/integration/samba/` | The Samba test server for integration tests, built with **Podman, never Docker** (DEC-55). See [its README](tests/integration/samba/README.md). |
-| `scripts/check_repo_hygiene.py` | Fails if git tracks BIOS/ROM-like files, files over 1 MiB, or config files (each allowed exception has a reason). |
+| `scripts/check_repo_hygiene.py` | Fails if git tracks BIOS/ROM-like files, files over 1 MiB, config files, or a TOML file with a password in it (each allowed exception has a reason). |
 | `.github/workflows/ci.yml` | CI on every PR and push to `main`: `quality`, the `tests` matrix (Linux × Python 3.11–3.14; Windows and macOS removed, DEC-49) summarized by `tests-passed`, `integration` (a real Samba server, with Podman), `commits`, `secrets`, `sca`. |
 | `.github/workflows/security.yml` | Weekly (Mondays 06:00 UTC): full-history secret scan and dependency scan. |
 | `.gitleaks.toml`, `.trivyignore` | gitleaks settings (fake `beck-test-*` values allowed only under `tests/`); accepted Trivy findings, each with a link and an expiry date. |
@@ -38,6 +37,7 @@ CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against
 | `docs/ARCHITECTURE.md` | [The design](docs/ARCHITECTURE.md): the core is pure and adapters do the I/O. Data flow, and the rules to keep, which `tests/unit/test_architecture.py` enforces. Read it before changing `src/beck/`. |
 | `docs/cli.md` | [The `beck` command](docs/cli.md): commands, flags, exit codes and what gets deleted. |
 | `docs/json-output.md`, `docs/schemas/` | [The `--json` output](docs/json-output.md) and its JSON Schema files: a **public contract** (DEC-23). Ask the owner before changing an existing field. `tests/unit/test_json_contract.py` checks every kind of document against the schemas, and its `V1_FIELDS` records what version 1 promises, so a new field goes in the output, the schema, the guide and that record. |
+| `SECURITY.md`, `docs/threat-model.md` | [How to report a vulnerability](SECURITY.md), and [what BECK protects and the risks it accepts](docs/threat-model.md). Update the threat model when a change alters a defense it names. |
 | `docs/spikes/` | Results of technical experiments, such as [`smbprotocol` vs `pysmb`](docs/spikes/smbprotocol.md). |
 | `docs/maintenance.md` | [Monthly maintenance routine](docs/maintenance.md): dependency upgrades, pin refreshes, security review (replaces an update bot, DEC-29). Follow it when asked to update dependencies, or when the weekly *Security* run or an expired `.trivyignore` entry fails. |
 | `.github/pull_request_template.md` | PR description template with the roadmap checklist. Fill it in when preparing a PR description for the human. |
@@ -86,7 +86,7 @@ uv lock --check && uv run ruff check . && uv run ruff format --check . && uv run
   ```
 
 - **Updating dependencies or pins** follows [docs/maintenance.md](docs/maintenance.md).
-- `uv run python check_bios.py`, `uv run beck` and `uv run beck check` connect to a **real Recalbox** over SMB and upload files to it. Don't run them unless the human explicitly asks you to in this session.
+- `uv run python check_bios.py`, `uv run beck` and `uv run beck check` connect to whatever target your settings name, which may be a **real Recalbox**, over SMB, and upload files to it. Don't run them unless the human explicitly asks you to in this session. `uv run beck config init` writes to your home folder.
 
 ## Working on the roadmap (protocol)
 
@@ -122,6 +122,9 @@ uv lock --check && uv run ruff check . && uv run ruff format --check . && uv run
 - **No real credentials or personal data.** Never write a real password anywhere in the repo, in logs or in test
   output. Reports used as fixtures must be anonymized. Fake test credentials must look obviously fake (e.g.
   `beck-test-password`).
+- **Never print, log or commit a password.** A password comes only from `BECK_SMB_PASSWORD` or the prompt, and stays in memory. It never goes in a settings
+  file, a URL or a command line, and a message never repeats a value that could be one. `redact` is a second defense, not a reason to print one: a new command
+  or output path goes in the scenarios of `tests/unit/test_redaction.py`, which also run with the mask off.
 - **Non-destructive by default (DEC-02).** Code you write must never delete or rename a user's local file
   unless an explicit opt-in flag asks for it, and only `executor.py` may delete (a test enforces this). Files on the device are kept unless `--overwrite` is passed (DEC-61).
 - **No real devices without explicit OK.** Don't connect to a real Recalbox or SMB server unless the human asks
@@ -162,8 +165,10 @@ field, with [the schemas](docs/schemas/), and [the `beck` command](docs/cli.md) 
    this run. `--overwrite` keeps no copy of what it replaces. `--move` and `--clean-unmatched` delete local files, and `--clean-unmatched` can
    delete [good BIOS files](docs/cli.md#what-beck-deletes-and-when) after a rescan. First run the same command with `--dry-run`, and
    show the human `deleted` and `replaces`. `--json` never asks, so `--yes` would be what confirms the deletion, on the human's behalf.
-4. **Never pass passwords on the command line,** where anyone can read them. BECK refuses a `--target` URL holding a password, with exit
-   code 2. Don't show the human or a log what's in `config/config.yml`.
+4. **Never pass passwords on the command line,** where anyone can read them, and that includes setting `BECK_SMB_PASSWORD` in a command you
+   run, which ends up in shell history and logs. BECK refuses a `--target` URL holding a password, with exit code 2. With a user and no
+   password, `--json` exits with 2, because it never asks: tell the human, who can set the variable or run BECK themselves. Don't show
+   anyone what's in an old `config/config.yml`.
 
 ## Agent tooling notes
 
@@ -210,7 +215,8 @@ skill below, **read its whole `SKILL.md` before acting** and follow it.
   `# pragma: no cover` doesn't work here. Integration tests don't count towards that.
 - **Never real BIOS bytes.** Test files are random bytes (`tests/factories.py`); MD5 values and file names are fine. Tests never
   touch the network, except the local Samba test server.
-- Color settings in your shell can't affect results: `tests/conftest.py` sets `NO_COLOR` for every test.
+- Your shell and your home folder can't affect results: `tests/conftest.py` sets `NO_COLOR` for every test, clears the `BECK_*` variables, and points the settings folder nowhere.
+- A settings file in a test should have mode `600`, or BECK warns on stderr, as it would for anyone. `settings_text` in `tests/factories.py` builds its text.
 
 ## Commits and pull requests
 

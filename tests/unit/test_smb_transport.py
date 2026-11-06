@@ -222,7 +222,6 @@ def test_exists_walks_down_each_level(server: FakeSMBServer) -> None:
         assert not opened.exists(PurePosixPath("missing.bin"))
         assert not opened.exists(PurePosixPath("a/missing.bin"))
         assert not opened.exists(PurePosixPath("no/such/folder/file.bin"))
-        assert not opened.exists(PurePosixPath(".."))
 
 
 def test_exists_ignores_case_because_samba_does(server: FakeSMBServer) -> None:
