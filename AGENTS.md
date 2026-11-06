@@ -36,6 +36,8 @@ CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against
 | `roadmap/` | The improvement plan: [index and decision log](roadmap/README.md), [assessment](roadmap/00-assessment.md), one file per stage. |
 | `docs/agents.md` | Which AI agents were tested loading this file, and how to test another one. |
 | `docs/ARCHITECTURE.md` | [The design](docs/ARCHITECTURE.md): the core is pure and adapters do the I/O. Data flow, and the rules to keep, which `tests/unit/test_architecture.py` enforces. Read it before changing `src/beck/`. |
+| `docs/cli.md` | [The `beck` command](docs/cli.md): commands, flags, exit codes and what gets deleted. |
+| `docs/json-output.md`, `docs/schemas/` | [The `--json` output](docs/json-output.md) and its JSON Schema files: a **public contract** (DEC-23). Ask the owner before changing an existing field. `tests/unit/test_json_contract.py` checks every kind of document against the schemas, and its `V1_FIELDS` records what version 1 promises, so a new field goes in the output, the schema, the guide and that record. |
 | `docs/spikes/` | Results of technical experiments, such as [`smbprotocol` vs `pysmb`](docs/spikes/smbprotocol.md). |
 | `docs/maintenance.md` | [Monthly maintenance routine](docs/maintenance.md): dependency upgrades, pin refreshes, security review (replaces an update bot, DEC-29). Follow it when asked to update dependencies, or when the weekly *Security* run or an expired `.trivyignore` entry fails. |
 | `.github/pull_request_template.md` | PR description template with the roadmap checklist. Fill it in when preparing a PR description for the human. |
@@ -84,7 +86,7 @@ uv lock --check && uv run ruff check . && uv run ruff format --check . && uv run
   ```
 
 - **Updating dependencies or pins** follows [docs/maintenance.md](docs/maintenance.md).
-- `uv run python check_bios.py` and `uv run beck` connect to a **real Recalbox** over SMB and upload files to it. Don't run them unless the human explicitly asks you to in this session.
+- `uv run python check_bios.py`, `uv run beck` and `uv run beck check` connect to a **real Recalbox** over SMB and upload files to it. Don't run them unless the human explicitly asks you to in this session.
 
 ## Working on the roadmap (protocol)
 
@@ -121,7 +123,7 @@ uv lock --check && uv run ruff check . && uv run ruff format --check . && uv run
   output. Reports used as fixtures must be anonymized. Fake test credentials must look obviously fake (e.g.
   `beck-test-password`).
 - **Non-destructive by default (DEC-02).** Code you write must never delete or rename a user's local file
-  unless an explicit opt-in flag asks for it. Remote overwrites follow the policy decided in step 06.5.
+  unless an explicit opt-in flag asks for it, and only `executor.py` may delete (a test enforces this). Files on the device are kept unless `--overwrite` is passed (DEC-61).
 - **No real devices without explicit OK.** Don't connect to a real Recalbox or SMB server unless the human asks
   in this session. Use the local transport, fakes, or the Samba test container (stage 05).
 - **No silent tools or dependencies.** Don't add a library, tool, service, GitHub Action or bot that isn't in the
@@ -134,6 +136,34 @@ uv lock --check && uv run ruff check . && uv run ruff format --check . && uv run
   old as well.
 - **Vendor-neutral.** Project knowledge goes in this file, `docs/`, or `.agents/skills/`, never in
   vendor-specific files.
+
+## Using BECK as a tool
+
+For an agent asked to run BECK on someone's files, rather than to change its code. [JSON output](docs/json-output.md) has every
+field, with [the schemas](docs/schemas/), and [the `beck` command](docs/cli.md) has every flag.
+
+1. **Look first.** Always run `beck --json check --dry-run …` first, and show the human the plan: `uploads` (with `replaces` and
+   `warning`), `incorrect`, `still_missing`, `unreadable` and `deleted`. A dry run changes nothing, but it does connect to the target,
+   so use only a target the human named. `beck --json scan --source DIR` and `beck --json report --report-file FILE` work with no
+   network.
+2. **Parse stdout as JSON, and branch on the exit code.** Stdout holds one document, even for an error or a bad flag, and logs go to
+   stderr. Check that `schema_version` is `1`. The exceptions: `--help` and `--version` print text, and Ctrl-C prints no document.
+
+   | Exit code | What it means | What to do |
+   |---|---|---|
+   | 0 | The run finished. Files may still be missing. | Tell the human what's in `still_missing` and `incorrect`. |
+   | 1 | A bug in BECK. | Stop, and show the human stderr. The lists can't be trusted, because a bug can stop a run partway. |
+   | 2 | A bad flag or setting, or a deletion nobody confirmed. Nothing changed. | Read `errors`. Don't answer a refused deletion by adding `--yes`. |
+   | 3 | The target failed, or some items did, and the others finished. | Read `errors`, and `uploads[].status`, before running it again. |
+   | 4 | No report, or one BECK can't read. | Ask the human to generate a new one on the device. |
+   | 5 | `--fail-if-missing` found required files missing or incorrect. `errors` is empty. | Tell the human what's in `still_missing` and `incorrect`. |
+
+3. **Never add `--yes`, `--overwrite`, `--move` or `--clean-unmatched` without the human's explicit approval in this session,** for
+   this run. `--overwrite` keeps no copy of what it replaces. `--move` and `--clean-unmatched` delete local files, and `--clean-unmatched` can
+   delete [good BIOS files](docs/cli.md#what-beck-deletes-and-when) after a rescan. First run the same command with `--dry-run`, and
+   show the human `deleted` and `replaces`. `--json` never asks, so `--yes` would be what confirms the deletion, on the human's behalf.
+4. **Never pass passwords on the command line,** where anyone can read them. BECK refuses a `--target` URL holding a password, with exit
+   code 2. Don't show the human or a log what's in `config/config.yml`.
 
 ## Agent tooling notes
 

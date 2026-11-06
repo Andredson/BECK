@@ -42,7 +42,7 @@ def test_bios_file_with_given_content(tmp_path: Path) -> None:
 def test_bios_file_matches_what_the_scanner_finds(tmp_path: Path) -> None:
     file = make_bios_file(tmp_path, "a/b/file.bin")
 
-    assert scan(tmp_path) == [file]
+    assert scan(tmp_path).files == (file,)
 
 
 def test_local_file_touches_nothing_on_disk() -> None:

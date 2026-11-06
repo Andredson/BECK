@@ -3,8 +3,11 @@
 Run with BECK_TEST_SMB_HOST=127.0.0.1 BECK_TEST_SMB_PORT=4450 uv run pytest -m integration
 """
 
+import json
 import os
 import socket
+import subprocess
+import sys
 from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -18,7 +21,7 @@ from beck.hashing import scan
 from beck.matcher import plan
 from beck.transports.smb import SmbTransport
 from tests.conftest import load_report
-from tests.factories import make_bios_file, make_missing, make_report_text, snapshot
+from tests.factories import make_bios_file, make_missing, make_report_text, md5_of, snapshot
 from tests.integration.conftest import ACCOUNT_CREDENTIAL, SEEDED_FILE, SEEDED_TEXT, Samba
 
 pytestmark = pytest.mark.integration
@@ -169,7 +172,7 @@ def test_read_only_share_errors_are_recorded_and_the_run_continues(
     before = snapshot(tmp_path)
 
     with samba.guest("readonly") as transport:
-        result = execute(plan(report, scan(tmp_path)), transport, dry_run=False)
+        result = execute(plan(report, scan(tmp_path).files), transport, dry_run=False)
 
         assert not transport.exists(PurePosixPath("x.bin"))
 
@@ -239,7 +242,7 @@ def test_end_to_end_files_arrive_under_the_right_names_and_folders(
     put_report(make_report_text(entries))
     before = snapshot(bios)
 
-    assert cli.main([], base_dir=app) == 0
+    assert cli.main(["check"], base_dir=app) == 0
 
     assert snapshot(bios) == before
     with samba.guest() as transport:
@@ -253,18 +256,361 @@ def test_end_to_end_files_arrive_under_the_right_names_and_folders(
     assert "PLEASE SCAN" in output
 
 
-def test_end_to_end_running_again_gives_the_same_files(
+def test_end_to_end_an_unreadable_file_doesnt_stop_the_upload(
+    samba: Samba,
+    app: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    good = make_bios_file(app / "bios", "good.bin")
+    (app / "bios" / "broken.bin").symlink_to(app / "no-such-target")
+    target = folder / "a.bin"
+    put_report(make_report_text([make_missing(target.as_posix(), good.md5)]))
+
+    assert cli.main(["check"], base_dir=app) == 0
+
+    with samba.guest() as transport:
+        assert transport.read_bytes(target) == good.path.read_bytes()
+    captured = capsys.readouterr()
+    assert "broken.bin: can't be read, skipped: broken symlink" in captured.out
+    assert captured.err == ""
+
+
+def test_end_to_end_a_dry_run_changes_nothing_on_the_server(
+    samba: Samba,
+    app: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    file = make_bios_file(app / "bios", "copy.bin")
+    target = folder / "ps1" / "a.bin"
+    put_report(make_report_text([make_missing(target.as_posix(), file.md5)]))
+    before = snapshot(app / "bios")
+
+    assert cli.main(["check", "--dry-run", "--move"], base_dir=app) == 0
+
+    assert snapshot(app / "bios") == before
+    with samba.guest() as transport:
+        assert not transport.exists(folder)
+    assert f"copy.bin: would copy -> {target}" in capsys.readouterr().out
+
+
+def test_end_to_end_move_checks_the_size_on_a_real_server_then_deletes(
     samba: Samba, app: Path, folder: PurePosixPath, put_report: PutReport
+) -> None:
+    file = make_bios_file(app / "bios", "copy.bin", os.urandom(3 * 1024 * 1024))
+    data = file.path.read_bytes()
+    first, second = folder / "a" / "x.bin", folder / "b" / "y.bin"
+    entries = [make_missing(first.as_posix(), file.md5), make_missing(second.as_posix(), file.md5)]
+    put_report(make_report_text(entries))
+
+    assert cli.main(["check", "--move", "--yes"], base_dir=app) == 0
+
+    assert not file.path.exists()
+    with samba.guest() as transport:
+        assert transport.read_bytes(first) == data
+        assert transport.read_bytes(second) == data
+
+
+def test_end_to_end_move_keeps_a_file_when_the_read_only_share_refuses(
+    samba: Samba, tmp_path: Path
+) -> None:
+    file = make_bios_file(tmp_path, "copy.bin")
+    built = plan([make_missing("x.bin", file.md5)], scan(tmp_path).files)
+
+    with samba.guest("readonly") as transport:
+        result = execute(built, transport, dry_run=False, move=True)
+
+    assert file.path.exists()
+    assert result.deleted == ()
+    assert [error.item for error in result.errors] == ["x.bin"]
+
+
+def test_end_to_end_with_a_target_url_and_no_config(
+    samba: Samba, tmp_path: Path, folder: PurePosixPath, put_report: PutReport
+) -> None:
+    app = tmp_path / "no-config"
+    good = make_bios_file(app / "bios", "good.bin")
+    target = folder / "a.bin"
+    put_report(make_report_text([make_missing(target.as_posix(), good.md5)]))
+    url = f"smb://{samba.host}:{samba.port}/bios"
+
+    assert cli.main(["check", "--target", url], base_dir=app) == 0
+
+    with samba.guest() as transport:
+        assert transport.read_bytes(target) == good.path.read_bytes()
+
+
+def test_end_to_end_a_name_that_is_not_valid_utf8_reaches_a_real_server(
+    samba: Samba,
+    app: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    data = os.urandom(64)
+    (app / "bios" / os.fsdecode(b"bad-\xff.bin")).write_bytes(data)
+    target = folder / "a.bin"
+    put_report(make_report_text([make_missing(target.as_posix(), md5_of(data))]))
+
+    assert cli.main(["check"], base_dir=app) == 0
+
+    with samba.guest() as transport:
+        assert transport.read_bytes(target) == data
+    output = capsys.readouterr().out
+    assert f"bad-\\xff.bin: copied -> {target}" in output
+    assert "PLEASE SCAN" in output
+
+
+@pytest.mark.parametrize("flags", [(), ("--json",)], ids=["human", "json"])
+def test_end_to_end_a_closed_pipe_changes_nothing_on_a_real_server(
+    samba: Samba,
+    tmp_path: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    flags: tuple[str, ...],
+) -> None:
+    source = tmp_path / "source"
+    good = make_bios_file(source, "good.bin")
+    for number in range(800):  # more than a buffer holds, in any supported Python
+        (source / f"{'x' * 200}{number}.bin").write_bytes(number.to_bytes(4, "big"))
+    target = folder / "a.bin"
+    put_report(make_report_text([make_missing(target.as_posix(), good.md5)]))
+    url = f"smb://{samba.host}:{samba.port}/bios"
+    read_end, write_end = os.pipe()
+    os.close(read_end)
+
+    result = subprocess.run(  # noqa: S603 - fixed arguments, no external input
+        [sys.executable, "-m", "beck", *flags, "check", "--source", str(source), "--target", url],
+        stdout=write_end,
+        stderr=subprocess.PIPE,
+        stdin=subprocess.DEVNULL,
+        check=False,
+        timeout=120,
+        cwd=tmp_path,
+    )
+    os.close(write_end)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stderr == b""
+    with samba.guest() as transport:
+        assert transport.read_bytes(target) == good.path.read_bytes()
+
+
+def test_end_to_end_json_on_a_real_server(
+    samba: Samba,
+    tmp_path: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    app = tmp_path / "no-config"
+    good = make_bios_file(app / "bios", "good.bin")
+    target = folder / "a.zip"
+    put_report(make_report_text([make_missing(target.as_posix(), good.md5)]))
+    url = f"smb://{samba.host}:{samba.port}/bios"
+
+    assert cli.main(["--json", "check", "--target", url], base_dir=app) == 0
+
+    doc = json.loads(capsys.readouterr().out)
+    assert doc["ok"] is True
+    assert doc["target"] == url
+    assert [(u["target"], u["status"]) for u in doc["uploads"]] == [(target.as_posix(), "uploaded")]
+    assert doc["uploads"][0]["warning"]
+    with samba.guest() as transport:
+        assert transport.read_bytes(target) == good.path.read_bytes()
+
+
+def test_end_to_end_fail_if_missing_on_a_real_server(
+    samba: Samba,
+    tmp_path: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    app = tmp_path / "no-config"
+    good = make_bios_file(app / "bios", "good.bin")
+    target = folder / "good.bin"
+    gone = folder / "gone.bin"
+    entries = [make_missing(target.as_posix(), good.md5), make_missing(gone.as_posix(), "0" * 32)]
+    put_report(make_report_text(entries))
+    url = f"smb://{samba.host}:{samba.port}/bios"
+
+    code = cli.main(["--json", "check", "--target", url, "--fail-if-missing"], base_dir=app)
+
+    assert code == 5
+    doc = json.loads(capsys.readouterr().out)
+    assert doc["ok"] is False
+    assert doc["errors"] == []
+    assert [item["target"] for item in doc["still_missing"]] == [gone.as_posix()]
+    with samba.guest() as transport:
+        assert transport.read_bytes(target) == good.path.read_bytes()
+
+
+def test_end_to_end_v_never_shows_the_credentials_on_a_real_server(
+    samba: Samba,
+    tmp_path: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "config.yml").write_text(
+        samba.config("beck", ACCOUNT_CREDENTIAL), encoding="utf-8"
+    )
+    good = make_bios_file(tmp_path / "bios", "good.bin")
+    target = (folder / "good.bin").as_posix()
+    put_report(make_report_text([make_missing(target, good.md5)]))
+
+    assert cli.main(["-v", "check"], base_dir=tmp_path) == 0
+
+    out = capsys.readouterr()
+    assert f"Uploaded {target}" in out.err
+    assert ACCOUNT_CREDENTIAL not in out.out + out.err
+    assert "with a user name" in out.err
+    with samba.guest() as transport:
+        assert transport.read_bytes(PurePosixPath(target)) == good.path.read_bytes()
+
+
+def test_end_to_end_blank_credentials_are_a_guest_on_a_real_server(
+    samba: Samba, tmp_path: Path, put_report: PutReport
+) -> None:
+    """Real pysmb crashes on a blank YAML value, which is null, so the fake can't show this."""
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "config.yml").write_text(
+        f"smb:\n  user:\n  passwd:\n  server: {samba.host}\n  port: {samba.port}\n",
+        encoding="utf-8",
+    )
+    put_report(make_report_text([]))
+
+    assert cli.main(["report"], base_dir=tmp_path) == 0
+
+
+def test_a_refused_connection_is_a_json_document(
+    samba: Samba, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    url = f"smb://{samba.host}:{samba.port}/no-such-share"
+
+    assert cli.main(["--json", "report", "--target", url], base_dir=tmp_path) == 3
+
+    doc = json.loads(capsys.readouterr().out)
+    assert doc["ok"] is False
+    assert doc["target"] == url
+    assert doc["errors"][0]["code"] == "transport"
+
+
+def test_end_to_end_with_a_sub_path_in_the_target_url(
+    samba: Samba, tmp_path: Path, folder: PurePosixPath
+) -> None:
+    # Like smb://recalbox/share/bios: the report and the targets are inside a folder of the share.
+    app = tmp_path / "no-config"
+    good = make_bios_file(app / "bios", "good.bin")
+    report = tmp_path / "report.txt"
+    report.write_bytes(make_report_text([make_missing("ps1/a.bin", good.md5)]).encode())
+    with samba.guest() as transport:
+        transport.makedirs(folder)
+        transport.upload(report, folder / "missing_bios_report.txt")
+    url = f"smb://{samba.host}:{samba.port}/bios/{folder}"
+
+    assert cli.main(["check", "--target", url], base_dir=app) == 0
+
+    with samba.guest() as transport:
+        assert transport.read_bytes(folder / "ps1" / "a.bin") == good.path.read_bytes()
+        assert not transport.exists(PurePosixPath("ps1"))
+
+
+def test_report_reads_a_real_server_and_writes_nothing(
+    samba: Samba,
+    tmp_path: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    target = folder / "ps1" / "a.bin"
+    put_report(make_report_text([make_missing(target.as_posix(), "0" * 32)]))
+    url = f"smb://{samba.host}:{samba.port}/bios"
+
+    assert cli.main(["report", "--target", url], base_dir=tmp_path) == 0
+
+    with samba.guest() as transport:
+        assert not transport.exists(folder)
+    assert "  a.bin (required)" in capsys.readouterr().out
+
+
+def test_end_to_end_running_again_keeps_the_file(
+    samba: Samba,
+    app: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     file = make_bios_file(app / "bios", "copy.bin")
     target = folder / "ps1" / "a.bin"
     put_report(make_report_text([make_missing(target.as_posix(), file.md5)]))
 
-    assert cli.main([], base_dir=app) == 0
-    assert cli.main([], base_dir=app) == 0
+    assert cli.main(["check"], base_dir=app) == 0
+    assert cli.main(["check"], base_dir=app) == 0
 
     with samba.guest() as transport:
         assert transport.read_bytes(target) == file.path.read_bytes()
+    assert f"copy.bin: already on the device, kept -> {target}" in capsys.readouterr().out
+
+
+def test_end_to_end_a_name_differing_only_in_case_counts_as_there(
+    samba: Samba,
+    app: Path,
+    folder: PurePosixPath,
+    tmp_path: Path,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # Samba treats A.BIN and a.bin as one file, so uploading would overwrite it.
+    file = make_bios_file(app / "bios", "copy.bin")
+    with samba.guest() as transport:
+        transport.makedirs(folder)
+        transport.upload(local_file(tmp_path, b"already here"), folder / "a.bin")
+    put_report(make_report_text([make_missing(f"{folder}/A.BIN", file.md5)]))
+
+    assert cli.main(["check"], base_dir=app) == 0
+
+    with samba.guest() as transport:
+        assert transport.read_bytes(folder / "a.bin") == b"already here"
+    assert "already on the device, kept" in capsys.readouterr().out
+
+
+def test_end_to_end_overwrite_replaces_files(
+    samba: Samba,
+    app: Path,
+    folder: PurePosixPath,
+    tmp_path: Path,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    stale, bad = make_bios_file(app / "bios", "stale.bin"), make_bios_file(app / "bios", "bad.bin")
+    stale_target, bad_target = folder / "stale.bin", folder / "bad.bin"
+    with samba.guest() as transport:
+        transport.makedirs(folder)
+        transport.upload(local_file(tmp_path, b"an old file"), stale_target)
+        transport.upload(local_file(tmp_path, b"a bad dump"), bad_target)
+    put_report(
+        make_report_text(
+            [
+                make_missing(stale_target.as_posix(), stale.md5),
+                make_missing(bad_target.as_posix(), bad.md5, incorrect=True, current_md5="c" * 32),
+            ]
+        )
+    )
+
+    assert cli.main(["check", "--overwrite"], base_dir=app) == 0
+
+    with samba.guest() as transport:
+        assert transport.read_bytes(stale_target) == stale.path.read_bytes()
+        assert transport.read_bytes(bad_target) == bad.path.read_bytes()
+    output = capsys.readouterr().out
+    assert f"stale.bin: replaced -> {stale_target}" in output
+    assert f"bad.bin: replaced -> {bad_target}" in output
 
 
 def test_end_to_end_an_incorrect_file_is_kept(
@@ -284,7 +630,7 @@ def test_end_to_end_an_incorrect_file_is_kept(
     wrong = make_missing(target.as_posix(), valid.md5, incorrect=True, current_md5="c" * 32)
     put_report(make_report_text([wrong]))
 
-    assert cli.main([], base_dir=app) == 0
+    assert cli.main(["check"], base_dir=app) == 0
 
     with samba.guest() as transport:
         assert transport.read_bytes(target) == b"the wrong file"
@@ -314,7 +660,7 @@ def test_end_to_end_an_incorrect_file_is_kept_beside_normal_uploads(
         )
     )
 
-    assert cli.main([], base_dir=app) == 0
+    assert cli.main(["check"], base_dir=app) == 0
 
     with samba.guest() as transport:
         assert transport.read_bytes(kept) == b"the wrong file"
@@ -329,7 +675,7 @@ def test_end_to_end_nothing_missing(
 ) -> None:
     put_report(make_report_text([]))
 
-    assert cli.main([], base_dir=app) == 0
+    assert cli.main(["check"], base_dir=app) == 0
     assert "No missing bios were found" in capsys.readouterr().out
 
 
@@ -338,12 +684,12 @@ def test_end_to_end_an_unrecognized_report_is_exit_4(
 ) -> None:
     put_report("A FORMAT BECK DOESN'T KNOW\r\n")
 
-    assert cli.main([], base_dir=app) == ReportParseError.exit_code
+    assert cli.main(["check"], base_dir=app) == ReportParseError.exit_code
     assert "doesn't look like a report" in capsys.readouterr().out
 
 
 def test_end_to_end_no_report_is_exit_4(app: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    assert cli.main([], base_dir=app) == 4
+    assert cli.main(["check"], base_dir=app) == 4
 
     assert "Generate the report on the device first" in capsys.readouterr().out
 
@@ -354,7 +700,7 @@ def test_end_to_end_wrong_password_is_exit_3_with_no_traceback(
     config = samba.config(user="beck", password=BAD_CREDENTIAL)
     (app / "config" / "config.yml").write_text(config, encoding="utf-8")
 
-    assert cli.main([], base_dir=app) == 3
+    assert cli.main(["check"], base_dir=app) == 3
 
     captured = capsys.readouterr()
     assert "refused the login" in captured.out
@@ -368,7 +714,7 @@ def test_end_to_end_unreachable_server_is_exit_3_with_no_traceback(
     config = f'smb: {{user: "", passwd: "", server: "{samba.host}", port: 1}}\n'
     (app / "config" / "config.yml").write_text(config, encoding="utf-8")
 
-    assert cli.main([], base_dir=app) == 3
+    assert cli.main(["check"], base_dir=app) == 3
 
     captured = capsys.readouterr()
     assert "Error connecting to SMB server" in captured.out
@@ -376,4 +722,4 @@ def test_end_to_end_unreachable_server_is_exit_3_with_no_traceback(
 
 
 def test_end_to_end_a_missing_config_is_exit_2(tmp_path: Path) -> None:
-    assert cli.main([], base_dir=tmp_path) == ConfigError.exit_code
+    assert cli.main(["check"], base_dir=tmp_path) == ConfigError.exit_code

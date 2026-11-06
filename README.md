@@ -65,7 +65,7 @@ If you never edited it, `git pull` removes it; create it again as described in [
 2. From the repository folder, run:
 
    ```sh
-   uv run beck                       # with pip: python check_bios.py
+   uv run beck check                 # with pip: python check_bios.py
    ```
 
    `check_bios.py` still works and prints a notice that it's deprecated.
@@ -74,8 +74,8 @@ If you never edited it, `git pull` removes it; create it again as described in [
    or its target was already filled.
 4. When BECK reports BIOS files found, scan the BIOS files again on your Recalbox.
 
-If Recalbox says a file on the device has the wrong hash, BECK lists it as `INCORRECT` and leaves it alone. Replace that
-file yourself.
+BECK doesn't replace files already on the device. It lists them, including any that Recalbox says has the wrong hash (`INCORRECT`).
+To replace them, run `beck check --overwrite`. There's no backup of what it replaces.
 
 ## Structure
 

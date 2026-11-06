@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-11-02
 - **Decisions covered:** DEC-07, DEC-08, DEC-17, DEC-18, DEC-19, DEC-24, DEC-26, DEC-27, DEC-28, DEC-29, DEC-36,
-  DEC-40, DEC-42, DEC-45, DEC-49, DEC-53, DEC-55
+  DEC-40, DEC-42, DEC-45, DEC-49, DEC-53, DEC-55, DEC-63
 
 ## Context
 At baseline the project had no tooling: no lockfile, tests, linters or packaging. The owner asked that every
@@ -173,3 +173,20 @@ dependencies**, even where a tool was recommended.
   - *Docker with the owner in the `docker` group*: common, but root-equivalent for anything run as that user. Not chosen.
 - **Consequences:** Rootless Podman runs as the user, so agents can build and run the test server with no extra privileges.
   Images are named in full (`docker.io/library/debian:…`), which is only the registry's name. Step 05.6 uses Podman in CI.
+
+## DEC-63 — `types-jsonschema` for the contract tests
+- **Date:** 2026-11-06 (step 06.8).
+- **Status:** Accepted.
+- **Context:** DEC-23 made `jsonschema` a dev-only dependency. It ships no type hints, so `uv run mypy` fails when a test imports
+  it (`Library stubs not installed for "jsonschema"`), and `tests/` is type-checked. AGENTS.md says not to add mypy exemptions,
+  or a library that isn't in the decision log without asking, so the agent asked.
+- **Decision:** Add `types-jsonschema`, which holds only type hints, as a dev-only dependency. The owner gave no further reason.
+- **Alternatives considered:**
+  - *A mypy import override,* as `pysmb` has: no new package, but it loosens the rule in AGENTS.md, and calls into `jsonschema` go
+    unchecked. Not chosen.
+  - *`# type: ignore` on the import:* no new package or setting, but it's still an exemption, and calls into `jsonschema` go
+    unchecked. Not chosen.
+  - *No `jsonschema`, and a small checker in the tests:* no new package, but it reverses part of DEC-23, and a hand-written checker
+    may not read the schemas the way consumers' validators do. Not chosen.
+- **Consequences:** The same trade as `types-PyYAML`. It never reaches users, `requirements.txt` doesn't change, and no code from it
+  runs, but it's one more package to upgrade, alongside `jsonschema`.

@@ -10,6 +10,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 MD5 = re.compile(r"[0-9a-f]{32}")
+SHARE_ROOT = PurePosixPath(".")  # a target's BIOS folder, when it's the whole share
 
 
 def _check_md5(md5: str) -> None:
@@ -65,6 +66,22 @@ class LocalFile:
 
 
 @dataclass(frozen=True, slots=True)
+class Unreadable:
+    """A file or folder in the user's BIOS folder that couldn't be read, and why."""
+
+    relative: PurePosixPath  # to the scanned folder
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class ScanResult:
+    """What a scan of the user's BIOS folder found. Both are sorted by path, as text."""
+
+    files: tuple[LocalFile, ...] = ()
+    unreadable: tuple[Unreadable, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class PlannedUpload:
     """One local file going to one target."""
 
@@ -74,10 +91,6 @@ class PlannedUpload:
 
     def __post_init__(self) -> None:
         _check_relative_file(self.target)
-        if self.entry.incorrect:
-            raise ValueError(
-                f"{self.target} is incorrect on the device, and isn't replaced (DEC-54)"
-            )
         if self.target != self.entry.target:
             raise ValueError(f"Target {self.target} isn't the entry's {self.entry.target}")
         if self.source.md5 not in self.entry.md5s:
@@ -105,7 +118,7 @@ class Plan:
     unmatched: tuple[LocalFile, ...] = ()
     already_filled: tuple[LocalFile, ...] = ()  # matched, but other files fill all its targets
     still_missing: tuple[MissingBios, ...] = ()
-    incorrect: tuple[MissingBios, ...] = ()  # on the device with a wrong hash, and kept (DEC-54)
+    incorrect: tuple[MissingBios, ...] = ()  # on the device with a wrong hash, and being kept
 
     def __post_init__(self) -> None:
         fields: dict[str, list[Any]] = {
@@ -127,6 +140,7 @@ class ItemError:
 
     item: str
     message: str
+    code: str = "transport"  # part of the JSON output: see docs/json-output.md
 
 
 @dataclass(frozen=True, slots=True)
@@ -138,3 +152,7 @@ class RunResult:
     skipped: tuple[PlannedUpload, ...] = ()
     errors: tuple[ItemError, ...] = ()
     dry_run: bool = False
+    kept: tuple[PlannedUpload, ...] = ()  # already on the target, so not uploaded (DEC-61)
+    replaced: tuple[PlannedUpload, ...] = ()  # uploads that overwrite a file on the target
+    deleted: tuple[LocalFile, ...] = ()  # in a dry run, what it would delete
+    extension_changes: tuple[PlannedUpload, ...] = ()  # in a dry run, what it would upload

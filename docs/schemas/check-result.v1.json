@@ -1,0 +1,375 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Andredson/BECK/main/docs/schemas/check-result.v1.json",
+  "title": "Result of beck --json check",
+  "description": "See docs/json-output.md. Within schema_version 1, fields are only added, so ignore fields you don't know.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "beck_version",
+    "command",
+    "ok",
+    "dry_run",
+    "frontend",
+    "target",
+    "summary",
+    "uploads",
+    "incorrect",
+    "still_missing",
+    "duplicates",
+    "already_filled",
+    "unmatched",
+    "unreadable",
+    "deleted",
+    "errors"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "beck_version": {
+      "type": "string"
+    },
+    "command": {
+      "const": "check"
+    },
+    "ok": {
+      "type": "boolean",
+      "description": "False when the exit code isn't 0."
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "frontend": {
+      "type": "string"
+    },
+    "target": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The target as a URL, never with a user name or a password. Null when no target was opened."
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "missing_entries",
+        "satisfied",
+        "still_missing",
+        "files_scanned",
+        "uploaded",
+        "duplicates",
+        "unmatched",
+        "deleted",
+        "errors"
+      ],
+      "properties": {
+        "missing_entries": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Targets the run set out to fill. One listed in several systems counts once, and INCORRECT files being kept don't count."
+        },
+        "satisfied": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Targets this run filled. In a dry run, the ones it would fill."
+        },
+        "still_missing": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "files_scanned": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "uploaded": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Uploads done. Always 0 in a dry run."
+        },
+        "duplicates": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unmatched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "deleted": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Local files deleted. In a dry run, the ones it would delete."
+        },
+        "errors": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "uploads": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/upload"
+      }
+    },
+    "incorrect": {
+      "type": "array",
+      "description": "Files on the device with a wrong hash, which stay as they are.",
+      "items": {
+        "$ref": "#/$defs/incorrect"
+      }
+    },
+    "still_missing": {
+      "type": "array",
+      "description": "Targets with no matching local file. A target whose upload failed is in uploads, not here.",
+      "items": {
+        "$ref": "#/$defs/missing"
+      }
+    },
+    "duplicates": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/duplicate"
+      }
+    },
+    "already_filled": {
+      "type": "array",
+      "description": "Local files that matched, but other files fill all their targets.",
+      "items": {
+        "$ref": "#/$defs/file"
+      }
+    },
+    "unmatched": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/file"
+      }
+    },
+    "unreadable": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/unreadable"
+      }
+    },
+    "deleted": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/file"
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/error"
+      }
+    }
+  },
+  "$defs": {
+    "md5": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "upload": {
+      "type": "object",
+      "required": [
+        "source",
+        "target",
+        "md5",
+        "status",
+        "replaces",
+        "error",
+        "warning"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "The local file, relative to the source folder."
+        },
+        "target": {
+          "type": "string",
+          "description": "Where it goes, relative to the target's BIOS folder."
+        },
+        "md5": {
+          "$ref": "#/$defs/md5"
+        },
+        "status": {
+          "enum": [
+            "planned",
+            "uploaded",
+            "replaced",
+            "kept",
+            "failed",
+            "skipped"
+          ]
+        },
+        "replaces": {
+          "type": "boolean",
+          "description": "Whether this overwrites, or in a dry run would overwrite, a file on the target."
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "warning": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "missing": {
+      "type": "object",
+      "required": [
+        "name",
+        "target",
+        "md5s",
+        "required"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "md5s": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/md5"
+          },
+          "minItems": 1
+        },
+        "required": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "True if any entry for this target is required. Null if none is and the report doesn't say for one."
+        }
+      }
+    },
+    "incorrect": {
+      "type": "object",
+      "required": [
+        "name",
+        "target",
+        "md5s",
+        "required",
+        "current_md5"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "md5s": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/md5"
+          },
+          "minItems": 1
+        },
+        "required": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "True if any entry for this target is required. Null if none is and the report doesn't say for one."
+        },
+        "current_md5": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/md5"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "duplicate": {
+      "type": "object",
+      "required": [
+        "path",
+        "of",
+        "md5"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "of": {
+          "type": "string"
+        },
+        "md5": {
+          "$ref": "#/$defs/md5"
+        }
+      }
+    },
+    "file": {
+      "type": "object",
+      "required": [
+        "path",
+        "md5",
+        "size"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "md5": {
+          "$ref": "#/$defs/md5"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "unreadable": {
+      "type": "object",
+      "required": [
+        "path",
+        "reason"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "required": [
+        "code",
+        "message",
+        "item"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "usage, config, transport, report_not_found, report_parse, internal, size_mismatch or delete_failed. New codes may be added."
+        },
+        "message": {
+          "type": "string"
+        },
+        "item": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The target, folder or local file this is about. Null for an error that stopped the run."
+        }
+      }
+    }
+  }
+}

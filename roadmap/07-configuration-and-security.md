@@ -122,11 +122,13 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 - **What:** Every target path built from the report must be relative and normalized. Reject absolute paths,
   `..` segments, empty names, and names with path separators *after* stripping the device BIOS root. Also reject a name or
   folder containing `\ufffd`: a byte that wasn't valid UTF-8 was replaced there, and uploading would leave a useless file on
-  the device (found in 05.2). A rejected entry is reported as an error item and isn't uploaded. This is defense in depth against a crafted or
+  the device (found in 05.2). Also reject a name or folder containing a control character, which today creates a file with that
+  name on the device (found in 06.11, and [06.11a](06-cli-ux-and-machine-output.md#0611a--control-characters-in-names-cant-reach-the-terminal-d24)
+  only stops it reaching the terminal). A rejected entry is reported as an error item and isn't uploaded. This is defense in depth against a crafted or
   corrupted report. `LocalTransport` already refuses escapes (04.8); add the same check in `SmbTransport`.
 - **Files:** `src/beck/frontends/recalbox.py`, `src/beck/transports/smb.py`, `tests/unit/test_path_safety.py`
-- **Done when:** Tests with malicious entries (`../../etc/x`, `/abs/path`, `a/../../b`) and a name with `\ufffd` produce errors
-  and no uploads.
+- **Done when:** Tests with malicious entries (`../../etc/x`, `/abs/path`, `a/../../b`), a name with `\ufffd` and a name with a control
+  character produce errors and no uploads.
 - **Verify:** `uv run pytest tests/unit/test_path_safety.py -q`
 - **Commit message:** `fix(security): reject unsafe target paths from reports`
 

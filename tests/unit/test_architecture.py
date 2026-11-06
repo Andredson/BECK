@@ -75,6 +75,19 @@ def test_only_the_output_layer_prints(path: Path) -> None:
         assert "print" not in set(calls_of(path))
 
 
+@pytest.mark.parametrize("path", MODULES, ids=name_of)
+def test_only_the_executor_deletes_and_nothing_renames(path: Path) -> None:
+    # DEC-02: a user's local files are the one thing BECK must not lose.
+    destructive = {
+        call
+        for call in calls_of(path)
+        if call.rsplit(".", 1)[-1] in ("unlink", "remove", "rmtree", "rmdir", "rename", "replace")
+        and not call.startswith("text.")  # str.replace, on a report's text
+    }
+
+    assert destructive == ({"file.path.unlink"} if name_of(path) == "executor.py" else set())
+
+
 def test_the_matcher_does_no_io() -> None:
     allowed = {"collections.abc", "pathlib", "beck.models"}
 

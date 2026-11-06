@@ -14,6 +14,8 @@ from beck.models import (
     Plan,
     PlannedUpload,
     RunResult,
+    ScanResult,
+    Unreadable,
 )
 
 MD5_A = "a" * 32
@@ -47,6 +49,8 @@ def upload(target: str = "ps1/scph.bin", relative: str = "copy.bin") -> PlannedU
         Duplicate(file=local("b.bin"), of=local("a.bin")),
         Plan(),
         ItemError(item="a.bin", message="failed"),
+        Unreadable(relative=PurePosixPath("a.bin"), reason="broken symlink"),
+        ScanResult(),
         RunResult(plan=Plan()),
     ],
     ids=lambda instance: type(instance).__name__,
@@ -124,15 +128,6 @@ def test_a_current_md5_must_be_a_valid_md5() -> None:
         MissingBios(
             name="a.bin", target=path, md5s=frozenset({MD5_A}), incorrect=True, current_md5="BAD"
         )
-
-
-def test_an_upload_can_never_go_to_an_incorrect_entry() -> None:
-    entry = MissingBios(
-        name="a.bin", target=PurePosixPath("a.bin"), md5s=frozenset({MD5_A}), incorrect=True
-    )
-
-    with pytest.raises(ValueError, match="isn't replaced"):
-        PlannedUpload(source=local(), target=entry.target, entry=entry)
 
 
 def test_plan_is_empty_by_default() -> None:

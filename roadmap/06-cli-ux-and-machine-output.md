@@ -1,6 +1,6 @@
 # Stage 06 — CLI, UX & machine-readable output
 
-**Status:** Not started · **Depends on:** 05 · **Branch:** `stage/06-cli` · **Effort:** M
+**Status:** In progress · **Depends on:** 05 · **Branch:** `stage/06-cli` · **Effort:** M
 
 ## Goal
 Give BECK a real command-line interface (subcommands, flags, help) that is safe by default and pleasant for
@@ -14,7 +14,7 @@ reliably (DEC-05, DEC-23).
 - The opt-in destructive flags promised by DEC-02 live here.
 
 ## Decisions applied
-DEC-01, DEC-02, DEC-04, DEC-05, DEC-17, DEC-23, DEC-36.
+DEC-01, DEC-02, DEC-04, DEC-05, DEC-17, DEC-23, DEC-36, DEC-54.
 
 ## Command-line design (reference for all steps)
 
@@ -49,7 +49,10 @@ beck config  init | show | path                     # added in stage 07
 ## Steps
 
 ### 06.1 — CLI design document
-- [ ] Done
+- [x] Done (2026-11-05: the document says at the top that it's a design still being built. Beyond the design block above, it records:
+  a file valid for an `INCORRECT` target is never deleted; a warning that `--clean-unmatched` deletes good files after a rescan; a
+  required `INCORRECT` file counts for `--fail-if-missing`; a transport error beats `--fail-if-missing`; an unreadable local file doesn't
+  change the exit code. The owner confirmed these (DEC-59). Step 06.5's premise was corrected.)
 - **What:** `docs/cli.md`, the hand-written user reference: the design block and exit-code table above, one
   example per command, and the safety semantics (what each destructive flag deletes and when it asks for
   confirmation). Add `docs/adr/0007-cli-contract.md` describing the exit codes and the JSON compatibility
@@ -60,7 +63,11 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `docs(cli): specify commands, flags and exit codes`
 
 ### 06.2 — Subcommand skeleton with argparse
-- [ ] Done
+- [x] Done (2026-11-05: `check` runs as before, and `scan` and `report` say they aren't available until 06.11, with exit 2. Different
+  from the list below: global options go through a helper rather than one parent parser, because argparse would overwrite an option
+  given before the command with the command's default. Only `--no-color` exists so far, moved up from 06.10 to prove that this works;
+  `--json`, `-v` and `-q` come in their own steps, because accepting a flag that does nothing would mislead. `check_bios.py` runs
+  `beck check`, so it shows only its own notice. Checked by breaking each rule on purpose.)
 - **What:** Build the parser in `cli.py` with `argparse` subparsers. Global options go on a parent parser so they
   work before or after the subcommand. `--version` prints `beck <version>`. Help text includes examples
   (`epilog` with `RawDescriptionHelpFormatter`). Bare `beck` with no command keeps working as `beck check` for
@@ -71,8 +78,28 @@ beck config  init | show | path                     # added in stage 07
 - **Verify:** `uv run beck --help && uv run beck check --help && uv run pytest tests/unit/test_cli.py -q`
 - **Commit message:** `feat(cli): add check, scan and report subcommands`
 
+### 06.2a — A local file BECK can't read doesn't stop the run
+- [x] Done (2026-11-05: `scan` now returns a `ScanResult` with the files and what it couldn't read. Beyond the list below: **a sub-folder
+  that can't be read** is reported too, because `os.walk` skipped those silently, so all its files just went missing. A symlink loop is
+  reported like a broken symlink. A symlink to a folder still isn't followed, as before. The local files stay as they were. Tested with
+  real symlinks, permissions and named pipes, and through a real Samba server. Checked by breaking each rule on purpose.)
+- **What:** Today, a broken symlink or an unreadable file in the source folder ends in a traceback and exit 1, before anything
+  is uploaded (found in 04.6, and the reason error handling stayed at 7/10). `hashing.scan` records the file and its reason,
+  and carries on with the others. Only regular files, or symlinks to them, get hashed, because opening a named pipe would hang
+  forever. `check` and `scan` print one line per such file, and it's an item in the JSON `errors[]` (06.7). The exit code stays
+  0, unless another rule in the table applies: the run completed, and the file couldn't have been matched anyway.
+- **Files:** `src/beck/hashing.py`, `src/beck/models.py`, `src/beck/cli.py`, `src/beck/output/console.py`,
+  `tests/unit/test_hashing.py`, `tests/unit/test_cli.py`
+- **Done when:** Tests cover a broken symlink, a file with no read permission and a named pipe, each beside a good file that still
+  uploads, with no traceback.
+- **Verify:** `uv run pytest tests/unit/test_hashing.py tests/unit/test_cli.py -q`
+- **Commit message:** `fix(hashing): report unreadable local files and keep going`
+
 ### 06.3 — Target selection and frontend flag
-- [ ] Done
+- [x] Done (2026-11-05: Beyond the list below: `SmbTransport` takes a root folder, because a target like `smb://recalbox/share/bios` is
+  real; checked read-only against the VM. With `--target`, **the password in `config.yml` isn't used**, because it would go to whatever
+  host the flag names, so `--target` means guest until 07.4 adds passwords for targets. A query, a fragment, `..` and backslashes are
+  refused, in encoded forms too, and errors never repeat the URL. Checked by breaking each rule on purpose.)
 - **What:** Parse `--target` URLs into an SMB target (`host`, `port` defaulting to 445, `share`, optional
   sub-path, optional user) and reject passwords inside URLs. `--target-dir` builds a `LocalTransport`; it is
   mutually exclusive with `--target`. `--frontend` chooses from the adapter registry (only `recalbox` for now).
@@ -84,7 +111,10 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `feat(cli): select SMB or local targets and the frontend adapter`
 
 ### 06.4 — Source folder and offline report options
-- [ ] Done
+- [x] Done (2026-11-05: `beck report` was built here, grouped by folder with required and optional markers, because this step's check
+  needs it; 06.11 keeps `scan`. Beyond the list below: a `--source` that doesn't exist exits with 2, because treating a typo as an empty
+  folder would say "No BIOS files found" and exit 0; the default `./bios` still works as before. On `report`, `--report-file` can't be
+  combined with a target. Checked by breaking each rule on purpose.)
 - **What:** `--source DIR` (default `./bios`) for `check` and `scan`. `--report-file FILE` makes `check` and
   `report` parse a local copy of the report instead of reading it through the transport. That's useful offline,
   for bug reports, and for agents.
@@ -94,11 +124,14 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `feat(cli): add --source and offline --report-file options`
 
 ### 06.5 — Owner decision: remote files that already exist
-- [ ] Done
-- **Blocked by:** an owner decision (record a new DEC first).
-- **What:** If the target path already exists on the device, Recalbox still reporting it missing means the
-  existing file is a **bad dump**. Today BECK overwrites it silently. Ask the owner, explaining the trade-offs,
-  which default to adopt. Files the report lists as `INCORRECT` are kept for now (DEC-54); include whether a flag can
+- [x] Done (2026-11-05: the owner chose option 2, and that `--overwrite` also replaces `INCORRECT` files (DEC-61). The executor checks the
+  target, because the matcher does no I/O, and a dry run checks it too, which is read-only. Beyond the list below: `--overwrite` reports
+  `replaced`, not `copied`. On SMB, `exists` and `makedirs` ignore case, because Samba treats `A.BIN` and `a.bin` as one file, so the check
+  would otherwise miss a file the upload then overwrites. Tested against a real Samba server. Checked by breaking each rule on purpose.)
+- **What:** If the target path already exists on the device, BECK overwrites it silently today. **Corrected in 06.1:** Recalbox's
+  source shows that a bad dump is reported as `INCORRECT` (DEC-54), or not at all when `hashMatchMandatory` is false, while `MISSING`
+  means the file wasn't found. So a `MISSING` entry whose file exists mostly means **the report is out of date**, and the file may be
+  fine. Ask the owner, explaining the trade-offs, which default to adopt. Files the report lists as `INCORRECT` are kept for now (DEC-54); include whether a flag can
   replace them:
   1. overwrite (current behavior);
   2. skip and report, with an `--overwrite` flag;
@@ -113,24 +146,30 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `feat(executor): apply the agreed policy for existing remote files`
 
 ### 06.6 — Safety flags: `--dry-run`, `--move`, `--clean-unmatched`, `--yes`
-- [ ] Done
+- [x] Done (2026-11-05: a read-only preview decides what would go, and the prompt or refusal comes **before any upload**, so answering no
+  changes nothing on either side. Beyond the list below, all erring towards keeping files: `--move` keeps a file with a target that was
+  already on the device, because nothing proves that copy is good; `--clean-unmatched` deletes nothing after any failure in the run, or
+  when the report lists nothing missing; a file that can't be deleted is recorded and exits with 3. A test checks on the source that only
+  `executor.py` deletes and nothing renames. Prompts go to stderr. The DEC-56 warning appears in the dry run and the prompt. Tested with
+  real files, and through a real Samba server. Checked by breaking each rule on purpose.)
 - **What:**
   - `--dry-run`: build and show the full plan, including what *would* be deleted, and change nothing.
   - `--move`: after a file has been uploaded to **all** of its targets **and** each remote size matches, delete
     the local source. Nothing is deleted if any upload of that file failed.
-  - `--clean-unmatched`: delete local files that matched nothing. Duplicates are kept and reported.
+  - `--clean-unmatched`: delete local files that matched nothing. Duplicates are kept and reported, and so is a file valid for an
+    `INCORRECT` target. After an upload and a rescan, good files no longer match anything, so the plan must make that plain (DEC-56).
   - Confirmation: when `--move` or `--clean-unmatched` would delete files, list them and ask `Delete N files?
     [y/N]` on a TTY. Without a TTY (scripts, agents, CI), deletion requires `--yes`; otherwise exit 2 with a
     message explaining that. `--json` implies no prompt, so it also requires `--yes`.
   - Deletions are recorded in the result (`deleted` list).
 - **Files:** `src/beck/executor.py`, `src/beck/cli.py`, `tests/unit/test_safety_flags.py`
-- **Done when:** Tests cover a dry run with the move and clean flags (nothing deleted, plan lists them), move
-  after success, no move after a partial failure, refusal without `--yes` off-TTY, and acceptance with `--yes`.
+- **Done when:** Tests cover a dry run with the move and clean flags (nothing deleted, plan lists them), a file valid for an
+  `INCORRECT` target kept, move after success, no move after a partial failure, refusal without `--yes` off-TTY, and acceptance with `--yes`.
 - **Verify:** `uv run pytest tests/unit/test_safety_flags.py -q`
 - **Commit message:** `feat(cli): add dry-run and opt-in move/clean flags with confirmation`
 
 ### 06.6a — Warn when a file's extension differs from its target's
-- [ ] Done
+- [x] Done
 - **What:** Warn when a file is uploaded to a target with a different extension, without blocking the upload. Reason:
   in the real report from Recalbox 10.1.1, an MD5 on the `neocdz.zip` entry also belongs to `neocd.bin`, so BECK
   uploaded a raw `.bin` under a `.zip` name during the 03.13 VM run. The MD5 is valid, but an emulator may not be able
@@ -142,14 +181,14 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `feat(executor): warn when an upload changes the file extension`
 
 ### 06.7 — JSON output and schema v1 (DEC-23)
-- [ ] Done
+- [x] Done
 - **What:**
   - `output/json.py` renders a `RunResult` (or an error) as a single JSON document on **stdout**. All logs and
     prompts go to stderr, so stdout is always parseable.
   - Top-level fields: `schema_version` (1), `beck_version`, `command`, `ok` (bool), `dry_run`, `frontend`,
     `target` (URL **without** credentials), `summary` {`missing_entries`, `satisfied`, `still_missing`,
     `files_scanned`, `uploaded`, `duplicates`, `unmatched`, `deleted`, `errors`}, `uploads[]` {`source`,
-    `target`, `md5`, `status`: planned|uploaded|failed|skipped, `error`}, `incorrect[]` {`name`, `target`, `current_md5`, `md5s`}, `still_missing[]` {`name`, `target`,
+    `target`, `md5`, `status`: planned|uploaded|replaced|kept|failed|skipped, `error`, `warning`}, `incorrect[]` {`name`, `target`, `current_md5`, `md5s`}, `still_missing[]` {`name`, `target`,
     `md5s`, `required`}, `duplicates[]`, `unmatched[]`, `deleted[]`, `errors[]` {`code`, `message`, `item`}.
   - Errors that stop a run (config, connection, report) still print a valid document with `ok: false` and the
     matching exit code.
@@ -158,35 +197,102 @@ beck config  init | show | path                     # added in stage 07
   - **Compatibility promise** (in `docs/json-output.md`): within `schema_version` 1, fields are only *added*;
     renaming, removing or changing the meaning of a field means `schema_version` 2. Consumers must ignore
     unknown fields.
+  - Added while building it, so that JSON never knows less than the human output: `uploads[].replaces`, `already_filled[]`,
+    `unreadable[]`, and `required` on `incorrect[]`. A command line that can't be parsed gives a smaller document, with its own schema
+    (`rejected-command.v1.json`). [ADR-0007](../docs/adr/0007-cli-contract.md#details-settled-in-step-067) has the reasons.
 - **Files:** `src/beck/output/json.py`, `docs/schemas/*.json`, `docs/json-output.md`, `src/beck/cli.py`
 - **Done when:** `--json` works for `check`, `scan` and `report`, including error cases.
 - **Verify:** `uv run beck --json report --report-file "$(ls tests/fixtures/reports/*/*.txt | head -n1)" | python3 -m json.tool`
 - **Commit message:** `feat(output): add versioned JSON output for all commands`
 
+### 06.7a — Fix two bugs in the human output (D18, D19)
+- [x] Done
+- **What:** Step 06.7's end-to-end runs found two bugs from before it. `--json` has neither.
+  - **D18, a crash after the work is done:** a local file name that isn't valid UTF-8, common in old ROM sets, makes `print` raise
+    `UnicodeEncodeError` while BECK shows the results, because the name holds a character stdout can't encode. Reproduced with
+    `--move --yes`: BECK uploaded a file and deleted the local copy, then exited with 1, losing the summary and the reminder to scan. The
+    same applies to any name a stdout that isn't UTF-8 can't show. Human output must show such a name escaped, like `x\xff.bin`, and carry
+    on, wherever it prints a path: results, unreadable files, errors and the deletion prompt.
+  - **D19, a wrong line in a dry run:** when checking a target fails, the output says `a.bin: would copy -> a.bin` right above the error,
+    although BECK doesn't know that. It must say `failed`, as the JSON's `status` does.
+- **Files:** `src/beck/output/__init__.py`, `src/beck/output/console.py`, `src/beck/output/json.py`, `tests/unit/test_console.py`,
+  `tests/unit/test_cli.py`, `tests/integration/test_smb_transport.py`, `docs/cli.md`, `docs/json-output.md`, `docs/ARCHITECTURE.md`,
+  `roadmap/00-assessment.md`
+- **Done when:** A full run with a name that isn't valid UTF-8 exits with 0, prints the summary and uploads the rest; a stdout that can
+  only encode ASCII doesn't crash on a name like `é.bin`; the prompt shows such a name; and a dry run with a failed check prints `failed`,
+  not `would copy`. D18 and D19 are marked as fixed.
+- **Verify:** `uv run pytest tests/unit/test_console.py tests/unit/test_cli.py -q -k "utf8 or encode or failed_check"`
+- **Commit message:** `fix(output): show undecodable file names and failed dry-run checks correctly`
+
+### 06.7b — A stream that fails can't change the run (D20, D21)
+- [x] Done
+- **What:** The end-to-end runs of 06.7a found these, and measuring them showed more than a wrong exit code. In all of them, the exit code
+  breaks the contract in [docs/cli.md](../docs/cli.md#exit-codes), and a script that retries could repeat or lose work.
+  - **D20, stdout can't be written, so the run changes:** today, the result depends on how much BECK has printed when it notices.
+
+    | Stdout | Human output | `--json` |
+    |---|---|---|
+    | Closed pipe, little output | Uploads done, exit 120 | Uploads done, exit 120 |
+    | Closed pipe, lots of output after the uploads | Uploads done, exit 1 and a traceback. With `--move`, the local file is gone too | Uploads done, exit 120 and a traceback |
+    | Closed pipe, lots of output before the uploads | **Nothing uploaded**, exit 1 and a traceback | Uploads done, exit 120 and a traceback |
+    | Full disk (`> /dev/full`) | Uploads done, exit 120 | Uploads done, exit 120 |
+    | Closed (`>&-`) | **Nothing uploaded**, exit 1 and a traceback | Uploads done, exit 0 |
+
+    The rule to build: **what BECK does, and its exit code, don't depend on whether its output can be written.** The run carries on, and the
+    exit code reports the work, as in a run nobody piped: 0, or 3 if an upload failed. There's no traceback, and nothing is reported as a bug.
+    A closed pipe is silent, because the reader chose to stop. Any other failure, such as a full disk, prints one line on stderr saying the
+    output was lost, because nobody chose that. Interpreter shutdown can't change the exit code either, as in
+    [Python's note on SIGPIPE](https://docs.python.org/3/library/signal.html#note-on-sigpipe).
+  - **D21, the prompt can't get an answer, so BECK crashes:** nothing is changed in any of these, but each exits with 1 and a traceback, as a
+    bug. Bytes that aren't valid text typed at the prompt raise `UnicodeDecodeError`. A closed stdin (`<&-`) or stderr (`2>&-`) raises
+    `AttributeError`. They must fail towards no, and exit with 2: invalid bytes count as an answer that isn't `y` or `yes`, and with a closed
+    stream BECK can't ask, so it gives the message that says to use `--dry-run` or `--yes`. So does a stderr that fails while asking.
+  - Record the D20 rule as a new DEC, in [ADR-0007](../docs/adr/0007-cli-contract.md), with the alternative: stopping as soon as the reader
+    is gone. That needs a new exit code, and BECK only notices when a buffer fills, so what got done would still depend on the output.
+- **Files:** `src/beck/output/__init__.py`, `src/beck/output/console.py`, `src/beck/output/json.py`, `src/beck/cli.py`, `check_bios.py`,
+  `tests/unit/test_output_streams.py`, `tests/integration/test_smb_transport.py`, `docs/cli.md`, `docs/json-output.md`, `docs/ARCHITECTURE.md`,
+  `docs/adr/0007-cli-contract.md`, `docs/adr/README.md`, `roadmap/README.md`, `roadmap/00-assessment.md`
+- **Done when:** Tests with real child processes and real pipes, not fakes, cover each row of the table in both modes: the same files end up
+  on the target and locally as in an unpiped run, the exit code is the same, including 3 for a failed upload, stderr has no traceback, and
+  `--move` deletes the same files. A full disk gives exactly one line on stderr, and a closed pipe gives none. Invalid bytes at the prompt, on a
+  real pseudo-terminal, and `<&-` and `2>&-` each exit with 2 and change nothing. D20 and D21 are marked as fixed.
+- **Verify:** `uv run pytest tests/unit/test_output_streams.py -q`
+- **Commit message:** `fix(output): keep a run and its exit code independent of its output streams`
+
 ### 06.8 — JSON contract tests
-- [ ] Done
+- [x] Done (2026-11-06: `jsonschema` 4.26.0 and `types-jsonschema` 4.26.0.20261006, resolved under the cooldown. The second wasn't planned:
+  mypy refuses `jsonschema` without it, and the owner chose it over an exemption (DEC-63). The scenarios are a table, and tests fail if
+  they stop reaching a field, null, status or error code. `V1_FIELDS` is the record of what version 1 promises, and it also fails on a new
+  field, so that a new promise gets written down. Beyond the list below: documents are also checked against closed copies of the schemas,
+  so BECK can't write a field they leave out, and the guide's examples are checked too.)
 - **What:** `uv add --dev jsonschema` (dev-only, DEC-23). Tests run every command in success **and** error
   scenarios with `--json` and validate the output against the schema files. Another test fails if a field
   present in the v1 schema disappears, which guards the compatibility promise.
-- **Files:** `pyproject.toml`, `uv.lock`, `tests/unit/test_json_contract.py`
+- **Files:** `pyproject.toml`, `uv.lock`, `tests/unit/test_json_contract.py`, `AGENTS.md`, and for DEC-63 `roadmap/README.md`,
+  `docs/adr/0003-tooling.md`, `docs/adr/README.md`
 - **Done when:** Every JSON-producing path is validated against its schema.
 - **Verify:** `uv run pytest tests/unit/test_json_contract.py -q`
 - **Commit message:** `test(output): validate JSON output against the published schemas`
 
 ### 06.9 — Exit codes and `--fail-if-missing`
-- [ ] Done
+- [x] Done (2026-11-06: the choices `--fail-if-missing` needed are in [ADR-0007](../docs/adr/0007-cli-contract.md#details-settled-in-step-069).
+  Running odd inputs through the real command showed the table wasn't true yet, so this also fixes D22 and D23 in the
+  [assessment](00-assessment.md). Beyond the list below: `src/beck/output/`, `src/beck/targets.py`, `src/beck/transports/local.py`,
+  `docs/cli.md`, `docs/json-output.md` and the ADR.)
 - **What:** Implement the exit-code table exactly as documented. `--fail-if-missing` returns 5 when any entry
   with `required` true (or unknown) is still missing after the run. An item-level upload failure returns 3 even
-  though the run continued.
+  though the run continued. With `--json`, `ok` must be false for 5 too, since the guide says it's false for any exit code but 0.
 - **Files:** `src/beck/cli.py`, `tests/unit/test_cli.py`
 - **Done when:** Each code 0–5 is produced by at least one test.
 - **Verify:** `uv run pytest tests/unit/test_cli.py -q -k exit`
 - **Commit message:** `feat(cli): return documented exit codes and support --fail-if-missing`
 
 ### 06.10 — Verbosity, logging and color flags
-- [ ] Done
+- [x] Done (2026-11-06: the choices `-q` needed are in [ADR-0007](../docs/adr/0007-cli-contract.md#details-settled-in-step-0610). Beyond the list
+  below: `src/beck/hashing.py` for the counter, `src/beck/transports/` for the connection steps, `src/beck/output/json.py`, the docs,
+  and tests in `tests/unit/test_hashing.py`, `tests/unit/test_output_streams.py` and the integration tests.)
 - **What:** `-v` sets debug logs on stderr (connection steps, timings, plan details; **never** credentials).
-  `-q` prints only errors and the final summary. `--no-color` is equivalent to `NO_COLOR`. Hashing many files
+  `-q` prints only errors and the final summary. `--no-color` already exists (06.2). Hashing many files
   shows a simple progress counter on stderr, on a TTY only.
 - **Files:** `src/beck/cli.py`, `src/beck/output/console.py`, `tests/unit/test_console.py`
 - **Done when:** Tests check that `-v` output never contains the configured password (use a sentinel value).
@@ -194,20 +300,59 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `feat(cli): add verbosity and color controls`
 
 ### 06.11 — `beck scan` and `beck report`
-- [ ] Done
-- **What:** `scan` lists local files with relative path, size and MD5. `report` lists missing entries, grouped
-  by folder, with the `required` / optional marker. Both support `--json`. Neither ever writes anything.
+- [x] Done (2026-11-06: `scan` prints the MD5, size and path, in the order of `md5sum`, then what it couldn't read and the totals. Beyond the list
+  below: `report` no longer says an `INCORRECT` file "was kept", because it changes nothing, and it now says whether that file is required, as
+  [docs/cli.md](../docs/cli.md#beck-report) promised. So `src/beck/output/` changes too, with `docs/cli.md`, which no longer calls itself a design.)
+- **What:** `scan` lists local files with relative path, size and MD5, for people too (06.7 built only `--json`). `report` already lists missing entries, grouped
+  by folder, with the `required` / optional marker (06.4). Both support `--json`. Neither ever writes anything.
 - **Files:** `src/beck/cli.py`, `tests/unit/test_cli.py`
 - **Done when:** Both commands work offline (`scan`, and `report --report-file`) and are covered by tests.
 - **Verify:** `uv run beck scan --source tests && uv run beck --json scan --source tests | python3 -m json.tool`
 - **Commit message:** `feat(cli): add read-only scan and report commands`
 
+### 06.11a — Control characters in names can't reach the terminal (D24)
+- [x] Done (2026-11-06: `ConsoleRenderer._print` now takes parts, and only a color it's given goes out raw, so a new line of output can't skip the
+  escaping. Beyond the list below: argparse's error, which repeats what it was given, goes through the same escaping, and a YAML error is put on
+  one line, so that BECK's own message doesn't show `\x0a`. So `src/beck/output/__init__.py`, `src/beck/cli.py`, `docs/ARCHITECTURE.md` and
+  `tests/unit/test_cli.py` change too.)
+- **What:** The end-to-end runs of 06.11 found this. BECK prints names as they are, so a name holding an escape sequence reaches the terminal
+  as a live code, and a newline splits its line in two. Measured with a name holding `ESC[31m`:
+
+  | Output | Where the name comes from | Reaches the terminal raw? |
+  |---|---|---|
+  | `beck check`, `beck scan` | Local files | Yes, on stdout |
+  | `beck report`, `beck check` | The report, so the device | Yes, on stdout |
+  | The deletion prompt | Local files | Yes, on stderr |
+  | `-v` logs | Local files | Yes, on stderr |
+  | Error messages | The report, or a folder named on the command line | Yes, on stdout |
+  | `--json` | Either | No: `json.dumps` escapes it |
+
+  The worst is the prompt: a crafted file name could hide or fake the list someone is asked to confirm before files are deleted. It can also
+  change colors or the title, or make output misleading, and it breaks `beck scan`'s one line per file.
+
+  The rule to build: **in human output and logs, whatever comes from outside BECK is shown escaped,** the way `x\xff.bin` already is. That covers
+  the control characters (U+0000 to U+001F, U+007F and U+0080 to U+009F) and the bidirectional controls (U+202A to U+202E and U+2066 to
+  U+2069), which can make a name read as something else. So a newline shows as `\x0a`, and BECK's own colors and line breaks still work.
+
+  Why this isn't a one-liner: BECK's colors share a line with the names, so the line can't be escaped as a whole, as `_printable` does today. Names
+  must be escaped before colors go on. Prefer one place that a new line of output can't forget, because that's how this bug would come back.
+  Logs can do it in the handler's formatter, keeping a traceback's line breaks. `--json` stays exact, because scripts need the real name.
+
+  This step changes only what's shown. Refusing such a name in a report, so that no file with that name is created on the device, is
+  [07.6](07-configuration-and-security.md#076--path-safety-for-report-derived-targets).
+- **Files:** `src/beck/output/console.py`, `tests/unit/test_console.py`, `tests/unit/test_output_streams.py`, `docs/cli.md`, `roadmap/00-assessment.md`
+- **Done when:** Tests cover each row of the table with real runs, checking the bytes on stdout and stderr: with `FORCE_COLOR`, BECK's own color
+  codes are the only escape sequences there, and each file still takes one line in `beck scan`. The prompt still shows the name, escaped, and
+  `--json` still has the exact name.
+- **Verify:** `uv run pytest tests/unit/test_console.py tests/unit/test_output_streams.py -q`
+- **Commit message:** `fix(output): escape control characters in names shown to people`
+
 ### 06.12 — Agent guidance for driving BECK
-- [ ] Done
+- [x] Done (2026-11-06: beyond the list below, the section says what to do for each exit code, and that a dry run still connects to the target.)
 - **What:** Add a **"Using BECK as a tool"** section to AGENTS.md:
   - always run `beck --json check --dry-run …` first and show the plan to the human;
   - parse stdout as JSON and branch on the exit code;
-  - never add `--yes`, `--move` or `--clean-unmatched` without the human's explicit approval in this session;
+  - never add `--yes`, `--overwrite`, `--move` or `--clean-unmatched` without the human's explicit approval in this session;
   - never pass passwords on the command line.
 
   Link `docs/json-output.md` and `docs/cli.md`.

@@ -39,7 +39,7 @@ def test_version_when_run_from_a_clone_without_installing(monkeypatch: pytest.Mo
 def test_help_describes_the_command_and_runs_nothing(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(cli, "_run", forbidden)
+    monkeypatch.setattr(cli, "_run_check", forbidden)
 
     with pytest.raises(SystemExit) as exit_info:
         cli.main(["--help"])
@@ -51,7 +51,7 @@ def test_help_describes_the_command_and_runs_nothing(
 
 
 def test_an_unknown_argument_is_a_usage_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cli, "_run", forbidden)
+    monkeypatch.setattr(cli, "_run_check", forbidden)
 
     with pytest.raises(SystemExit) as exit_info:
         cli.main(["--no-such-flag"])
@@ -98,20 +98,24 @@ def test_the_shim_uses_its_own_folder_from_anywhere(
 ) -> None:
     # Old usage keeps working: config and bios sit next to the script, not the current folder (D9).
     folders: list[Path | None] = []
+    arguments: list[list[str] | None] = []
 
     def fake_main(argv: list[str] | None = None, *, base_dir: Path | None = None) -> int:
         folders.append(base_dir)
+        arguments.append(argv)
         return 7
 
     monkeypatch.setattr(cli, "main", fake_main)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.setattr(sys, "argv", ["check_bios.py"])
 
     with pytest.raises(SystemExit) as exit_info:
         runpy.run_path(str(SHIM), run_name="__main__")
 
     assert exit_info.value.code == 7
     assert folders == [ROOT]
+    assert arguments == [["check"]]
     assert sys.path[0] == str(ROOT / "src")
     captured = capsys.readouterr()
     assert "deprecated" in captured.err  # stderr, so stdout stays the same as before

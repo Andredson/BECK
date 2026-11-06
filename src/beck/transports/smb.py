@@ -1,7 +1,9 @@
 """A share on an SMB server, through pysmb (DEC-53). Only this module talks to pysmb."""
 
 import io
+import logging
 import socket
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
@@ -12,6 +14,9 @@ from smb.smb_structs import OperationFailure
 from smb.SMBConnection import SMBConnection
 
 from beck.errors import TransportError
+from beck.models import SHARE_ROOT
+
+_log = logging.getLogger(__name__)
 
 
 @contextmanager
@@ -27,6 +32,12 @@ def _reporting(action: str) -> Iterator[None]:
         raise TransportError(f"Error {action}: {e}") from e
 
 
+def _same_name(name: str, names: list[str]) -> str | None:
+    """A file's real name, ignoring case as Samba does: uploading A.BIN would overwrite a.bin."""
+    wanted = name.casefold()
+    return next((candidate for candidate in names if candidate.casefold() == wanted), None)
+
+
 def client_name() -> str:
     """The name BECK gives itself on the connection: this computer's host name, or "BECK"."""
     try:
@@ -39,7 +50,14 @@ class SmbTransport:
     """One connection to one share for the whole run. It connects once and always closes."""
 
     def __init__(
-        self, host: str, port: int, share: str, user: str, password: str, timeout: float = 30
+        self,
+        host: str,
+        port: int,
+        share: str,
+        user: str,
+        password: str,
+        timeout: float = 30,
+        root: PurePosixPath = SHARE_ROOT,
     ) -> None:
         self.host = host
         self.port = port
@@ -47,6 +65,7 @@ class SmbTransport:
         self.user = user
         self.password = password
         self.timeout = timeout
+        self.root = root  # the BIOS folder, relative to the share
         self._conn: Any = None
 
     def __enter__(self) -> Self:
@@ -59,11 +78,19 @@ class SmbTransport:
             use_ntlm_v2=True,
             is_direct_tcp=self.port == 445,
         )
+        _log.debug(
+            "Connecting to %s:%d, %s, %s",
+            self.host,
+            self.port,
+            "over plain TCP" if self.port == 445 else "with a NetBIOS session",
+            "with a user name" if self.user else "as a guest",
+        )
         try:
             self._open(conn)
         except BaseException:
             conn.close()  # __exit__ doesn't run when __enter__ fails
             raise
+        _log.debug("Connected, and the share %s exists", self.share)
         self._conn = conn
         return self
 
@@ -91,45 +118,65 @@ class SmbTransport:
         return [e for e in entries if e.filename not in (".", "..")]
 
     def read_bytes(self, path: PurePosixPath) -> bytes:
+        _log.debug("Reading %s", path)
         buffer = io.BytesIO()  # in memory: no local or temporary file is written (D6)
         with _reporting(f"reading {path} from share {self.share}"):
-            self._conn.retrieveFile(self.share, path.as_posix(), buffer, timeout=self.timeout)
+            self._conn.retrieveFile(
+                self.share, (self.root / path).as_posix(), buffer, timeout=self.timeout
+            )
         return buffer.getvalue()
 
     def exists(self, path: PurePosixPath) -> bool:
         # Walks down the listings, because pysmb raises the same exception for "not found" and for
         # a real failure such as "access denied". A failed listing stays an error here.
         parent = ""
-        for name in path.parts:
-            if name not in {e.filename for e in self._list(parent)}:
+        for name in (self.root / path).parts:
+            actual = _same_name(name, [e.filename for e in self._list(parent)])
+            if actual is None:
                 return False
-            parent = f"{parent}{name}/"
+            parent = f"{parent}{actual}/"
         return True
 
     def size(self, path: PurePosixPath) -> int:
         with _reporting(f"getting the size of {path} on share {self.share}"):
-            attributes = self._conn.getAttributes(self.share, path.as_posix(), timeout=self.timeout)
+            attributes = self._conn.getAttributes(
+                self.share, (self.root / path).as_posix(), timeout=self.timeout
+            )
             return int(attributes.file_size)
 
     def makedirs(self, path: PurePosixPath) -> None:
         # createDirectory isn't recursive, so each missing level is created in order (D4).
         parent = ""
-        for name in path.parts:
-            folder = f"{parent}{name}"
-            if name not in self._list_dirs(parent):
-                with _reporting(f"creating folder {folder} on share {self.share}"):
-                    self._conn.createDirectory(self.share, folder, timeout=self.timeout)
-            parent = f"{folder}/"
+        for name in (self.root / path).parts:
+            actual = _same_name(name, self._list_dirs(parent))
+            if actual is None:
+                actual = name
+                _log.debug("Creating folder %s%s", parent, name)
+                with _reporting(f"creating folder {parent}{name} on share {self.share}"):
+                    self._conn.createDirectory(self.share, f"{parent}{name}", timeout=self.timeout)
+            parent = f"{parent}{actual}/"
 
     def upload(self, local: Path, remote: PurePosixPath) -> int:
         with (
             _reporting(f"uploading {local} to {remote} on share {self.share}"),
             local.open("rb") as file,  # closed before this returns (D7)
         ):
-            written = self._conn.storeFile(
-                self.share, remote.as_posix(), file, timeout=self.timeout
+            started = time.monotonic()
+            written = int(
+                self._conn.storeFile(
+                    self.share, (self.root / remote).as_posix(), file, timeout=self.timeout
+                )
             )
-            return int(written)
+            _log.debug(
+                "Uploaded %s: %d bytes in %.3f s", remote, written, time.monotonic() - started
+            )
+            return written
+
+    def _where(self) -> str:
+        return self.share if self.root == SHARE_ROOT else f"{self.share}/{self.root}"
 
     def describe(self) -> str:
-        return f"SMB share {self.share} on {self.host}:{self.port}"
+        return f"SMB share {self._where()} on {self.host}:{self.port}"
+
+    def url(self) -> str:
+        return f"smb://{self.host}:{self.port}/{self._where()}"

@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-02
-- **Decisions covered:** DEC-01, DEC-02, DEC-03, DEC-04, DEC-09, DEC-10, DEC-12, DEC-13, DEC-15, DEC-50, DEC-54
+- **Decisions covered:** DEC-01, DEC-02, DEC-03, DEC-04, DEC-09, DEC-10, DEC-12, DEC-13, DEC-15, DEC-50, DEC-54, DEC-56, DEC-57, DEC-58, DEC-60, DEC-61
 
 ## Context
 At the baseline review ([assessment](../../roadmap/00-assessment.md)), BECK was a 243-line script with an overall
@@ -103,6 +103,7 @@ differed from the recommendation.
   uploaded to the first.
 
 ## DEC-54 — A file that's INCORRECT on the device is kept and reported
+- **Status:** Accepted. [DEC-61](#dec-61--files-on-the-device-are-kept-unless---overwrite-is-passed) adds the flag that can replace these files.
 - **Date:** 2026-11-05 (step 05.3a).
 - **Context:** Recalbox's source and its 10.1.1 binary show a second kind of report block, `INCORRECT REQUIRED|OPTIONAL BIOS`,
   for a file that exists with a hash that isn't on the list, when `hashMatchMandatory` is true. It has a `Current MD5:` line.
@@ -117,3 +118,84 @@ differed from the recommendation.
   - The owner chose the option the agent recommended, and gave no further reason.
 - **Consequences:** The user replaces such a file by hand for now, and BECK names a local file that would fit. Step 06.5
   decides whether a flag can replace these files. Step 06.7 adds them to the JSON output.
+
+## DEC-56 — `--clean-unmatched` stays, with a warning
+- **Date:** 2026-11-05 (step 06.1).
+- **Context:** Writing the CLI design showed a risk in DEC-02's `--clean-unmatched`. "Unmatched" only means that the current report
+  doesn't ask for a file. After an upload and a rescan, the report no longer lists the user's good files, so a later run with this
+  flag treats them as unmatched and deletes them, unless the user reads the confirmation list closely.
+- **Decision:** Keep the flag as planned, with its confirmation, and a prominent warning in the documentation that recommends a dry run first.
+- **Alternatives considered:**
+  - *Remove the flag* (recommended by the agent): the safest, because a wrong delete can't be undone, and users can delete files
+    themselves. Not chosen. The owner gave no further reason.
+  - *Delete only files BECK can recognize as junk*: safer, but BECK has no such list, and building one is real work. Not chosen.
+- **Consequences:** Step 06.6 implements the flag, and its plan output must make the risk plain. The risk stays for a user who confirms
+  without reading.
+
+## DEC-57 — Exporting BIOS files from the target
+- **Date:** 2026-11-05 (step 11.12).
+- **Status:** Accepted. [DEC-58](#dec-58--export-copies-every-file) replaced its definition of a BIOS file, and [DEC-60](#dec-60--export-copies-only-rom-and-bin-files) restored it.
+- **Context:** The owner asked for a way to copy the BIOS files on a target to the machine running BECK. A report only lists what's
+  missing, so it can't say which files on the device are BIOS files. On a Recalbox 10.1.1 VM, the `bios` share has 3,108 files (317 MB),
+  mostly `.ini`, `.png` and shaders.
+- **Decision:**
+  - Every `.rom` or `.bin` file under the target's BIOS root counts as a BIOS file. On the VM, that's 232 files and 41.9 MB. The match
+    ignores case, which is the agent's reading, because real targets include names like `ATARIBAS.ROM`.
+  - It's a command, `beck export DIR`, not a flag. The owner first asked for a flag, and chose a command once the design showed that
+    `check --export` would make one command do opposite things.
+  - A file that already exists locally is skipped.
+- **Alternatives considered:**
+  - *Everything on the share*: simple and complete, but mostly not BIOS files. Not chosen.
+  - *Only what Recalbox's `es_bios.xml` lists*: exact, if it can be read, but needs research. Not chosen.
+  - *Filters by name*: not chosen.
+  - *`beck check --export DIR`*: not chosen, as above.
+- **Consequences:** The command leaves out BIOS files of other types: 70 of the 232 targets in the real report, such as `neogeo.zip`,
+  `atarist/tos.img` and the Amiga `kick*.A500` files. It also copies `.rom` and `.bin` files that aren't BIOS files. So it isn't a
+  complete backup of a device's BIOS files, and its help and output must say so. The owner gave these rules without further reason, after
+  seeing the file counts for the whole share. This entry's 70-of-232 figure was measured just afterwards.
+
+## DEC-58 — Export copies every file
+- **Date:** 2026-11-05 (step 11.12).
+- **Status:** Superseded by [DEC-60](#dec-60--export-copies-only-rom-and-bin-files).
+- **Context:** Under DEC-57, only `.rom` and `.bin` files counted. That left out 70 of the 232 targets in the real Recalbox 10.1.1
+  report, such as `neogeo.zip` and `atarist/tos.img`. The agent showed the owner those figures.
+- **Decision:** Every file under the target's BIOS root counts, whatever its type.
+- **Alternatives considered:**
+  - *Keep `.rom` and `.bin` only* (DEC-57): small, but not a complete backup. Not chosen.
+  - *Add `.zip` and `.img`* (mentioned by the agent): covers more, but still not everything. Not chosen.
+  - The owner gave no further reason.
+- **Consequences:** Export is a complete copy of the folder: 3,108 files and 317 MB on the VM, most of it emulator settings, images and
+  shaders. So the help must say what it copies, and `--dry-run` shows the size first. Hidden files are included, which is the agent's
+  reading of "all the files".
+
+## DEC-60 — Export copies only `.rom` and `.bin` files
+- **Date:** 2026-11-05 (step 11.12).
+- **Status:** Accepted. Supersedes [DEC-58](#dec-58--export-copies-every-file), and restores the definition in
+  [DEC-57](#dec-57--exporting-bios-files-from-the-target).
+- **Context:** After choosing to copy every file, the owner asked for a breakdown of the VM's `share/bios` folder: 3,108 files of 55
+  types, 219.6 MB, with `.ini` and `.png` making up 82 % of the files. **Correction:** the 317 MB in DEC-57 and DEC-58 was disk usage
+  from `du`, not the files' size.
+- **Decision:** Keep the earlier rule. Every `.rom` or `.bin` file under the target's BIOS root counts as a BIOS file, in any case.
+- **Alternatives considered:**
+  - *Every file* (DEC-58): complete, but mostly not BIOS files. Not chosen.
+  - *Adding `.zip` and `.img`* (mentioned by the agent): covers more, but also picks up files that aren't BIOS files. Not chosen.
+  - The owner gave no further reason.
+- **Consequences:** 232 files and about 42 MB on the VM. It leaves out 70 of the 232 targets in the real report, such as `neogeo.zip`,
+  `atarist/tos.img` and the Amiga `kick*.A500` files, so it isn't a complete backup, and it copies `.rom` and `.bin` files that aren't
+  BIOS files. The command's help and output must say so.
+
+## DEC-61 — Files on the device are kept unless `--overwrite` is passed
+- **Date:** 2026-11-05 (step 06.5).
+- **Context:** BECK overwrote a file on the device with no warning. Recalbox reports a bad dump as `INCORRECT`, and `MISSING` means the
+  file wasn't found, so a `MISSING` entry whose file exists usually means the report is out of date, and the file may be fine.
+- **Decision:** Keep a file already on the device and report it. `--overwrite` replaces it, and that includes files listed as
+  `INCORRECT`, which DEC-54 left open.
+- **Alternatives considered:**
+  - *Overwrite, as before*: simple, but silently replaces a possibly good file. Not chosen.
+  - *Rename the old file to `<name>.beck-backup-<timestamp>`, then upload*: nothing is lost, but backups pile up in the BIOS folder.
+    Not chosen.
+  - *Skip by default, with `--overwrite` and `--backup`*: more flexible, and more to build. Not chosen.
+  - The owner chose the option the agent recommended, and gave no further reason.
+- **Consequences:** A re-run with an unchanged report changes nothing. `--overwrite` keeps no backup, and a failed upload can damage the
+  old file. Each upload now checks the target first, which adds folder listings. On SMB, names that differ only in case count as the same
+  file, as they do for Samba, or the check would miss a file that the upload then overwrites.

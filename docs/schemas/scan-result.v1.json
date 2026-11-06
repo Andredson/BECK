@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Andredson/BECK/main/docs/schemas/scan-result.v1.json",
+  "title": "Result of beck --json scan",
+  "description": "See docs/json-output.md. Within schema_version 1, fields are only added, so ignore fields you don't know.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "beck_version",
+    "command",
+    "ok",
+    "summary",
+    "files",
+    "unreadable",
+    "errors"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "beck_version": {
+      "type": "string"
+    },
+    "command": {
+      "const": "scan"
+    },
+    "ok": {
+      "type": "boolean",
+      "description": "False when the exit code isn't 0."
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "files",
+        "unreadable"
+      ],
+      "properties": {
+        "files": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unreadable": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/file"
+      }
+    },
+    "unreadable": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/unreadable"
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/error"
+      }
+    }
+  },
+  "$defs": {
+    "md5": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "file": {
+      "type": "object",
+      "required": [
+        "path",
+        "md5",
+        "size"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "md5": {
+          "$ref": "#/$defs/md5"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "unreadable": {
+      "type": "object",
+      "required": [
+        "path",
+        "reason"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "required": [
+        "code",
+        "message",
+        "item"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "usage, config, transport, report_not_found, report_parse, internal, size_mismatch or delete_failed. New codes may be added."
+        },
+        "message": {
+          "type": "string"
+        },
+        "item": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The target, folder or local file this is about. Null for an error that stopped the run."
+        }
+      }
+    }
+  }
+}

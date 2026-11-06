@@ -99,6 +99,26 @@ the VM's Samba with `port: 445`, with only the TCP port number redirected; real 
 uploaded under the wrong name, and a report with only those blocks read as "nothing missing". It was in the parser from the
 start, and fixed in [05.3a](05-testing-hardening.md#053a--a-report-beck-cant-recognize-isnt-nothing-missing) (DEC-54).
 
+**Found later:** D18, a local file name that isn't valid UTF-8 crashed the human output after the uploads and deletions were done, so
+the run exited with 1 and lost its summary. D19, a dry run said `would copy` for a target it failed to check. Both were found by the
+end-to-end runs of step 06.7, and fixed in [06.7a](06-cli-ux-and-machine-output.md#067a--fix-two-bugs-in-the-human-output-d18-d19).
+
+**Found later:** D20, when stdout couldn't be written, the exit code left the documented range, and a closed pipe could even stop the
+uploads, depending on how much BECK had printed. D21, a prompt that couldn't get an answer crashed with exit 1, though nothing had changed.
+Both were found by the end-to-end runs of step 06.7a, and fixed in
+[06.7b](06-cli-ux-and-machine-output.md#067b--a-stream-that-fails-cant-change-the-run-d20-d21) (DEC-62).
+
+**Found later:** D22, mistakes in the settings didn't exit with 2. A config file that couldn't be read, or a `server` that wasn't text, exited with
+1, which means a bug. Values that could never work, such as `port: abc`, exited with 3 as if the network had failed. A blank `user:`, as
+the example config suggests, crashed inside pysmb on a real server. D23, `LocalTransport.exists` let an `OSError` through, so a target in a
+locked folder, or with a name too long, stopped the whole run with exit 1 instead of failing one item with 3, and on Python 3.14, which answers
+`False` for any failure, a report BECK couldn't read looked like no report. Both were found by running odd
+inputs through the real command in step [06.9](06-cli-ux-and-machine-output.md#069--exit-codes-and---fail-if-missing), and fixed there.
+
+**Found later:** D24, control characters in a name reached the terminal raw, from local files and from the report, in all human output, in `-v`
+logs and in the deletion prompt, where a crafted name could hide or fake the list to confirm. Found by the end-to-end runs of step 06.11, and
+fixed in [06.11a](06-cli-ux-and-machine-output.md#0611a--control-characters-in-names-cant-reach-the-terminal-d24).
+
 ### Hygiene findings (not numbered, fixed in [03.12](03-critical-fixes-and-data-safety.md#0312--cleanup-messages-imports-exceptions-typos-d12))
 - `import json` is unused, and so are `ITALIC`, `UNDERLINE`, `BLINK`, `BLACK` and `WHITE`.
 - Bare `except:` at lines 31 and 225; `exit()` (the `site` builtin) instead of `sys.exit()` or exceptions.

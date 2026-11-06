@@ -3,22 +3,27 @@
 D1-D14 regression tests that need a whole run live here; the rest are next to each module.
 """
 
+import json
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
 from collections.abc import Callable
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, NoReturn
 
 import pytest
 from smb.smb_structs import OperationFailure
 
+import beck
 from beck import cli
-from beck.errors import ConfigError
+from beck.errors import ConfigError, TransportError
+from beck.frontends.recalbox import RecalboxAdapter
+from beck.models import MissingBios
+from beck.transports.local import LocalTransport
 from tests.conftest import REAL_REPORT, load_report
-from tests.factories import md5_of, snapshot
+from tests.factories import make_missing, make_report_text, md5_of, snapshot
 from tests.fakes import FakeSMBConnection, FakeSMBServer, install_fake_smb
 
 GUEST = 'smb: {user: "", passwd: "", server: "beck-test-server", port: 445}\n'
@@ -51,6 +56,10 @@ def forbidden(*_args: Any, **_kwargs: Any) -> NoReturn:
     raise AssertionError("this must not be called")
 
 
+def forbidden_upload(*_args: Any, **_kwargs: Any) -> NoReturn:
+    raise TransportError("the disk is full")
+
+
 @pytest.fixture
 def server(monkeypatch: pytest.MonkeyPatch) -> FakeSMBServer:
     return install_fake_smb(monkeypatch)
@@ -72,7 +81,7 @@ def report(server: FakeSMBServer, text: str | bytes) -> None:
 
 
 def run(app: Path) -> int:
-    return cli.main([], base_dir=app)
+    return cli.main(["check"], base_dir=app)
 
 
 # Settings
@@ -150,7 +159,7 @@ def test_with_no_base_dir_it_uses_the_current_folder(
     data = write(app / "bios" / "copy.bin")
     report(server, block("scph5501.bin", md5_of(data)))
 
-    assert cli.main([]) == 0
+    assert cli.main(["check"]) == 0
 
     assert server.files[("bios", "scph5501.bin")] == data
 
@@ -330,6 +339,99 @@ def test_incorrect_files_are_reported_beside_normal_uploads(
     assert "INCORRECT: two/b.bin" in output
     assert "valid.bin: valid for two/b.bin, which is incorrect on the device, kept" in output
     assert "Final result: 1/1 missing entries satisfied, 2 files analysed" in output
+
+
+def test_overwrite_replaces_an_incorrect_file_with_a_valid_one(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # DEC-61: the explicit opt-in that DEC-54 left open.
+    valid = write(app / "bios" / "valid.bin")
+    server.dirs.add(("bios", "two"))
+    server.files[("bios", "two/b.bin")] = b"the wrong file"
+    report(server, incorrect("b.bin", md5_of(valid)))
+
+    assert cli.main(["check", "--overwrite"], base_dir=app) == 0
+
+    assert server.files[("bios", "two/b.bin")] == valid
+    output = capsys.readouterr().out
+    assert "valid.bin: replaced -> two/b.bin" in output
+    assert "INCORRECT:" not in output
+    assert "Final result: 1/1 missing entries satisfied, 1 files analysed" in output
+    assert "PLEASE SCAN" in output
+
+
+def test_overwrite_still_keeps_an_incorrect_file_with_no_valid_copy(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write(app / "bios" / "junk.bin")
+    server.dirs.add(("bios", "two"))
+    server.files[("bios", "two/b.bin")] = b"the wrong file"
+    report(server, incorrect("b.bin", "0" * 32))
+
+    assert cli.main(["check", "--overwrite"], base_dir=app) == 0
+
+    assert server.files[("bios", "two/b.bin")] == b"the wrong file"
+    assert (
+        "INCORRECT: two/b.bin is on the device with a wrong MD5, and was kept"
+        in capsys.readouterr().out
+    )
+
+
+def test_overwrite_with_no_local_files_still_reports_incorrect_files(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    report(server, incorrect("b.bin", "0" * 32))
+
+    assert cli.main(["check", "--overwrite"], base_dir=app) == 0
+
+    output = capsys.readouterr().out
+    assert "INCORRECT: two/b.bin" in output
+    assert "No BIOS files found" in output
+
+
+def test_a_normal_run_has_no_preview(server: FakeSMBServer, app: Path) -> None:
+    # A preview walks the listings a second time, so only a run that might delete has one.
+    data = write(app / "bios" / "copy.bin")
+    report(server, block("a.bin", md5_of(data)))
+
+    assert run(app) == 0
+    listings = server.connections[0].calls.count("listPath")
+
+    server.files.pop(("bios", "a.bin"))
+    assert cli.main(["check", "--move", "--yes"], base_dir=app) == 0
+    assert server.connections[1].calls.count("listPath") == listings
+
+
+def test_a_file_already_on_the_device_is_kept_and_exits_0(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # A stale report: MISSING means Recalbox didn't find it, but it's there now.
+    data = write(app / "bios" / "copy.bin")
+    server.files[("bios", "a.bin")] = b"already here"
+    report(server, block("a.bin", md5_of(data)))
+
+    assert run(app) == 0
+
+    assert server.files[("bios", "a.bin")] == b"already here"
+    assert server.connections[0].calls.count("storeFile") == 0
+    output = capsys.readouterr().out
+    assert "copy.bin: already on the device, kept -> a.bin" in output
+    assert "use --overwrite" in output
+    assert "Final result: 0/1 missing entries satisfied" in output
+    assert "PLEASE SCAN" not in output
+
+
+def test_overwrite_replaces_a_file_already_on_the_device(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    data = write(app / "bios" / "copy.bin")
+    server.files[("bios", "a.bin")] = b"already here"
+    report(server, block("a.bin", md5_of(data)))
+
+    assert cli.main(["check", "--overwrite"], base_dir=app) == 0
+
+    assert server.files[("bios", "a.bin")] == data
+    assert "copy.bin: replaced -> a.bin" in capsys.readouterr().out
 
 
 def test_an_incorrect_file_is_reported_even_with_no_local_files(
@@ -550,7 +652,746 @@ def test_a_summary_counts_targets_and_files(
     assert "2/3 missing entries satisfied, 1 files analysed" in capsys.readouterr().out
 
 
+# Commands and global options
+
+
+@pytest.mark.parametrize("command", ["check", "scan", "report"])
+def test_each_command_has_help(command: str, capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main([command, "--help"])
+
+    assert exit_info.value.code == 0
+    output = capsys.readouterr().out
+    assert f"usage: beck {command}" in output
+    assert "example:" in output
+    assert cli.COMMANDS[command][0] in output
+
+
+def test_help_lists_the_commands_and_examples(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        cli.main(["--help"])
+
+    output = capsys.readouterr().out
+    for command in ("check", "scan", "report"):
+        assert f"  {command} " in output
+    assert "examples:" in output
+    assert "docs/cli.md" in output
+
+
+def test_version(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["--version"])
+
+    assert exit_info.value.code == 0
+    assert capsys.readouterr().out == f"beck {beck.__version__}\n"
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ["--no-such-flag"],
+        ["check", "--no-such-flag"],
+        ["scan", "--no-such-flag"],
+        ["no-such-command"],
+    ],
+    ids=["global", "on-check", "on-scan", "command"],
+)
+def test_unknown_arguments_exit_2_and_run_nothing(
+    arguments: list[str], server: FakeSMBServer, capsys: pytest.CaptureFixture[str]
+) -> None:
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(arguments)
+
+    assert exit_info.value.code == 2
+    assert "usage: beck" in capsys.readouterr().err
+    assert server.connections == []
+
+
+def test_no_command_works_as_check_with_a_hint_on_stderr(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    data = write(app / "bios" / "copy.bin")
+    report(server, block("a.bin", md5_of(data)))
+
+    assert cli.main([], base_dir=app) == 0
+
+    assert server.files[("bios", "a.bin")] == data
+    captured = capsys.readouterr()
+    assert "Hint: use 'beck check'" in captured.err
+    assert "Hint" not in captured.out
+
+
+def test_beck_check_has_no_hint(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    report(server, "MISSING BIOS REPORT\n")
+
+    assert run(app) == 0
+
+    assert capsys.readouterr().err == ""
+
+
+def test_scan_lists_path_size_and_md5_in_aligned_columns(
+    server: FakeSMBServer, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source = tmp_path / "source"
+    small, large = b"x" * 7, b"y" * 1234
+    write(source / "ps1" / "my bios (v1).bin", small)
+    write(source / "a.rom", large)
+
+    assert cli.main(["scan", "--source", str(source)], base_dir=tmp_path) == 0
+
+    assert capsys.readouterr().out.splitlines() == [
+        f"{md5_of(large)}  1234  a.rom",
+        f"{md5_of(small)}     7  ps1/my bios (v1).bin",
+        "Files: 2",
+    ]
+
+
+def test_scan_uses_the_default_folder(app: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    data = write(app / "bios" / "a.bin")
+
+    assert cli.main(["scan"], base_dir=app) == 0
+
+    assert f"{md5_of(data)}  64  a.bin" in capsys.readouterr().out
+
+
+def test_scan_shows_what_it_cannot_read_and_it_does_not_change_the_exit_code(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    data = write(tmp_path / "a.bin")
+    (tmp_path / "broken").symlink_to(tmp_path / "nowhere")
+
+    assert cli.main(["scan", "--source", str(tmp_path)]) == 0
+
+    assert capsys.readouterr().out.splitlines() == [
+        f"{md5_of(data)}  64  a.bin",
+        "broken: can't be read, skipped: broken symlink",
+        "Files: 1, can't be read: 1",
+    ]
+
+
+def test_scan_of_an_empty_folder_says_so(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert cli.main(["scan", "--source", str(tmp_path)]) == 0
+
+    assert capsys.readouterr().out.splitlines() == [f"No BIOS files found in {tmp_path}"]
+
+
+def test_scan_with_no_default_folder_says_so(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert cli.main(["scan"], base_dir=tmp_path) == 0
+
+    assert capsys.readouterr().out.splitlines() == [f"No BIOS files found in {tmp_path / 'bios'}"]
+
+
+def test_scan_with_only_what_it_cannot_read(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (tmp_path / "broken").symlink_to(tmp_path / "nowhere")
+
+    assert cli.main(["scan", "--source", str(tmp_path)]) == 0
+
+    assert capsys.readouterr().out.splitlines() == [
+        f"No BIOS files found in {tmp_path}",
+        "broken: can't be read, skipped: broken symlink",
+    ]
+
+
+def test_scan_skips_hidden_files(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    write(tmp_path / ".hidden")
+
+    assert cli.main(["scan", "--source", str(tmp_path)]) == 0
+
+    assert "No BIOS files found" in capsys.readouterr().out
+
+
+def test_scan_of_a_source_that_does_not_exist_exits_2(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert cli.main(["scan", "--source", str(tmp_path / "nope")]) == 2
+
+    assert "doesn't exist" in capsys.readouterr().out
+
+
+def test_scan_writes_nothing_uses_no_network_and_needs_no_config(
+    server: FakeSMBServer, tmp_path: Path
+) -> None:
+    write(tmp_path / "a.bin")
+    before = snapshot(tmp_path)
+
+    assert cli.main(["scan", "--source", str(tmp_path)], base_dir=tmp_path) == 0
+
+    assert snapshot(tmp_path) == before
+    assert server.connections == []
+
+
+def test_scan_shows_a_name_that_is_not_utf8_escaped(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (tmp_path / os.fsdecode(b"bad-\xff.bin")).write_bytes(os.urandom(64))
+
+    assert cli.main(["scan", "--source", str(tmp_path)]) == 0
+
+    assert "  bad-\\xff.bin\n" in capsys.readouterr().out
+
+
+def test_q_does_not_shorten_a_scan(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    write(tmp_path / "a.bin")
+    (tmp_path / "broken").symlink_to(tmp_path / "nowhere")
+    assert cli.main(["scan", "--source", str(tmp_path)]) == 0
+    normal = capsys.readouterr().out
+
+    assert cli.main(["-q", "scan", "--source", str(tmp_path)]) == 0
+
+    assert capsys.readouterr().out == normal
+
+
+def test_v_on_a_scan_logs_on_stderr_and_leaves_stdout_alone(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write(tmp_path / "a.bin")
+    assert cli.main(["scan", "--source", str(tmp_path)]) == 0
+    normal = capsys.readouterr().out
+
+    assert cli.main(["-v", "scan", "--source", str(tmp_path)]) == 0
+
+    out = capsys.readouterr()
+    assert out.out == normal
+    assert "Scanned" in out.err
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [["check", "--no-color"], ["--no-color", "check"], ["--no-color"]],
+    ids=["after", "before", "no-command"],
+)
+def test_no_color_works_before_or_after_the_command(
+    arguments: list[str],
+    server: FakeSMBServer,
+    app: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("NO_COLOR")
+    monkeypatch.setenv("FORCE_COLOR", "1")
+    data = write(app / "bios" / "copy.bin")
+    report(server, block("a.bin", md5_of(data)))
+
+    assert cli.main(arguments, base_dir=app) == 0
+
+    assert "\033[" not in capsys.readouterr().out
+
+
+# Choosing a target
+
+
+def test_target_url_is_used_instead_of_the_config(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write(app / "config" / "config.yml", ACCOUNT.encode())
+    data = write(app / "bios" / "copy.bin")
+    report(server, block("a.bin", md5_of(data), folder="ps1/"))
+
+    assert cli.main(["check", "--target", "smb://other-host:4450/bios"], base_dir=app) == 0
+
+    conn = server.connections[0]
+    assert conn.remote_name == "other-host"
+    assert server.files[("bios", "ps1/a.bin")] == data
+    assert "beck-test-password" not in "".join(capsys.readouterr())
+
+
+def test_the_password_in_the_config_never_goes_to_a_target_url(
+    server: FakeSMBServer, app: Path
+) -> None:
+    # Sending it to whatever host the flag names would leak it.
+    write(app / "config" / "config.yml", ACCOUNT.encode())
+    report(server, "MISSING BIOS REPORT\n")
+
+    assert cli.main(["check", "--target", "smb://beck-test-user@evil/bios"], base_dir=app) == 0
+
+    assert server.connections[0].username == "beck-test-user"
+    assert server.connections[0].password == ""
+
+
+def test_target_url_works_with_no_config_file(server: FakeSMBServer, tmp_path: Path) -> None:
+    (tmp_path / "bios").mkdir()
+    report(server, "MISSING BIOS REPORT\n")
+
+    assert cli.main(["check", "--target", "smb://host/bios"], base_dir=tmp_path) == 0
+
+
+def test_a_target_with_a_sub_path_reads_and_writes_inside_it(
+    server: FakeSMBServer, app: Path
+) -> None:
+    data = write(app / "bios" / "copy.bin")
+    server.shares = ("share",)
+    server.dirs.add(("share", "bios"))
+    server.files[("share", "bios/missing_bios_report.txt")] = block(
+        "a.bin", md5_of(data), folder="ps1/"
+    ).encode()
+
+    assert cli.main(["check", "--target", "smb://host/share/bios"], base_dir=app) == 0
+
+    assert server.files[("share", "bios/ps1/a.bin")] == data
+
+
+def test_a_password_in_the_target_exits_2_and_is_never_printed(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    url = "smb://beck:beck-test-password@host/bios"
+
+    assert cli.main(["check", "--target", url], base_dir=app) == 2
+
+    captured = capsys.readouterr()
+    assert "can't contain a password" in captured.out
+    assert "beck-test-password" not in captured.out + captured.err
+    assert server.connections == []
+
+
+def test_both_target_flags_exit_2(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    arguments = ["check", "--target", "smb://host/bios", "--target-dir", str(app)]
+
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(arguments, base_dir=app)
+
+    assert exit_info.value.code == 2
+    assert "not allowed with argument" in capsys.readouterr().err
+    assert server.connections == []
+
+
+def test_an_unknown_frontend_exits_2_and_lists_the_known_ones(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert cli.main(["check", "--frontend", "batocera"], base_dir=app) == 2
+
+    output = capsys.readouterr().out
+    assert "Unknown frontend 'batocera'" in output
+    assert "recalbox" in output
+    assert server.connections == []
+
+
+def test_the_known_frontend_can_be_named(server: FakeSMBServer, app: Path) -> None:
+    report(server, "MISSING BIOS REPORT\n")
+
+    assert cli.main(["check", "--frontend", "recalbox"], base_dir=app) == 0
+
+
+@pytest.fixture
+def device(tmp_path: Path) -> Path:
+    """A folder standing in for a mounted SD card."""
+    folder = tmp_path / "sdcard"
+    folder.mkdir()
+    return folder
+
+
+def test_target_dir_copies_files_to_a_folder_with_no_smb(
+    app: Path, device: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(cli, "SmbTransport", forbidden)
+    data = write(app / "bios" / "copy.bin")
+    write(
+        device / "missing_bios_report.txt", block("a.bin", md5_of(data), folder="ps1/x/").encode()
+    )
+    before = snapshot(app / "bios")
+
+    assert cli.main(["check", "--target-dir", str(device)], base_dir=app) == 0
+
+    assert (device / "ps1" / "x" / "a.bin").read_bytes() == data
+    assert snapshot(app / "bios") == before
+    assert (
+        "Final result: 1/1 missing entries satisfied, 1 files analysed" in capsys.readouterr().out
+    )
+
+
+def test_target_dir_with_no_report_is_exit_4(
+    app: Path, device: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert cli.main(["check", "--target-dir", str(device)], base_dir=app) == 4
+
+    assert f"not found on local folder {device.resolve()}" in capsys.readouterr().out
+
+
+def test_a_missing_target_dir_is_exit_3(
+    app: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    missing = tmp_path / "no-such-folder"
+
+    assert cli.main(["check", "--target-dir", str(missing)], base_dir=app) == 3
+
+    assert "doesn't exist" in capsys.readouterr().out
+
+
+def test_target_dir_needs_no_config_file(device: Path, tmp_path: Path) -> None:
+    write(device / "missing_bios_report.txt", b"MISSING BIOS REPORT\n")
+
+    assert cli.main(["check", "--target-dir", str(device)], base_dir=tmp_path) == 0
+
+
+def test_report_accepts_the_target_options(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        cli.main(["report", "--help"])
+
+    output = capsys.readouterr().out
+    assert "--target URL" in output
+    assert "--target-dir DIR" in output
+    assert "--report-file FILE" in output
+
+
+def test_scan_has_no_target_options(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["scan", "--target", "smb://host/bios"])
+
+    assert exit_info.value.code == 2
+
+
+# --source and --report-file
+
+
+def test_source_is_used_instead_of_the_bios_folder(
+    server: FakeSMBServer, app: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write(app / "bios" / "ignored.bin")
+    data = write(tmp_path / "elsewhere" / "ps1" / "copy.bin")
+    report(server, block("a.bin", md5_of(data)))
+
+    assert cli.main(["check", "--source", str(tmp_path / "elsewhere")], base_dir=app) == 0
+
+    assert server.files[("bios", "a.bin")] == data
+    output = capsys.readouterr().out
+    assert "ps1/copy.bin: copied -> a.bin" in output
+    assert "ignored.bin" not in output
+
+
+def test_a_relative_source_is_relative_to_the_current_folder(
+    server: FakeSMBServer, app: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    data = write(tmp_path / "work" / "mine" / "copy.bin")
+    report(server, block("a.bin", md5_of(data)))
+    monkeypatch.chdir(tmp_path / "work")
+
+    assert cli.main(["check", "--source", "mine"], base_dir=app) == 0
+
+    assert server.files[("bios", "a.bin")] == data
+
+
+@pytest.mark.parametrize("name", ["no-such-folder", "a-file"])
+def test_a_source_that_isnt_a_folder_exits_2(
+    name: str,
+    server: FakeSMBServer,
+    app: Path,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # Treating a typo as an empty folder would say "No BIOS files found" and exit 0.
+    write(tmp_path / "a-file")
+
+    assert cli.main(["check", "--source", str(tmp_path / name)], base_dir=app) == 2
+
+    assert f"The source folder {tmp_path / name} doesn't exist" in capsys.readouterr().out
+    assert server.connections == []
+
+
+def test_a_missing_default_bios_folder_still_says_no_files(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (app / "bios").rmdir()
+    report(server, block("a.bin", "0" * 32))
+
+    assert run(app) == 0
+
+    assert "No BIOS files found" in capsys.readouterr().out
+
+
+def local_report(tmp_path: Path, text: str) -> str:
+    file = tmp_path / "copy-of-the-report.txt"
+    file.write_bytes(text.encode())
+    return str(file)
+
+
+def test_check_with_a_report_file_ignores_the_report_on_the_target(
+    server: FakeSMBServer, app: Path, tmp_path: Path
+) -> None:
+    data = write(app / "bios" / "copy.bin")
+    report(server, "MISSING BIOS REPORT\n")  # says nothing is missing
+    file = local_report(tmp_path, block("a.bin", md5_of(data), folder="ps1/"))
+
+    assert cli.main(["check", "--report-file", file], base_dir=app) == 0
+
+    assert server.files[("bios", "ps1/a.bin")] == data
+    assert server.connections[0].calls.count("retrieveFile") == 0
+
+
+def test_check_with_a_report_file_still_needs_a_target(
+    server: FakeSMBServer, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    file = local_report(tmp_path, "MISSING BIOS REPORT\n")
+
+    assert cli.main(["check", "--report-file", file], base_dir=tmp_path) == 2
+
+    assert "Copy config/config.example.yml" in capsys.readouterr().out
+
+
+def test_check_can_combine_a_report_file_and_a_target(
+    server: FakeSMBServer, tmp_path: Path
+) -> None:
+    (tmp_path / "bios").mkdir()
+    data = write(tmp_path / "bios" / "copy.bin")
+    file = local_report(tmp_path, block("a.bin", md5_of(data)))
+
+    arguments = ["check", "--report-file", file, "--target", "smb://host/bios"]
+    assert cli.main(arguments, base_dir=tmp_path) == 0
+
+    assert server.files[("bios", "a.bin")] == data
+
+
+def test_report_from_a_file_uses_no_network_and_no_config(
+    server: FakeSMBServer, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    text = (
+        block("b.bin", "0" * 32, folder="ps1/")
+        + block("a.bin", "1" * 32, folder="ps1/").replace("REQUIRED", "OPTIONAL")
+        + block("root.bin", "2" * 32)
+        + block("kick.rom", "3" * 32, folder="amiga/bios/")
+    )
+    file = local_report(tmp_path, text)
+
+    assert cli.main(["report", "--report-file", file], base_dir=tmp_path) == 0
+
+    assert server.connections == []
+    assert capsys.readouterr().out.splitlines() == [
+        "There are 4 missing bios in your RECALBOX",
+        "(BIOS folder)",
+        "  root.bin (required)",
+        "amiga/bios/",
+        "  kick.rom (required)",
+        "ps1/",
+        "  a.bin (optional)",
+        "  b.bin (required)",
+    ]
+
+
+@pytest.mark.parametrize("optional_first", [True, False], ids=["optional-first", "required-first"])
+def test_report_lists_a_repeated_target_once_and_required_wins(
+    optional_first: bool, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    optional = block("x.pce", "0" * 32).replace("REQUIRED", "OPTIONAL")
+    required = block("x.pce", "1" * 32)
+    text = optional + required if optional_first else required + optional
+    file = local_report(tmp_path, text)
+
+    assert cli.main(["report", "--report-file", file], base_dir=tmp_path) == 0
+
+    assert capsys.readouterr().out.splitlines() == [
+        "There are 1 missing bios in your RECALBOX",
+        "(BIOS folder)",
+        "  x.pce (required)",
+    ]
+
+
+def test_report_shows_incorrect_files(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    file = local_report(tmp_path, incorrect("b.bin", "0" * 32))
+
+    assert cli.main(["report", "--report-file", file], base_dir=tmp_path) == 0
+
+    output = capsys.readouterr().out
+    assert "INCORRECT: two/b.bin (required) is on the device with a wrong MD5" in output
+    assert "No missing bios" not in output
+    assert "There are" not in output
+
+
+def test_report_says_whether_an_incorrect_file_is_required_and_does_not_say_kept(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A report changes nothing, so it has kept nothing."""
+    report_path = tmp_path / "report.txt"
+    report_path.write_text(
+        make_report_text(
+            [
+                make_missing("ps1/bad.bin", "0" * 32, incorrect=True, system="One"),
+                make_missing("spare.bin", "1" * 32, required=False, incorrect=True, system="One"),
+                make_missing("both.bin", "2" * 32, required=False, incorrect=True, system="One"),
+                make_missing("both.bin", "3" * 32, required=True, incorrect=True, system="Two"),
+            ]
+        ),
+        encoding="utf-8",
+        newline="",
+    )
+
+    assert cli.main(["report", "--report-file", str(report_path)]) == 0
+
+    assert capsys.readouterr().out.splitlines() == [
+        "INCORRECT: both.bin (required) is on the device with a wrong MD5",
+        "INCORRECT: ps1/bad.bin (required) is on the device with a wrong MD5",
+        "INCORRECT: spare.bin (optional) is on the device with a wrong MD5",
+    ]
+
+
+def test_report_counts_a_file_as_required_when_the_report_does_not_say(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    entries = [
+        make_missing("a.bin", "0" * 32, required=None),
+        make_missing("b.bin", "1" * 32, required=None, incorrect=True),
+    ]
+    monkeypatch.setattr(RecalboxAdapter, "parse_report", lambda _self, _text: entries)
+
+    assert cli.main(["report", "--report-file", local_report(tmp_path, "")]) == 0
+
+    output = capsys.readouterr().out
+    assert "  a.bin (required)" in output
+    assert "INCORRECT: b.bin (required)" in output
+
+
+def test_report_with_nothing_missing(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    file = local_report(tmp_path, "MISSING BIOS REPORT\n")
+
+    assert cli.main(["report", "--report-file", file], base_dir=tmp_path) == 0
+
+    assert "No missing bios were found" in capsys.readouterr().out
+
+
+def test_report_of_the_real_fixture(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> None:
+    file = local_report(tmp_path, load_report(REAL_REPORT))
+
+    assert cli.main(["report", "--report-file", file], base_dir=tmp_path) == 0
+
+    output = capsys.readouterr().out
+    assert "There are 232 missing bios in your RECALBOX" in output
+    assert "amiga/bios/\n" in output
+    assert "  kick39106.A1200 (required)\n" in output
+
+
+def test_report_reads_the_target_and_writes_nothing(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write(app / "bios" / "copy.bin")
+    report(server, block("a.bin", md5_of((app / "bios" / "copy.bin").read_bytes()), folder="x/"))
+
+    assert cli.main(["report"], base_dir=app) == 0
+
+    calls = server.connections[0].calls
+    assert "storeFile" not in calls
+    assert "createDirectory" not in calls
+    assert ("bios", "x/a.bin") not in server.files
+    assert "  a.bin (required)" in capsys.readouterr().out
+
+
+def test_report_from_a_target_folder(
+    device: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write(device / "missing_bios_report.txt", block("a.bin", "0" * 32).encode())
+    before = snapshot(device)
+
+    assert cli.main(["report", "--target-dir", str(device)], base_dir=tmp_path) == 0
+
+    assert snapshot(device) == before
+    assert "  a.bin (required)" in capsys.readouterr().out
+
+
+def test_report_file_and_a_target_together_exit_2(
+    server: FakeSMBServer, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    arguments = ["report", "--report-file", "x.txt", "--target", "smb://host/bios"]
+
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(arguments, base_dir=tmp_path)
+
+    assert exit_info.value.code == 2
+    assert "not allowed with argument" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("command", ["check", "report"])
+def test_a_missing_report_file_is_exit_4(
+    command: str, server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert cli.main([command, "--report-file", "no-such-report.txt"], base_dir=app) == 4
+
+    output = capsys.readouterr().out
+    assert "Can't read the report no-such-report.txt: No such file or directory" in output
+
+
+def test_a_folder_as_report_file_is_exit_4(tmp_path: Path) -> None:
+    assert cli.main(["report", "--report-file", str(tmp_path)], base_dir=tmp_path) == 4
+
+
+def test_a_report_file_in_an_unknown_format_is_exit_4(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    file = local_report(tmp_path, "A FORMAT BECK DOESN'T KNOW\n")
+
+    assert cli.main(["report", "--report-file", file], base_dir=tmp_path) == 4
+
+    assert "doesn't look like a report" in capsys.readouterr().out
+
+
+def test_a_report_file_with_bytes_that_arent_utf8_still_parses(tmp_path: Path) -> None:
+    file = tmp_path / "report.txt"
+    file.write_bytes(b"caf\xe9\n" + block("a.bin", "0" * 32).encode())
+
+    assert cli.main(["report", "--report-file", str(file)], base_dir=tmp_path) == 0
+
+
+def test_scan_accepts_source_but_report_does_not(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        cli.main(["scan", "--help"])
+    assert "--source DIR" in capsys.readouterr().out
+
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["report", "--source", "x"])
+    assert exit_info.value.code == 2
+
+
 # Every way out of cli.main, by exit code
+
+
+def test_unreadable_local_files_are_reported_and_the_good_ones_upload(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    good = write(app / "bios" / "good.bin")
+    (app / "bios" / "broken.bin").symlink_to(app / "no-such-target")
+    os.mkfifo(app / "bios" / "pipe.bin")
+    report(server, block("a.bin", md5_of(good)))
+
+    assert run(app) == 0  # DEC-59: an unreadable file doesn't change the exit code
+
+    assert server.files[("bios", "a.bin")] == good
+    captured = capsys.readouterr()
+    assert "broken.bin: can't be read, skipped: broken symlink" in captured.out
+    assert "pipe.bin: can't be read, skipped: not a regular file" in captured.out
+    assert "There are 1 possible bios" in captured.out
+    assert "Final result: 1/1 missing entries satisfied, 1 files analysed" in captured.out
+    assert captured.err == ""  # no traceback
+
+
+def test_only_unreadable_files_says_so_and_stops_cleanly(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (app / "bios" / "broken.bin").symlink_to(app / "no-such-target")
+    report(server, block("a.bin", "0" * 32))
+
+    assert run(app) == 0
+
+    output = capsys.readouterr().out
+    assert "broken.bin: can't be read, skipped: broken symlink" in output
+    assert "No BIOS files found" in output
+    assert "Final result" not in output
+
+
+def test_unreadable_files_stay_as_they_were(server: FakeSMBServer, app: Path) -> None:
+    link = app / "bios" / "broken.bin"
+    link.symlink_to(app / "no-such-target")
+    write(app / "bios" / "good.bin")
+    report(server, block("a.bin", "0" * 32))
+
+    run(app)
+
+    assert link.is_symlink()
+    assert not (app / "no-such-target").exists()
 
 
 def test_exit_0_a_normal_run(
@@ -560,7 +1401,7 @@ def test_exit_0_a_normal_run(
     write(app / "bios" / "junk.bin")
     report(server, block("a.bin", md5_of(file), folder="ps1/") + block("b.bin", "0" * 32))
 
-    assert cli.main([], base_dir=app) == 0
+    assert cli.main(["check"], base_dir=app) == 0
 
     output = capsys.readouterr().out
     for line in (
@@ -581,7 +1422,7 @@ def test_exit_0_nothing_matched_has_no_scan_message(
     write(app / "bios" / "junk.bin")
     report(server, block("a.bin", "0" * 32))
 
-    assert cli.main([], base_dir=app) == 0
+    assert cli.main(["check"], base_dir=app) == 0
 
     output = capsys.readouterr().out
     assert "Final result: 0/1 missing entries satisfied, 1 files analysed" in output
@@ -626,7 +1467,7 @@ def test_exit_2_config_error(
     else:
         write(app / "config" / "config.yml", config.encode())
 
-    assert cli.main([], base_dir=app) == 2
+    assert cli.main(["check"], base_dir=app) == 2
 
     assert message in capsys.readouterr().out
     assert server.connections == []
@@ -651,7 +1492,7 @@ def test_exit_3_one_failed_upload_after_the_others_finish(
 
     monkeypatch.setattr(FakeSMBConnection, "storeFile", fail_for_b)
 
-    assert cli.main([], base_dir=app) == 3
+    assert cli.main(["check"], base_dir=app) == 3
 
     assert server.files[("bios", "a.bin")] == good
     output = capsys.readouterr().out
@@ -681,7 +1522,10 @@ def test_python_dash_m_beck_help_runs_as_a_process(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize(
     "command",
-    [[sys.executable, "-m", "beck"], [str(Path(sys.executable).with_name("beck"))]],
+    [
+        [sys.executable, "-m", "beck", "check"],
+        [str(Path(sys.executable).with_name("beck")), "check"],
+    ],
     ids=["python-m", "console-script"],
 )
 def test_the_exit_code_reaches_the_operating_system(tmp_path: Path, command: list[str]) -> None:
@@ -815,7 +1659,7 @@ def test_an_unexpected_error_returns_1_with_a_traceback_on_stderr(
 ) -> None:
     report(server, block("a.bin", "0" * 32))
 
-    def a_bug(_folder: Path) -> NoReturn:
+    def a_bug(_folder: Path, _on_file: Any) -> NoReturn:
         raise RuntimeError("a bug in BECK")
 
     monkeypatch.setattr(cli, "scan", a_bug)
@@ -827,3 +1671,762 @@ def test_an_unexpected_error_returns_1_with_a_traceback_on_stderr(
     assert "RuntimeError: a bug in BECK" in captured.err
     assert "a bug in BECK" not in captured.out
     assert server.connections[0].closed
+
+
+def test_a_full_run_warns_when_an_upload_changes_the_extension(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    data = write(app / "bios" / "neocd.bin")
+    report(server, block("neocdz.zip", md5_of(data)))
+
+    assert cli.main(["check"], base_dir=app) == 0
+
+    assert server.files[("bios", "neocdz.zip")] == data
+    output = capsys.readouterr().out
+    assert "neocd.bin: copied -> neocdz.zip\nWarning: neocd.bin has a different extension" in output
+
+
+# File names stdout can't show (D18), and failed checks in a dry run (D19)
+
+BAD_NAME = os.fsdecode(b"bad-\xff.bin")
+BAD_NAME_SHOWN = "bad-\\xff.bin"
+
+
+def test_a_run_with_a_name_that_is_not_valid_utf8_finishes(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    data = write(app / "bios" / "good.bin")
+    (app / "bios" / BAD_NAME).write_bytes(os.urandom(64))
+    report(server, block("good.bin", md5_of(data)))
+
+    assert run(app) == 0
+
+    assert server.files[("bios", "good.bin")] == data
+    output = capsys.readouterr().out
+    assert f"{BAD_NAME_SHOWN}: no match, kept" in output
+    assert "Final result: 1/1 missing entries satisfied, 2 files analysed" in output
+    assert "PLEASE SCAN" in output
+
+
+def test_a_move_with_a_name_that_is_not_valid_utf8_tells_what_it_deleted(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The run that found D18: the file went, then BECK crashed and exited with 1."""
+    data = write(app / "bios" / "good.bin")
+    (app / "bios" / BAD_NAME).write_bytes(os.urandom(64))
+    report(server, block("good.bin", md5_of(data)))
+
+    assert cli.main(["check", "--move", "--yes"], base_dir=app) == 0
+
+    assert not (app / "bios" / "good.bin").exists()
+    assert (app / "bios" / BAD_NAME).exists()
+    output = capsys.readouterr().out
+    assert "good.bin: deleted" in output
+    assert "Deleted 1 local files." in output
+    assert "PLEASE SCAN" in output
+
+
+def test_a_file_named_badly_in_utf8_can_still_be_uploaded(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    data = os.urandom(64)
+    (app / "bios" / BAD_NAME).write_bytes(data)
+    report(server, block("a.zip", md5_of(data)))
+
+    assert run(app) == 0
+
+    assert server.files[("bios", "a.zip")] == data
+    output = capsys.readouterr().out
+    assert f"{BAD_NAME_SHOWN}: copied -> a.zip" in output
+    assert f"Warning: {BAD_NAME_SHOWN} has a different extension from a.zip" in output
+
+
+def test_an_unreadable_name_that_is_not_valid_utf8_is_listed(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (app / "bios" / BAD_NAME).symlink_to(app / "bios" / "nowhere")
+    report(server, block("a.bin", "a" * 32))
+
+    assert run(app) == 0
+
+    assert f"{BAD_NAME_SHOWN}: can't be read, skipped" in capsys.readouterr().out
+
+
+def test_a_folder_named_badly_in_utf8_cannot_break_an_error_message(
+    app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    arguments = ["check", "--source", str(app / BAD_NAME)]
+
+    assert cli.main(arguments, base_dir=app) == 2
+
+    assert f"{BAD_NAME_SHOWN} doesn't exist" in capsys.readouterr().out
+
+
+def test_an_empty_folder_named_badly_in_utf8_cannot_break_the_message(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (app / BAD_NAME).mkdir()
+    report(server, block("a.bin", "a" * 32))
+
+    assert cli.main(["check", "--source", str(app / BAD_NAME)], base_dir=app) == 0
+
+    assert f"No BIOS files found in {app}/{BAD_NAME_SHOWN}" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("stdout_encoding", "name", "shown"),
+    [
+        ("utf-8:strict", BAD_NAME, BAD_NAME_SHOWN),
+        ("ascii:strict", "é.bin", "\\xe9.bin"),
+        ("ascii:strict", BAD_NAME, BAD_NAME_SHOWN),
+    ],
+    ids=["utf8", "encode-accent", "encode-bad-name"],
+)
+def test_a_real_process_finishes_with_a_stdout_that_cannot_encode_a_name(
+    tmp_path: Path, stdout_encoding: str, name: str, shown: str
+) -> None:
+    """A real stdout, in case pytest's capture hides or causes something."""
+    source, device = tmp_path / "source", tmp_path / "device"
+    good = write(source / "good.bin")
+    (source / name).write_bytes(os.urandom(64))
+    device.mkdir()
+    (device / "missing_bios_report.txt").write_text(block("good.bin", md5_of(good)))
+
+    result = subprocess.run(  # noqa: S603 - fixed arguments, no external input
+        [
+            sys.executable,
+            "-m",
+            "beck",
+            "check",
+            "--source",
+            str(source),
+            "--target-dir",
+            str(device),
+            "--move",
+            "--yes",
+        ],
+        capture_output=True,
+        check=False,
+        stdin=subprocess.DEVNULL,
+        env={**os.environ, "PYTHONIOENCODING": stdout_encoding},
+    )
+
+    output = result.stdout.decode("ascii" if "ascii" in stdout_encoding else "utf-8")
+    assert result.returncode == 0, result.stderr
+    assert f"{shown}: no match, kept" in output
+    assert "Deleted 1 local files." in output
+    assert (device / "good.bin").read_bytes() == good
+    assert not (source / "good.bin").exists()
+    assert (source / name).exists()
+
+
+def test_a_failed_check_in_a_dry_run_says_failed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source, device = tmp_path / "source", tmp_path / "device"
+    data = write(source / "a.bin")
+    device.mkdir()
+    report_file = tmp_path / "report.txt"
+    report_file.write_text(block("a.bin", md5_of(data)))
+
+    def exists(_self: LocalTransport, _path: PurePosixPath) -> bool:
+        raise TransportError("the network went away")
+
+    monkeypatch.setattr(LocalTransport, "exists", exists)
+    arguments = [
+        "check",
+        "--source",
+        str(source),
+        "--target-dir",
+        str(device),
+        "--report-file",
+        str(report_file),
+        "--dry-run",
+    ]
+
+    assert cli.main(arguments) == 3
+
+    output = capsys.readouterr().out
+    assert "a.bin: failed -> a.bin" in output
+    assert "would copy" not in output
+    assert "Dry run: 0/1 missing entries would be satisfied" in output
+
+
+# Exit 5: --fail-if-missing
+
+
+def fills(path: Path) -> str:
+    """A local file with random bytes, and the MD5 a report entry needs to match it."""
+    return md5_of(write(path))
+
+
+def on_the_device(device: Path, *entries: MissingBios) -> None:
+    (device / "missing_bios_report.txt").write_text(
+        make_report_text(entries), encoding="utf-8", newline=""
+    )
+
+
+def check_run(source: Path, device: Path, *flags: str) -> int:
+    source.mkdir(exist_ok=True)
+    return cli.main(["check", "--source", str(source), "--target-dir", str(device), *flags])
+
+
+ZERO, ONE = "0" * 32, "1" * 32
+
+
+def test_exit_5_a_required_file_is_still_missing_and_the_rest_still_uploads(
+    tmp_path: Path, device: Path
+) -> None:
+    source = tmp_path / "source"
+    md5 = fills(source / "good.bin")
+    on_the_device(device, make_missing("good.bin", md5), make_missing("gone.bin", ZERO))
+
+    assert check_run(source, device, "--fail-if-missing") == 5
+
+    assert (device / "good.bin").exists()
+
+
+def test_exit_5_with_no_local_files_at_all(tmp_path: Path, device: Path) -> None:
+    on_the_device(device, make_missing("gone.bin", ZERO))
+
+    assert check_run(tmp_path / "source", device, "--fail-if-missing") == 5
+
+
+def test_exit_5_when_the_report_does_not_say_whether_it_is_required(
+    tmp_path: Path, device: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    entries = [make_missing("gone.bin", ZERO, required=None)]
+    monkeypatch.setattr(RecalboxAdapter, "parse_report", lambda _self, _text: entries)
+    on_the_device(device)
+
+    assert check_run(tmp_path / "source", device, "--fail-if-missing") == 5
+
+
+def test_exit_5_when_any_system_requires_the_file(tmp_path: Path, device: Path) -> None:
+    on_the_device(
+        device,
+        make_missing("gone.bin", ZERO, required=False, system="One"),
+        make_missing("gone.bin", ONE, required=True, system="Two"),
+    )
+
+    assert check_run(tmp_path / "source", device, "--fail-if-missing") == 5
+
+
+def test_exit_5_a_required_incorrect_file_counts(tmp_path: Path, device: Path) -> None:
+    """DEC-59: the device still can't use it. This run ends early, with nothing to upload."""
+    write(device / "bad.bin")
+    on_the_device(device, make_missing("bad.bin", ZERO, incorrect=True))
+
+    assert check_run(tmp_path / "source", device, "--fail-if-missing") == 5
+
+
+def test_exit_5_a_required_incorrect_file_with_no_replacement_counts_with_overwrite(
+    tmp_path: Path, device: Path
+) -> None:
+    source = tmp_path / "source"
+    md5 = fills(source / "good.bin")
+    write(device / "bad.bin")
+    on_the_device(
+        device, make_missing("good.bin", md5), make_missing("bad.bin", ZERO, incorrect=True)
+    )
+
+    assert check_run(source, device, "--fail-if-missing", "--overwrite") == 5
+
+
+def test_exit_5_with_overwrite_and_no_local_files(tmp_path: Path, device: Path) -> None:
+    write(device / "bad.bin")
+    on_the_device(device, make_missing("bad.bin", ZERO, incorrect=True))
+
+    assert check_run(tmp_path / "source", device, "--fail-if-missing", "--overwrite") == 5
+
+
+def test_exit_5_after_deleting_what_it_was_asked_to(tmp_path: Path, device: Path) -> None:
+    source = tmp_path / "source"
+    md5 = fills(source / "good.bin")
+    on_the_device(device, make_missing("good.bin", md5), make_missing("gone.bin", ZERO))
+
+    assert check_run(source, device, "--fail-if-missing", "--move", "--yes") == 5
+
+    assert not (source / "good.bin").exists()
+
+
+def test_exit_5_an_unreadable_local_file_does_not_hide_it(tmp_path: Path, device: Path) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "broken").symlink_to(source / "nowhere")
+    on_the_device(device, make_missing("gone.bin", ZERO))
+
+    assert check_run(source, device, "--fail-if-missing") == 5
+
+
+def test_exit_5_a_dry_run_predicts_it_and_changes_nothing(tmp_path: Path, device: Path) -> None:
+    source = tmp_path / "source"
+    md5 = fills(source / "good.bin")
+    on_the_device(device, make_missing("good.bin", md5), make_missing("gone.bin", ZERO))
+    before = snapshot(device)
+
+    assert check_run(source, device, "--fail-if-missing", "--dry-run") == 5
+
+    assert snapshot(device) == before
+
+
+def test_exit_0_a_dry_run_that_would_fill_everything(tmp_path: Path, device: Path) -> None:
+    source = tmp_path / "source"
+    on_the_device(device, make_missing("good.bin", fills(source / "good.bin")))
+
+    assert check_run(source, device, "--fail-if-missing", "--dry-run") == 0
+
+    assert not (device / "good.bin").exists()
+
+
+def test_exit_0_without_the_flag_when_a_required_file_is_missing(
+    tmp_path: Path, device: Path
+) -> None:
+    on_the_device(device, make_missing("gone.bin", ZERO))
+
+    assert check_run(tmp_path / "source", device) == 0
+
+
+def test_exit_0_with_the_flag_when_everything_was_filled(tmp_path: Path, device: Path) -> None:
+    source = tmp_path / "source"
+    on_the_device(device, make_missing("good.bin", fills(source / "good.bin")))
+
+    assert check_run(source, device, "--fail-if-missing") == 0
+
+
+def test_exit_0_with_the_flag_when_nothing_is_missing(tmp_path: Path, device: Path) -> None:
+    on_the_device(device)
+
+    assert check_run(tmp_path / "source", device, "--fail-if-missing") == 0
+
+
+def test_exit_0_with_the_flag_when_only_optional_files_are_missing(
+    tmp_path: Path, device: Path
+) -> None:
+    write(device / "bad.bin")
+    on_the_device(
+        device,
+        make_missing("gone.bin", ZERO, required=False),
+        make_missing("bad.bin", ONE, required=False, incorrect=True),
+    )
+
+    assert check_run(tmp_path / "source", device, "--fail-if-missing") == 0
+
+
+def test_exit_0_with_the_flag_when_overwrite_replaced_the_incorrect_file(
+    tmp_path: Path, device: Path
+) -> None:
+    source = tmp_path / "source"
+    md5 = fills(source / "bad.bin")
+    write(device / "bad.bin")
+    on_the_device(device, make_missing("bad.bin", md5, incorrect=True))
+
+    assert check_run(source, device, "--fail-if-missing", "--overwrite") == 0
+
+
+def test_exit_0_with_the_flag_when_the_file_is_already_on_the_device(
+    tmp_path: Path, device: Path
+) -> None:
+    """It isn't missing. A report that's out of date is the usual reason for this."""
+    source = tmp_path / "source"
+    md5 = fills(source / "good.bin")
+    write(device / "good.bin")
+    on_the_device(device, make_missing("good.bin", md5))
+
+    assert check_run(source, device, "--fail-if-missing") == 0
+
+
+def test_exit_3_beats_exit_5(
+    tmp_path: Path,
+    device: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """DEC-59: the run didn't do all it could, so the list of what's missing isn't final."""
+    source = tmp_path / "source"
+    md5 = fills(source / "good.bin")
+    on_the_device(device, make_missing("good.bin", md5), make_missing("gone.bin", ZERO))
+    monkeypatch.setattr(LocalTransport, "upload", forbidden_upload)
+
+    assert check_run(source, device, "--fail-if-missing") == 3
+
+    assert "--fail-if-missing" not in capsys.readouterr().out
+
+
+def test_exit_4_beats_exit_5(tmp_path: Path, device: Path) -> None:
+    assert check_run(tmp_path / "source", device, "--fail-if-missing") == 4
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ["report", "--fail-if-missing", "--report-file", "x"],
+        ["scan", "--fail-if-missing"],
+        ["--fail-if-missing", "check"],
+    ],
+    ids=["report", "scan", "before-the-command"],
+)
+def test_exit_2_the_flag_belongs_to_check(arguments: list[str]) -> None:
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(arguments)
+
+    assert exit_info.value.code == 2
+
+
+def test_exit_5_says_what_is_missing_and_why_it_failed(
+    tmp_path: Path, device: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source = tmp_path / "source"
+    md5 = fills(source / "good.bin")
+    write(device / "bad.bin")
+    on_the_device(
+        device,
+        make_missing("good.bin", md5),
+        make_missing("ps1/gone.bin", ZERO),
+        make_missing("skipped.bin", ZERO, required=False),
+        make_missing("bad.bin", ONE, incorrect=True),
+    )
+
+    assert check_run(source, device, "--fail-if-missing") == 5
+
+    lines = capsys.readouterr().out.splitlines()
+    assert "MISSING: ps1/gone.bin" in lines
+    assert not any(line.startswith("MISSING:") and "skipped.bin" in line for line in lines)
+    assert not any(line.startswith("MISSING:") and "bad.bin" in line for line in lines), (
+        "it has its own INCORRECT line"
+    )
+    assert "INCORRECT: bad.bin is on the device with a wrong MD5, and was kept" in lines
+    assert lines[-1] == (
+        "Required files still missing or incorrect: 2. Exit code 5, because of --fail-if-missing."
+    )
+
+
+def test_exit_5_says_so_when_the_run_ends_early(
+    tmp_path: Path, device: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    on_the_device(device, make_missing("gone.bin", ZERO))
+
+    assert check_run(tmp_path / "source", device, "--fail-if-missing") == 5
+
+    lines = capsys.readouterr().out.splitlines()
+    assert "MISSING: gone.bin" in lines
+    assert lines[-1].startswith("Required files still missing or incorrect: 1.")
+
+
+def test_exit_5_counts_a_file_listed_in_several_systems_once(
+    tmp_path: Path, device: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    on_the_device(
+        device,
+        make_missing("gone.bin", ZERO, system="One"),
+        make_missing("gone.bin", ONE, system="Two"),
+    )
+
+    assert check_run(tmp_path / "source", device, "--fail-if-missing") == 5
+
+    lines = capsys.readouterr().out.splitlines()
+    assert lines.count("MISSING: gone.bin") == 1
+    assert lines[-1].startswith("Required files still missing or incorrect: 1.")
+
+
+def test_exit_5_a_dry_run_that_ends_early_says_would(
+    tmp_path: Path, device: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    on_the_device(device, make_missing("gone.bin", ZERO))
+
+    assert check_run(tmp_path / "source", device, "--fail-if-missing", "--dry-run") == 5
+
+    assert (
+        capsys.readouterr()
+        .out.splitlines()[-1]
+        .startswith("Required files that would still be missing or incorrect: 1.")
+    )
+
+
+def test_exit_5_a_dry_run_says_would(
+    tmp_path: Path, device: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source = tmp_path / "source"
+    write(source / "junk.bin")
+    on_the_device(device, make_missing("gone.bin", ZERO))
+
+    assert check_run(source, device, "--fail-if-missing", "--dry-run") == 5
+
+    assert capsys.readouterr().out.splitlines()[-1] == (
+        "Required files that would still be missing or incorrect: 1. "
+        "Exit code 5, because of --fail-if-missing."
+    )
+
+
+def test_exit_0_prints_nothing_about_the_flag(
+    tmp_path: Path, device: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    on_the_device(device, make_missing("gone.bin", ZERO, required=False))
+
+    assert check_run(tmp_path / "source", device, "--fail-if-missing") == 0
+
+    assert "--fail-if-missing" not in capsys.readouterr().out
+
+
+def test_exit_0_without_the_flag_prints_nothing_about_it(
+    tmp_path: Path, device: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    on_the_device(device, make_missing("gone.bin", ZERO))
+
+    assert check_run(tmp_path / "source", device) == 0
+
+    output = capsys.readouterr().out
+    assert "MISSING: gone.bin" not in output
+    assert "--fail-if-missing" not in output
+
+
+@pytest.mark.parametrize("flags", [(), ("--dry-run",)], ids=["run", "dry-run"])
+def test_exit_5_with_json_is_not_ok_and_lists_the_files(
+    tmp_path: Path, device: Path, capsys: pytest.CaptureFixture[str], flags: tuple[str, ...]
+) -> None:
+    source = tmp_path / "source"
+    write(source / "junk.bin")
+    on_the_device(device, make_missing("gone.bin", ZERO))
+
+    assert check_run(source, device, "--json", "--fail-if-missing", *flags) == 5
+
+    document = json.loads(capsys.readouterr().out)
+    assert document["ok"] is False
+    assert document["errors"] == [], "nothing went wrong: the files just aren't there"
+    assert [item["target"] for item in document["still_missing"]] == ["gone.bin"]
+
+
+def test_exit_5_with_json_when_the_run_ends_early(
+    tmp_path: Path, device: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    on_the_device(device, make_missing("gone.bin", ZERO))
+
+    assert check_run(tmp_path / "source", device, "--json", "--fail-if-missing") == 5
+
+    assert json.loads(capsys.readouterr().out)["ok"] is False
+
+
+def test_exit_0_with_json_and_the_flag_is_ok(
+    tmp_path: Path, device: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    on_the_device(device, make_missing("gone.bin", ZERO, required=False))
+
+    assert check_run(tmp_path / "source", device, "--json", "--fail-if-missing") == 0
+
+    assert json.loads(capsys.readouterr().out)["ok"] is True
+
+
+# Exit 2: settings that can't work are a configuration error, not a connection error or a bug
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        'smb: {user: "", passwd: "", server: "beck-test-server", port: "445"}',
+        'smb: {user: "", passwd: "", server: "beck-test-server", port: abc}',
+        'smb: {user: "", passwd: "", server: "beck-test-server", port: 0}',
+        'smb: {user: "", passwd: "", server: "beck-test-server", port: 65536}',
+        'smb: {user: "", passwd: "", server: "beck-test-server", port: null}',
+        'smb: {user: "", passwd: "", server: "beck-test-server", port: [445]}',
+        'smb: {user: "", passwd: "", server: "beck-test-server", port: true}',
+        'smb: {user: "", passwd: "", server: "", port: 445}',
+        'smb: {user: "", passwd: "", server: null, port: 445}',
+        'smb: {user: "", passwd: "", server: 123, port: 445}',
+        'smb: {user: 1234, passwd: "", server: "beck-test-server", port: 445}',
+        'smb: {user: "", passwd: 1234, server: "beck-test-server", port: 445}',
+        'smb: {user: "", passwd: [a], server: "beck-test-server", port: 445}',
+    ],
+)
+def test_exit_2_settings_with_the_wrong_kind_of_value(
+    server: FakeSMBServer, app: Path, line: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write(app / "config" / "config.yml", f"{line}\n".encode())
+
+    assert cli.main(["check"], base_dir=app) == 2
+
+    assert "config.yml" in capsys.readouterr().out
+    assert server.connections == []
+
+
+@pytest.mark.parametrize("port", [1, 65535])
+def test_exit_0_the_lowest_and_highest_ports_are_settings_that_can_work(
+    server: FakeSMBServer, app: Path, port: int
+) -> None:
+    config = f'smb: {{user: "", passwd: "", server: "beck-test-server", port: {port}}}\n'
+    write(app / "config" / "config.yml", config.encode())
+    report(server, block("gone.bin", ZERO))
+
+    assert cli.main(["check"], base_dir=app) == 0
+
+
+def test_exit_2_a_password_that_is_not_text_is_never_repeated(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config = 'smb: {user: "", passwd: 918273645, server: "beck-test-server", port: 445}\n'
+    write(app / "config" / "config.yml", config.encode())
+
+    assert cli.main(["check"], base_dir=app) == 2
+
+    out = capsys.readouterr()
+    assert "918273645" not in out.out + out.err
+    assert "quotes" in out.out
+
+
+def test_exit_2_a_yaml_error_stays_on_one_line(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write(app / "config" / "config.yml", b"smb: {unclosed\n")
+
+    assert cli.main(["check"], base_dir=app) == 2
+
+    output = capsys.readouterr().out
+    assert "isn't valid YAML" in output
+    assert output.count("\n") == 1
+    assert "\\x0a" not in output
+
+
+def test_exit_2_a_config_that_is_not_utf8(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write(app / "config" / "config.yml", b"smb:\n  passwd: secret\xff\xfe\n")
+
+    assert cli.main(["check"], base_dir=app) == 2
+
+    out = capsys.readouterr()
+    assert "UTF-8" in out.out
+    assert "secret" not in out.out + out.err
+
+
+def test_exit_2_a_config_that_is_a_folder(server: FakeSMBServer, app: Path) -> None:
+    (app / "config" / "config.yml").unlink()
+    (app / "config" / "config.yml").mkdir()
+
+    assert cli.main(["check"], base_dir=app) == 2
+
+
+needs_permissions = pytest.mark.skipif(os.geteuid() == 0, reason="root ignores file permissions")
+
+
+@needs_permissions
+def test_exit_2_a_config_it_cannot_read(server: FakeSMBServer, app: Path) -> None:
+    file = app / "config" / "config.yml"
+    file.chmod(0o000)
+    try:
+        assert cli.main(["check"], base_dir=app) == 2
+    finally:
+        file.chmod(0o644)
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "smb:\n  user:\n  passwd:\n  server: beck-test-server\n  port: 445\n",
+        'smb:\n  user: ""\n  passwd: ""\n  server: beck-test-server\n  port: 445\n',
+    ],
+    ids=["left-blank", "empty-text"],
+)
+def test_exit_0_blank_credentials_mean_guest_access(
+    server: FakeSMBServer, app: Path, line: str
+) -> None:
+    """The example says to leave them empty, and in YAML a blank value isn't an empty text."""
+    write(app / "config" / "config.yml", line.encode())
+    report(server, block("gone.bin", ZERO))
+
+    assert cli.main(["check"], base_dir=app) == 0
+
+    connection = server.connections[0]
+    assert (connection.username, connection.password) == ("", "")
+
+
+def test_exit_2_a_url_with_port_0(server: FakeSMBServer, tmp_path: Path) -> None:
+    assert cli.main(["check", "--target", "smb://beck-test-server:0/bios"], base_dir=tmp_path) == 2
+
+    assert server.connections == []
+
+
+# Exit 3: a target that fails is one failed item, or a transport error, and never looks like a bug
+
+
+@needs_permissions
+def test_exit_3_a_locked_folder_on_the_target_fails_one_item_and_the_run_carries_on(
+    tmp_path: Path, device: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source = tmp_path / "source"
+    md5, other = fills(source / "z.bin"), fills(source / "a.bin")
+    locked = device / "locked"
+    locked.mkdir()
+    on_the_device(device, make_missing("locked/a.bin", other), make_missing("z.bin", md5))
+    locked.chmod(0o000)
+    try:
+        assert check_run(source, device, "--json") == 3
+    finally:
+        locked.chmod(0o755)
+
+    document = json.loads(capsys.readouterr().out)
+    statuses = {upload["target"]: upload["status"] for upload in document["uploads"]}
+    assert statuses == {"locked/a.bin": "failed", "z.bin": "uploaded"}
+    assert (device / "z.bin").exists()
+
+
+def test_exit_3_a_name_too_long_for_the_target_fails_one_item(
+    tmp_path: Path, device: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source = tmp_path / "source"
+    md5, other = fills(source / "z.bin"), fills(source / "a.bin")
+    long_name = f"{'x' * 300}.bin"
+    on_the_device(device, make_missing(long_name, other), make_missing("z.bin", md5))
+
+    assert check_run(source, device, "--json") == 3
+
+    document = json.loads(capsys.readouterr().out)
+    statuses = {upload["target"]: upload["status"] for upload in document["uploads"]}
+    assert statuses == {long_name: "failed", "z.bin": "uploaded"}
+
+
+@needs_permissions
+def test_exit_3_a_target_folder_it_cannot_read(tmp_path: Path, device: Path) -> None:
+    device.chmod(0o000)
+    try:
+        assert check_run(tmp_path / "source", device) == 3
+    finally:
+        device.chmod(0o755)
+
+
+def test_exit_3_a_target_folder_that_is_a_symlink_loop(tmp_path: Path) -> None:
+    loop = tmp_path / "loop"
+    loop.symlink_to(loop)
+
+    assert check_run(tmp_path / "source", loop) == 3
+
+
+def test_exit_3_a_target_inside_a_symlink_loop_fails_one_item(
+    tmp_path: Path, device: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source = tmp_path / "source"
+    md5, other = fills(source / "z.bin"), fills(source / "a.bin")
+    (device / "loop").symlink_to(device / "loop")
+    on_the_device(device, make_missing("loop/a.bin", other), make_missing("z.bin", md5))
+
+    assert check_run(source, device, "--json") == 3
+
+    document = json.loads(capsys.readouterr().out)
+    assert {upload["target"]: upload["status"] for upload in document["uploads"]}["z.bin"] == (
+        "uploaded"
+    )
+
+
+# Exit 1, and exit 4 on a full run
+
+
+def test_exit_1_a_bug_is_reported_as_one(
+    tmp_path: Path, device: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "source"
+    on_the_device(device, make_missing("good.bin", fills(source / "good.bin")))
+    monkeypatch.setattr(cli, "execute", forbidden)
+
+    assert check_run(source, device) == 1
+
+
+def test_exit_4_no_report_on_the_target(tmp_path: Path, device: Path) -> None:
+    assert check_run(tmp_path / "source", device) == 4

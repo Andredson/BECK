@@ -17,7 +17,7 @@ executed **one step at a time**, by a human or an AI agent, in the order below. 
 | 03 | [Critical fixes & data safety](03-critical-fixes-and-data-safety.md) | 02 | `stage/03-critical-fixes` | M | Done (2026-11-04) |
 | 04 | [Architecture refactor](04-architecture-refactor.md) | 03 | `stage/04-architecture` | L | Done (2026-11-04) |
 | 05 | [Testing hardening](05-testing-hardening.md) | 04 | `stage/05-testing` | M | Done (2026-11-05) |
-| 06 | [CLI, UX & machine-readable output](06-cli-ux-and-machine-output.md) | 05 | `stage/06-cli` | M | Not started |
+| 06 | [CLI, UX & machine-readable output](06-cli-ux-and-machine-output.md) | 05 | `stage/06-cli` | M | In progress |
 | 07 | [Configuration & security](07-configuration-and-security.md) | 06 | `stage/07-config-security` | M | Not started |
 | 08 | [Documentation](08-documentation.md) | 07 | `stage/08-docs` | M | Not started |
 | 09 | [Agent Skills & automation](09-agent-skills-and-automation.md) | 08 | `stage/09-agent-skills` | M | Not started |
@@ -142,6 +142,14 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-53 | **Supersedes DEC-26.** BECK keeps `pysmb` behind the `Transport` interface, instead of switching to `smbprotocol`. No SMB encryption. *(2026-11-04, step 04.1)* |
 | DEC-54 | When a report lists a file as `INCORRECT` (on the device with a wrong hash), BECK **keeps the device's file and reports it**, and never uploads to that target, even with a valid local file. The general overwrite policy stays with step 06.5. *(2026-11-05, step 05.3a)* |
 | DEC-55 | **Supersedes the Docker part of DEC-40.** The project uses **Podman only**, locally and in CI, and the test server is built from a `Containerfile`. *(2026-11-05, step 05.4)* |
+| DEC-56 | `--clean-unmatched` stays as DEC-02 planned it, with a prominent warning that files stop matching after a rescan. *(2026-11-05, step 06.1)* |
+| DEC-57 | A `beck export DIR` command (11.12), not a flag, copies every `.rom` or `.bin` file under the target's BIOS root to this machine, and skips any file that already exists locally. *(2026-11-05, step 11.12)* |
+| DEC-58 | **Supersedes the definition in DEC-57.** `beck export` copies **every file** under the target's BIOS root, not only `.rom` and `.bin` files. *(2026-11-05, step 11.12)* |
+| DEC-59 | CLI rules: `--clean-unmatched` never deletes a file valid for an `INCORRECT` target; a required `INCORRECT` file counts for `--fail-if-missing`; a transport error (3) beats `--fail-if-missing` (5); an unreadable local file doesn't change the exit code. *(2026-11-05, step 06.1)* |
+| DEC-60 | **Supersedes DEC-58.** `beck export` copies only `.rom` and `.bin` files, in any case, under the target's BIOS root, as DEC-57 said. *(2026-11-05, step 11.12)* |
+| DEC-61 | A file already on the device is **kept and reported**, and `--overwrite` replaces it, including files listed as `INCORRECT` (the flag DEC-54 left open). *(2026-11-05, step 06.5)* |
+| DEC-62 | What BECK does, and its exit code, **don't depend on whether its output can be written**. The run carries on when stdout fails: a closed pipe is silent, and any other failure prints one line on stderr. *(2026-11-05, step 06.7b)* |
+| DEC-63 | `types-jsonschema` is a dev-only dependency, so that mypy can check the tests that use `jsonschema`, which ships no type hints. *(2026-11-06, step 06.8)* |
 
 ### CI/CD, security, and release
 

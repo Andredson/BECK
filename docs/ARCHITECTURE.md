@@ -31,7 +31,8 @@ src/beck/
 │   └── smb.py           # pysmb (DEC-53)
 └── output/
     ├── __init__.py
-    └── console.py       # human output: colors, NO_COLOR, TTY detection
+    ├── console.py       # human output: colors, NO_COLOR, TTY detection
+    └── json.py          # --json: one document on stdout, a public contract (docs/json-output.md)
 ```
 
 ## Data flow
@@ -47,7 +48,7 @@ flowchart LR
     T --> SMB[transports.smb]
     T --> LOC[transports.local]
     FE -. reads report through .-> T
-    EX -- RunResult --> OUT[output.console]
+    EX -- RunResult --> OUT[output.console or output.json]
 ```
 
 1. `cli.py` loads the settings, picks a frontend adapter and opens a transport.
@@ -56,7 +57,7 @@ flowchart LR
 4. `matcher.plan` turns both lists into a `Plan`. Nothing has been written yet.
 5. `executor.execute` applies the plan through the transport and returns a `RunResult`. With `dry_run=True`, it calls no
    write method.
-6. `output/console.py` renders the result, and `cli.py` returns the exit code.
+6. `output/console.py`, or `output/json.py` with `--json`, renders the result, and `cli.py` returns the exit code.
 
 ## Modules
 
@@ -70,7 +71,7 @@ flowchart LR
 | `executor.py` | Creating folders and uploading through a `Transport`; recording a failed item and continuing | Delete local files, or know which transport it's using |
 | `frontends/` | One adapter per system: where its report is, how to parse it, and how device paths map to relative paths | Open connections |
 | `transports/` | Reading, checking and writing files on a target | Know about reports or matching |
-| `output/` | Rendering a `RunResult` for people | Decide anything |
+| `output/` | Rendering a `RunResult` for people, or as one JSON document for machines | Decide anything |
 
 ## Matching rules
 `matcher.plan` keeps the behavior proven in stage 03:
@@ -80,9 +81,11 @@ flowchart LR
 - A target goes first to a local file with its exact name, if that file's MD5 is on the target's list. Other targets go
   to the first file by path.
 - Identical local files upload once, and the others are listed as duplicates.
-- A file that's `INCORRECT` on the device is never replaced (DEC-54): its target goes in `Plan.incorrect`, and a local file
-  that fits it stays unmatched.
+- A file that's `INCORRECT` on the device is kept (DEC-54): its target goes in `Plan.incorrect`, and a local file that fits it stays
+  unmatched. `--overwrite` makes these targets normal ones (DEC-61).
+- A file already on the target is kept, and `--overwrite` replaces it (DEC-61). The executor checks this, because the matcher does no I/O.
 - The plan doesn't depend on input order.
+- An upload that changes the file's extension still happens. The executor lists it, and the output warns about it.
 
 ## Rules
 
@@ -94,10 +97,17 @@ These are the boundaries to keep when changing the code:
 3. **Only adapters know about devices.** Recalbox paths and report formats stay in `frontends/`, and SMB stays in
    `transports/`. Only `transports/smb.py` imports `pysmb`.
 4. **`executor` depends on the `Transport` Protocol**, never on a specific transport.
-5. **Never delete or rename a user's local file** without an explicit opt-in flag (DEC-02). Those flags arrive in stage
-   06.
-6. **Secrets don't leave the transport.** `Transport.describe()` is for messages and never includes a password.
-7. **Output goes to its own stream.** Human output goes to stdout, and logs from `logging.getLogger("beck")` go to stderr.
+5. **Never delete or rename a user's local file** without an explicit opt-in flag (DEC-02). Only `executor.py` deletes, and nothing
+   renames, which a test checks on the source.
+6. **Secrets don't leave the transport.** `Transport.describe()` is for messages and never includes a password. `Transport.url()` is for
+   the JSON output and never includes a user name or a password.
+7. **Output goes to its own stream.** Human output or one JSON document goes to stdout, and logs from `logging.getLogger("beck")` go to
+   stderr. With `--json`, stdout has nothing else, whatever happens. A file name can't crash the output, because this runs after the
+   work is done, and it can't act on a terminal: human output and logs escape it with `escaped_for_terminal`. So `ConsoleRenderer._print` takes
+   parts, and only a color it's given goes out raw. `upload_status` decides what happened to an upload for both outputs.
+8. **Output can't change the run** (DEC-62). What BECK does, and its exit code, don't depend on whether its output can be written. Output goes
+   through `print_safely`, and `cli.main` ends with `finish_output`. The deletion prompt is the one exception, because a question nobody saw
+   can't be answered: if it can't be shown, BECK can't ask, and nothing is deleted.
 
 ## Errors
 
