@@ -1,6 +1,6 @@
 # Stage 09 — Agent Skills & automation
 
-**Status:** In progress · **Depends on:** 08 · **Branch:** `stage/09-skills` · **Effort:** M
+**Status:** Done (2026-11-06) · **Depends on:** 08 · **Branch:** `stage/09-skills` · **Effort:** M
 
 ## Goal
 Package BECK's recurring workflows as **Agent Skills**, in the open SKILL.md format, so that any agent can
@@ -188,7 +188,7 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
 - **Commit message:** `test(skills): validate skill frontmatter, links and index`
 
 ### 09.10 — Cross-vendor evaluation
-- [x] Done (2026-11-06: ten sessions, five skills on two agents, in clean clones. All opened the right skill first, none changed a file, ran a risky command or proposed a trailer, and my transcript check found no personal data. No wording needed fixing. opencode found the skills with its own `skill` tool, which settles what 09.1 left untested. Not proven: `big-pickle`'s maker isn't
+- [x] Done (2026-11-06: ten sessions, five skills on two agents, in clean clones. All opened the right skill first, none changed a file, ran a risky command or proposed a trailer, and a check of the transcripts for the owner's email found nothing. No wording needed fixing. opencode found the skills with its own `skill` tool, which settles what 09.1 left untested. Not proven: `big-pickle`'s maker isn't
   stated, so this is two vendors' agents and possibly not two makers' models, and the owner decides whether to repeat it with a named one. Four of the five were plans, not real runs. opencode's permissions were set by a config file in each clone, never in the repository.)
 - **What:** For each skill, give the same short task to agents from **at least two different vendors** (e.g.
   "add this report as a fixture", "why is scph5501.bin still missing?"). Record in `docs/agents.md` whether each
@@ -200,7 +200,7 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
 - **Commit message:** `docs(agents): record cross-vendor skill evaluations`
 
 ### 09.11 — Close the stage
-- [ ] Done
+- [x] Done (2026-11-06: the acceptance criteria below hold, with 09.10's limit on "two vendors". The stage scores 7/10, with a sum of 138, up from 137. AI-agent readiness goes to 9, not the "about 8" above, because stage 06 had already reached 8. Draft PR #10 already exists, so the owner marks it ready and merges it with a merge commit. Beyond the list below: the status line in `AGENTS.md`.)
 - **What:** Re-score [00-assessment](00-assessment.md#re-scoring-history) (AI-agent readiness should be about 8;
   the `cut-release` skill comes in 10.8). Update the [README](README.md#stages) status. Push the closing commit
   (DEC-47). If the stage PR doesn't exist yet, print this command for the human (DEC-43):

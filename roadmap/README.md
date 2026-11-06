@@ -20,7 +20,7 @@ executed **one step at a time**, by a human or an AI agent, in the order below. 
 | 06 | [CLI, UX & machine-readable output](06-cli-ux-and-machine-output.md) | 05 | `stage/06-cli` | M | Done (2026-11-06) |
 | 07 | [Configuration & security](07-configuration-and-security.md) | 06 | `stage/07-config-security` | M | Done (2026-11-06) |
 | 08 | [Documentation](08-documentation.md) | 07 | `stage/08-docs` | M | Done (2026-11-06) |
-| 09 | [Agent Skills & automation](09-agent-skills-and-automation.md) | 08 | `stage/09-skills` | M | In progress |
+| 09 | [Agent Skills & automation](09-agent-skills-and-automation.md) | 08 | `stage/09-skills` | M | Done (2026-11-06) |
 | 10 | [Packaging & release](10-packaging-and-release.md) | 09 | `stage/10-release` | M | Not started |
 | 11 | [Feature expansion](11-feature-expansion.md) | 10 | one branch per feature | L | Not started |
 | 12 | [Community & governance](12-community-and-governance.md) | 02 (can run in parallel with 03–11) | `stage/12-community` | S | Not started |
