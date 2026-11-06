@@ -111,7 +111,8 @@ Both were found by the end-to-end runs of step 06.7a, and fixed in
 **Found later:** D22, mistakes in the settings didn't exit with 2. A config file that couldn't be read, or a `server` that wasn't text, exited with
 1, which means a bug. Values that could never work, such as `port: abc`, exited with 3 as if the network had failed. A blank `user:`, as
 the example config suggests, crashed inside pysmb on a real server. D23, `LocalTransport.exists` let an `OSError` through, so a target in a
-locked folder, or with a name too long, stopped the whole run with exit 1 instead of failing one item with 3. Both were found by running odd
+locked folder, or with a name too long, stopped the whole run with exit 1 instead of failing one item with 3, and on Python 3.14, which answers
+`False` for any failure, a report BECK couldn't read looked like no report. Both were found by running odd
 inputs through the real command in step [06.9](06-cli-ux-and-machine-output.md#069--exit-codes-and---fail-if-missing), and fixed there.
 
 ### Hygiene findings (not numbered, fixed in [03.12](03-critical-fixes-and-data-safety.md#0312--cleanup-messages-imports-exceptions-typos-d12))

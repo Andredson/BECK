@@ -48,8 +48,14 @@ class LocalTransport:
             return self._resolve(path).read_bytes()
 
     def exists(self, path: PurePosixPath) -> bool:
+        # Not Path.exists(): from Python 3.14 it answers False for any failure, so a folder BECK
+        # can't read would look like one with nothing in it.
         with _reporting("checking", path):
-            return self._resolve(path).exists()
+            try:
+                self._resolve(path).stat()
+            except (FileNotFoundError, NotADirectoryError):
+                return False
+            return True
 
     def size(self, path: PurePosixPath) -> int:
         with _reporting("getting the size of", path):

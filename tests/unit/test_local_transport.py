@@ -214,6 +214,17 @@ def test_describe_names_the_folder(root: Path, transport: Transport) -> None:
     assert transport.describe() == f"local folder {root.resolve()}"
 
 
+def test_what_is_not_there_does_not_exist(root: Path, transport: Transport) -> None:
+    (root / "file").write_bytes(b"in the way of a folder")
+    (root / "broken").symlink_to(root / "nowhere")
+
+    assert transport.exists(PurePosixPath("nothing")) is False
+    assert transport.exists(PurePosixPath("no/such/folder")) is False
+    assert transport.exists(PurePosixPath("file/inside")) is False
+    assert transport.exists(PurePosixPath("broken")) is False
+    assert transport.exists(PurePosixPath("file")) is True
+
+
 def test_a_check_that_fails_is_a_transport_error_not_a_crash(transport: Transport) -> None:
     with pytest.raises(TransportError, match="Error checking"):
         transport.exists(PurePosixPath(f"{'x' * 300}.bin"))
