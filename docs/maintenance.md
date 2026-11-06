@@ -84,10 +84,11 @@ uv run pytest --cov --cov-report=xml
 | gitleaks | `GITLEAKS_VERSION`, `GITLEAKS_SHA256` | [4a](#4a-list-releases-with-their-age) on `gitleaks/gitleaks` | Three matching hashes ([4c](#4c-hash-a-release-binary)) |
 | Trivy | `TRIVY_VERSION`, `TRIVY_SHA256` | [4a](#4a-list-releases-with-their-age) on `aquasecurity/trivy`; must show `immutable=true` | Three matching hashes ([4c](#4c-hash-a-release-binary)), and Trivy's advisories |
 | commitizen | `COMMITIZEN_VERSION` | [4d](#4d-list-pypi-releases-with-their-age) | Release notes |
+| twine | `TWINE_VERSION` | [4d](#4d-list-pypi-releases-with-their-age) | Release notes |
 | git-cliff | [The changelog command](#regenerating-the-changelog) | [4d](#4d-list-pypi-releases-with-their-age) | Release notes, then regenerate: only the expected lines should change |
 
 All of them but git-cliff are in the `env:` block or the `uses:` lines of **both** `.github/workflows/ci.yml` and
-`.github/workflows/security.yml` (commitizen and `upload-artifact` only in `ci.yml`). Update the version, the hash
+`.github/workflows/security.yml` (commitizen, twine and `upload-artifact` only in `ci.yml`). Update the version, the hash
 or SHA, and the "pinned" date in the trailing comment.
 
 ### 4a. List releases with their age
@@ -145,6 +146,7 @@ for uploaded, version in uploads[-5:]:
 ```sh
 uv run pytest tests/test_workflow_pins.py -q
 uvx --exclude-newer "14 days" --from "commitizen==NEW_VERSION" cz check --rev-range origin/main..HEAD
+uv build && uvx --exclude-newer "14 days" --from "twine==NEW_VERSION" twine check --strict dist/*
 ```
 
 The gitleaks and Trivy pins are proven by CI: the install step fails if the hash doesn't match.

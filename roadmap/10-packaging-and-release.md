@@ -78,7 +78,8 @@ flowchart LR
 - **Commit message:** `docs(release): define versioning and tagging rules`
 
 ### 10.4 — Build and pre-flight checks in CI (DEC-41)
-- [ ] Done
+- [x] Done (2026-11-06: twine 7.0.0, pinned as `TWINE_VERSION`. In a throwaway clone, the job's commands failed on each broken package: no README, no console command, a wheel that can't import, and no license file. Beyond the list above, `beck --version` must print the project's version, so an old wheel can't pass. `tests/test_skills.py` made `quality-gates` take the new commands, and adding them
+  exposed a hole in that test, now closed: its list of steps only a CI runner needs let through any line starting `test "`. **The owner still has to add `package` to the required checks.** Beyond the list below: `quality-gates`, that test, `docs/maintenance.md`'s pins, and the `AGENTS.md` map.)
 - **What:** Add a `package` job to `ci.yml`:
   - `uv build`, then `uvx twine@<pinned version> check --strict dist/*` (validates metadata and README rendering).
   - A smoke install of the built wheel on Linux (DEC-49 removed Windows and macOS from CI):

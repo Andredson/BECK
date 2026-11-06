@@ -33,7 +33,18 @@ None. Ask before installing gitleaks or Trivy, or if a failure can only be fixed
 
    `pytest` also runs the link test and the other tests of the repository, so they have no command of their own. If you changed the dependencies, `git add requirements.txt` first, because `git diff` compares with what's staged.
 
-2. **Run the `integration` job,** if Podman is available. Otherwise, say that you didn't. It uses only [the local test server](../../../tests/integration/samba/README.md), and any skipped test counts as a failure:
+2. **Run the `package` job.** It builds what a release would publish, then checks its metadata and README, and that the wheel installs and runs:
+
+   ```sh
+   rm -rf dist
+   uv build
+   TWINE_VERSION=$(sed -n 's/.*TWINE_VERSION: "\([^"]*\)".*/\1/p' .github/workflows/ci.yml)
+   uvx --exclude-newer "14 days" --from "twine==${TWINE_VERSION}" twine check --strict dist/*
+   test "$(uvx --exclude-newer "14 days" --from "$(ls dist/*.whl)" beck --version)" = "beck $(uv version --short)"
+   uvx --exclude-newer "14 days" --from "$(ls dist/*.whl)" beck --help
+   ```
+
+3. **Run the `integration` job,** if Podman is available. Otherwise, say that you didn't. It uses only [the local test server](../../../tests/integration/samba/README.md), and any skipped test counts as a failure:
 
    ```sh
    podman rm -f beck-samba
@@ -45,7 +56,7 @@ None. Ask before installing gitleaks or Trivy, or if a failure can only be fixed
    podman rm -f beck-samba
    ```
 
-3. **Run the `commits`, `secrets` and `sca` jobs,** if you have the tools. Otherwise, say that you left them to CI. CI checks the PR's own commits, and `origin/main..HEAD` is the same range:
+4. **Run the `commits`, `secrets` and `sca` jobs,** if you have the tools. Otherwise, say that you left them to CI. CI checks the PR's own commits, and `origin/main..HEAD` is the same range:
 
    ```sh
    COMMITIZEN_VERSION=$(sed -n 's/.*COMMITIZEN_VERSION: "\([^"]*\)".*/\1/p' .github/workflows/ci.yml)
@@ -57,9 +68,9 @@ None. Ask before installing gitleaks or Trivy, or if a failure can only be fixed
 
    The license scan only reports. CI installs with `uv sync --locked --no-dev` first, so its report has just the runtime dependencies, and a local one also lists the dev ones.
 
-4. **If something fails,** use the table below, fix the cause, and run that check again. Then run everything once more, since a fix can break another check.
+5. **If something fails,** use the table below, fix the cause, and run that check again. Then run everything once more, since a fix can break another check.
 
-5. **Say what you ran.** A local run only covers Python 3.11, so CI is what checks 3.12–3.14. To try one here, use a folder outside the repository: `UV_PROJECT_ENVIRONMENT=<folder> uv run --python 3.14 pytest --cov --cov-report=xml`.
+6. **Say what you ran.** A local run only covers Python 3.11, so CI is what checks 3.12–3.14. To try one here, use a folder outside the repository: `UV_PROJECT_ENVIRONMENT=<folder> uv run --python 3.14 pytest --cov --cov-report=xml`.
 
 ## Reading a failure
 
@@ -81,8 +92,10 @@ None. Ask before installing gitleaks or Trivy, or if a failure can only be fixed
 | `pytest`, in `test_redaction.py` | A password may reach the output. | Treat it as a security bug: find how it got there. |
 | `pytest`, another test | Either the code or the test is wrong. | Work out which from what the test promises. Change a test only if the behavior was meant to change. |
 | Coverage under 90 % | New code has no tests. | Write tests. `# pragma: no cover` doesn't work here. |
-| A test skipped in `integration` | The two `BECK_TEST_SMB_*` variables aren't set. | Set them, as in step 2. |
-| A test fails to reach the test server | It isn't running, or it doesn't have its seeded file. | Start it, as in step 2. The tests refuse any other server, on purpose. |
+| `uv build` or `twine check` | The package's metadata or README can't be published. | Fix `pyproject.toml` or the README. PyPI would refuse the upload, or show a broken page. |
+| `beck --version` or `--help` from the wheel | The built wheel doesn't run, or isn't the project's version. | Check `[project.scripts]` and that the code doesn't need anything left out of the wheel. |
+| A test skipped in `integration` | The two `BECK_TEST_SMB_*` variables aren't set. | Set them, as in step 3. |
+| A test fails to reach the test server | It isn't running, or it doesn't have its seeded file. | Start it, as in step 3. The tests refuse any other server, on purpose. |
 | `cz check` | A commit message isn't [Conventional Commits](../../../AGENTS.md#commits-and-pull-requests). | Fix it if it isn't pushed. If it is, tell the human: never rewrite history. |
 | `gitleaks` | Something like a secret is in a commit. | Stop and tell the human, without repeating the value. It has to be changed, and fake `beck-test-*` values belong under `tests/`. |
 | `trivy`, vulnerabilities | A fixable HIGH or CRITICAL finding, or an expired `.trivyignore` entry. | Follow [the maintenance routine](../../../docs/maintenance.md). |
