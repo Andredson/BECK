@@ -6,6 +6,7 @@ import os
 import platform
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, NoReturn
 
@@ -19,6 +20,7 @@ from beck.config import (
     resolve,
     write_template,
 )
+from beck.credentials import password_for
 from beck.errors import BeckError, ConfigError, ReportNotFoundError, TransportError, UsageError
 from beck.executor import execute
 from beck.frontends import get_adapter
@@ -98,7 +100,7 @@ def _load_settings(args: argparse.Namespace) -> Settings:
     return resolve(flags, os.environ, file)
 
 
-def _open_target(settings: Settings) -> Transport:
+def _open_target(settings: Settings, password: Callable[[str, str], str]) -> Transport:
     """The transport for the chosen target. It connects when it's entered, not here."""
     if settings.target_dir is not None:
         return LocalTransport(settings.target_dir)
@@ -114,10 +116,19 @@ def _open_target(settings: Settings) -> Transport:
         target.port,
         target.share,
         user,
-        settings.smb_password if user else "",  # a guest has no password to send
+        password(user, target.host),
         timeout=settings.smb_timeout or DEFAULT_TIMEOUT,
         root=target.root,
     )
+
+
+def _connect_to_target(settings: Settings, renderer: Renderer) -> Transport:
+    """The transport for a run that connects: the only thing that may ask for a password."""
+
+    def password(user: str, host: str) -> str:
+        return password_for(user, host, settings.smb_password, can_ask=renderer.can_ask())
+
+    return _open_target(settings, password)
 
 
 def _entries_from_file(adapter: FrontendAdapter, report_file: str) -> list[MissingBios]:
@@ -238,7 +249,7 @@ def _run_check(
         renderer.ended_early(result, failing)
         return FAILED_IF_MISSING_EXIT_CODE if failing else 0
 
-    transport = _open_target(settings)
+    transport = _connect_to_target(settings, renderer)
     renderer.opened(transport.url())
     _log.debug("Target: %s", transport.url())
     with transport:
@@ -302,7 +313,7 @@ def _run_report(
     if args.report_file is not None:
         entries = _entries_from_file(adapter, args.report_file)
     else:
-        transport = _open_target(settings)
+        transport = _connect_to_target(settings, renderer)
         renderer.opened(transport.url())
         _log.debug("Target: %s", transport.url())
         with transport:
@@ -326,7 +337,8 @@ def _shown_settings(settings: Settings, base_dir: Path) -> dict[str, dict[str, A
     sources = settings.sources
     return {
         "target": {
-            "value": _open_target(settings).url() if has_target else None,
+            # Only its URL: showing the settings connects to nothing, and asks for nothing.
+            "value": _open_target(settings, lambda _user, _host: "").url() if has_target else None,
             "source": sources["target"],
         },
         "source": {"value": str(source), "source": sources["source"]},

@@ -275,7 +275,7 @@ An error about **one item** doesn't stop the run. `item` names the target, folde
 | `code` | Exit code | Stops the run? | Meaning |
 |---|---|---|---|
 | `usage` | 2 | Yes | A bad flag, URL or folder, or a deletion that wasn't confirmed. |
-| `config` | 2 | Yes | The settings are missing or invalid. |
+| `config` | 2 | Yes | The settings are missing or invalid, there's no target, or a user has no password. `--json` never asks for one, so set `BECK_SMB_PASSWORD`. |
 | `transport` | 3 | Yes, if `item` is `null` | Couldn't connect or log in, or one upload, folder or check failed. |
 | `report_not_found` | 4 | Yes | There's no report, so generate one on the device. |
 | `report_parse` | 4 | Yes | BECK can't read the report. |

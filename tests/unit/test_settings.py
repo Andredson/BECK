@@ -608,6 +608,8 @@ def test_the_document_says_the_frontend_when_the_file_can_not_be_read(
 
 @pytest.fixture
 def server(monkeypatch: pytest.MonkeyPatch) -> FakeSMBServer:
+    # These tests name users, and with no terminal to ask on, a user needs this.
+    monkeypatch.setenv("BECK_SMB_PASSWORD", "beck-test-password")
     fake = install_fake_smb(monkeypatch)
     fake.files[("bios", "missing_bios_report.txt")] = make_report_text([]).encode()
     return fake

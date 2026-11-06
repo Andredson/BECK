@@ -96,6 +96,7 @@ def migration_notice(old: Path, legacy: LegacySettings, new: Path) -> list[str]:
     ]
     if legacy.has_password:
         lines.append(
-            "The password in the old file can't go in the new one. Set BECK_SMB_PASSWORD instead."
+            "The password in the old file can't go in the new one. BECK asks for it, or set "
+            "BECK_SMB_PASSWORD."
         )
     return lines

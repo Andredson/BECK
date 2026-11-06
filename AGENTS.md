@@ -21,7 +21,7 @@ CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against
 | Path | What it is |
 |---|---|
 | `check_bios.py` | A deprecated shim: it prints a notice and runs `beck.cli.main` with its own folder, importing from `src/` so that the pip route works. |
-| `src/beck/` | The application ([design](docs/ARCHITECTURE.md)): `cli`, `config`, `models`, `hashing`, `matcher`, `executor`, `errors`, and `frontends/`, `transports/`, `output/`. `beck` finds its [settings](docs/cli.md#settings) from any folder, and `bios/` in the current one. |
+| `src/beck/` | The application ([design](docs/ARCHITECTURE.md)): `cli`, `config`, `credentials`, `models`, `hashing`, `matcher`, `executor`, `errors`, and `frontends/`, `transports/`, `output/`. `beck` finds its [settings](docs/cli.md#settings) from any folder, and `bios/` in the current one. |
 | `bios/` | Input folder for the user's BIOS files. Everything except `bios/.keep` is gitignored. |
 | `pyproject.toml`, `uv.lock`, `.python-version` | Project metadata, runtime and dev dependencies, tool settings (ruff, mypy, pytest, coverage, commitizen), the lockfile, and Python 3.11 for local work. Managed with uv; `exclude-newer` is the 14-day cooldown (DEC-45). The distribution is `beck-bios`, built with `uv_build` (DEC-18), and it installs the `beck` command. |
 | `requirements.txt` | Runtime dependencies for pip users, **generated** from `uv.lock` (see [Commands](#commands)). Don't edit it by hand; CI fails if it drifts. |
@@ -161,8 +161,10 @@ field, with [the schemas](docs/schemas/), and [the `beck` command](docs/cli.md) 
    this run. `--overwrite` keeps no copy of what it replaces. `--move` and `--clean-unmatched` delete local files, and `--clean-unmatched` can
    delete [good BIOS files](docs/cli.md#what-beck-deletes-and-when) after a rescan. First run the same command with `--dry-run`, and
    show the human `deleted` and `replaces`. `--json` never asks, so `--yes` would be what confirms the deletion, on the human's behalf.
-4. **Never pass passwords on the command line,** where anyone can read them. BECK refuses a `--target` URL holding a password, with exit
-   code 2. Don't show the human or a log what's in `config/config.yml`.
+4. **Never pass passwords on the command line,** where anyone can read them, and that includes setting `BECK_SMB_PASSWORD` in a command you
+   run, which ends up in shell history and logs. BECK refuses a `--target` URL holding a password, with exit code 2. With a user and no
+   password, `--json` exits with 2, because it never asks: tell the human, who can set the variable or run BECK themselves. Don't show
+   anyone what's in an old `config/config.yml`.
 
 ## Agent tooling notes
 

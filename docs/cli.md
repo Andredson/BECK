@@ -98,7 +98,7 @@ act on your terminal, or look like something else. `--json` keeps the exact name
 | Option | Commands | What it does |
 |---|---|---|
 | `--source DIR` | `check`, `scan` | Your folder of BIOS files. The default is `./bios`. Hidden files and folders are skipped. A folder you name must exist, or BECK exits with 2. |
-| `--target URL` | `check`, `report` | An SMB target: `smb://[user@]host[:port]/share[/sub/path]`. The port defaults to 445. A URL with a password is refused: use `BECK_SMB_PASSWORD`. |
+| `--target URL` | `check`, `report` | An SMB target: `smb://[user@]host[:port]/share[/sub/path]`. The port defaults to 445. A URL with a password is refused. See [Passwords](#passwords). |
 | `--target-dir DIR` | `check`, `report` | A folder: a mounted SD card or USB drive, or the device itself. It can't be combined with `--target`. |
 | `--frontend NAME` | `check` | The kind of device. Only `recalbox`, for now. |
 | `--report-file FILE` | `check`, `report` | Reads a local copy of the report, not the one on the target. `beck report` then needs no target, and can't take one. `beck check` still needs a target to upload to. |
@@ -136,7 +136,7 @@ file. Two targets in the environment exit with 2, unless a flag decides.
 | `BECK_TARGET_DIR` | The same as `--target-dir`. |
 | `BECK_SOURCE` | The same as `--source`. |
 | `BECK_SMB_USER` | The SMB user. Empty means a guest, even if the file names a user. A user in the target URL beats this. |
-| `BECK_SMB_PASSWORD` | The SMB password. It's the one way to give BECK a password. A guest doesn't send it. |
+| `BECK_SMB_PASSWORD` | The SMB password. See [Passwords](#passwords). |
 
 Any other empty variable counts as not set.
 
@@ -163,6 +163,15 @@ dir = "~/beck/bios"
 
 A `dir` must be an absolute path or start with `~`, so that it means the same folder wherever you run BECK. **Passwords can't go in this
 file:** BECK refuses one, in any setting and in a URL. `beck config init` writes a file like this one, with comments.
+
+### Passwords
+
+With no user, BECK logs in as a guest, and sends no password even if one is set. With a user, it uses `BECK_SMB_PASSWORD`. If that isn't set,
+BECK asks on the terminal, with nothing you type showing, before it connects, including for a dry run. Without a terminal, or with `--json`,
+which never asks, BECK exits with 2 and changes nothing. So does pressing Ctrl-C or Ctrl-D at the question.
+
+A password can't go in the settings file, or in a URL, and BECK keeps it only in memory. Setting the variable on the command line, as in
+`BECK_SMB_PASSWORD=secret beck check`, leaves it in your shell's history.
 
 ### The old `config/config.yml`
 

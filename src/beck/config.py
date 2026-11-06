@@ -30,7 +30,7 @@ KNOWN_SETTINGS = {
 PASSWORD_KEYS = {"password", "passwd"}
 TEMPLATE = """\
 # BECK's settings. Flags and environment variables beat what's here: see docs/cli.md.
-# Passwords can't go in this file: set BECK_SMB_PASSWORD instead.
+# Passwords can't go in this file: BECK asks for one, or set BECK_SMB_PASSWORD.
 schema_version = 1
 
 [target]

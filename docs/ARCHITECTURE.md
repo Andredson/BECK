@@ -16,6 +16,7 @@ src/beck/
 ├── __main__.py          # python -m beck
 ├── cli.py               # argparse wiring and exit codes
 ├── config.py            # the TOML settings file: read and checked, with no password in it
+├── credentials.py       # the SMB password: from the environment or a prompt, kept in memory
 ├── errors.py            # BeckError hierarchy, each with an exit code
 ├── models.py            # frozen dataclasses: MissingBios, LocalFile, PlannedUpload, Plan, RunResult
 ├── hashing.py           # chunked MD5, local folder scan

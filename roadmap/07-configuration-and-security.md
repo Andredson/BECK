@@ -103,7 +103,9 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 - **Commit message:** `feat(config)!: switch to TOML config with migration from config.yml`
 
 ### 07.4 — Credentials: environment, prompt, guest (DEC-10)
-- [ ] Done
+- [x] Done (2026-11-06: the choices it needed are in [ADR-0007](../docs/adr/0007-cli-contract.md#details-settled-in-step-074). Beyond the list below: tests with a real
+  pseudo-terminal against the Samba test server, in `tests/integration/`, with `getpass` not monkeypatched, and in `docs/cli.md`, `docs/json-output.md`, `README.md`
+  and `AGENTS.md` what to do about a password.)
 - **What:**
   - Empty user → guest login.
   - User set and `BECK_SMB_PASSWORD` set → use it.

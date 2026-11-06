@@ -876,13 +876,12 @@ def test_the_password_in_the_old_settings_file_is_never_read(
         tmp_path / "config" / "config.yml",
         b'smb:\n  user: "beck-test-user"\n  passwd: "beck-test-password"\n  server: "old"\n',
     )
-    report(server, "MISSING BIOS REPORT\n")
     url = "smb://beck-test-user@beck-test-other/bios"
 
-    assert cli.main(["check", "--target", url], base_dir=tmp_path) == 0
+    # With no terminal to ask on, a user with no password stops here: it doesn't take the old one.
+    assert cli.main(["check", "--target", url], base_dir=tmp_path) == 2
 
-    connection = server.connections[0]
-    assert (connection.remote_name, connection.password) == ("beck-test-other", "")
+    assert server.connections == []
 
 
 def test_the_password_in_the_environment_goes_with_a_user(

@@ -101,6 +101,16 @@ The roadmap lists the commands. Building them raised these details, which the ag
 - **The first line of `beck config path` is only the path,** so that scripts can use it.
 - **An old file whose `server` isn't a host name gets the default in the suggestion,** so that what BECK suggests always loads.
 
+### Details settled in step 07.4
+The roadmap gives the four cases. Building them raised these details, which the agent settled and reported to the owner:
+
+- **`--json` never asks, even on a terminal,** because that's its promise, so it needs `BECK_SMB_PASSWORD`, or exits with 2.
+- **A password that would show isn't asked for.** `getpass` only warns when it can't turn the echo off, and then reads it anyway, for anyone to see.
+  That's a refusal here, with exit 2.
+- **Ctrl-C or Ctrl-D at the question exits with 2, with no traceback,** because nothing has happened yet, and it's the same as refusing to answer.
+- **An empty answer is an empty password,** which BECK sends, because a server may allow one. An empty variable still counts as not set, as every other one does.
+- **Only what connects asks.** `beck config show` and `report --report-file` never do, and a dry run does, because it connects.
+
 ### Deleting is always explicit
 Nothing is deleted without `--move` or `--clean-unmatched`, and off a terminal not without `--yes` too. `--json` never prompts, so that
 a consumer can't hang on a question or confirm one by accident.

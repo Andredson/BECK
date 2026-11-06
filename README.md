@@ -43,13 +43,13 @@ uv run beck config path           # where it is: ~/.config/beck/config.toml on L
 ```
 
 `url` is your Recalbox's address (`smb://recalbox.local/bios` by default), and `dir` under `[source]` is your folder of BIOS files. `user` can
-stay empty if your Recalbox allows guest access. If it needs a password, set it in the `BECK_SMB_PASSWORD` environment variable: it can't go
-in the file. [The guide](docs/cli.md#settings) has the rest, including environment variables for every setting.
+stay empty if your Recalbox allows guest access. If you name a user, BECK asks for the password, or you can set it in the `BECK_SMB_PASSWORD`
+environment variable. It can't go in the file. [The guide](docs/cli.md#settings) has the rest, including environment variables for every setting.
 
 ## Upgrading
 
 BECK doesn't read `config/config.yml` any more. If you still have that file, BECK prints what to put in the new settings file, leaving out the
-password, which goes in `BECK_SMB_PASSWORD`. Delete the old file once you've moved your settings, because it may hold your password in plain text.
+password, which BECK now asks for. Delete the old file once you've moved your settings, because it may hold your password in plain text.
 
 Older versions tracked that file in git. If you edited it, `git pull` refuses to update, so move it out of the way first:
 

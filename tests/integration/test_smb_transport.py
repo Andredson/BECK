@@ -3,11 +3,16 @@
 Run with BECK_TEST_SMB_HOST=127.0.0.1 BECK_TEST_SMB_PORT=4450 uv run pytest -m integration
 """
 
+import contextlib
 import json
 import os
+import pty
+import select
+import signal
 import socket
 import subprocess
 import sys
+import termios
 from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -472,6 +477,90 @@ def test_end_to_end_v_never_shows_the_credentials_on_a_real_server(
     assert "with a user name" in out.err
     with samba.guest() as transport:
         assert transport.read_bytes(PurePosixPath(target)) == good.path.read_bytes()
+
+
+def at_a_real_prompt(
+    arguments: list[str], *, typed: bytes = b"", interrupted: bool = False
+) -> tuple[int, bytes, bytes]:
+    """Run BECK on a pseudo-terminal, and answer once the prompt is up: exit code, stderr and echo.
+
+    In its own session, so that getpass can't open the terminal of whoever runs these tests, and
+    wait for them. With no terminal of its own, it uses stdin and prompts on stderr. That's also why
+    Ctrl-C is a signal here: only a controlling terminal turns the key into one.
+    """
+    master, slave = pty.openpty()
+    settings_before = termios.tcgetattr(master)
+    process = subprocess.Popen(  # noqa: S603 - fixed arguments, no external input
+        [sys.executable, "-m", "beck", *arguments],
+        stdin=slave,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        start_new_session=True,
+    )
+    os.close(slave)
+    try:
+        assert process.stderr is not None
+        seen = b""
+        while b": " not in seen:
+            ready, _, _ = select.select([process.stderr], [], [], 20)
+            assert ready, f"no prompt: {seen!r}"
+            seen += os.read(process.stderr.fileno(), 1024)
+        if interrupted:
+            process.send_signal(signal.SIGINT)
+        else:
+            os.write(master, typed)
+        _, rest = process.communicate(timeout=30)
+        assert termios.tcgetattr(master) == settings_before, "the terminal wasn't left as it was"
+        echoed = b""
+        os.set_blocking(master, False)
+        with contextlib.suppress(OSError):  # Linux reports the closed end as an I/O error
+            echoed = os.read(master, 4096)
+        return process.returncode, seen + rest, echoed
+    finally:
+        process.kill()
+        process.wait()
+        os.close(master)
+
+
+def test_a_real_prompt_logs_in_to_a_real_server_and_shows_nothing_typed(samba: Samba) -> None:
+    url = f"smb://beck@{samba.host}:{samba.port}/private"
+
+    code, stderr, echoed = at_a_real_prompt(
+        ["report", "--target", url], typed=ACCOUNT_CREDENTIAL.encode() + b"\n"
+    )
+
+    assert code == 4, stderr  # logged in, and that share has no report
+    assert b"Password for beck on" in stderr
+    assert ACCOUNT_CREDENTIAL.encode() not in stderr + echoed
+
+
+def test_a_wrong_answer_at_a_real_prompt_is_exit_3(samba: Samba) -> None:
+    url = f"smb://beck@{samba.host}:{samba.port}/private"
+
+    code, stderr, echoed = at_a_real_prompt(
+        ["report", "--target", url], typed=BAD_CREDENTIAL.encode() + b"\n"
+    )
+
+    assert code == 3, stderr
+    assert BAD_CREDENTIAL.encode() not in stderr + echoed
+
+
+def test_ctrl_d_at_a_real_prompt_is_exit_2(samba: Samba) -> None:
+    url = f"smb://beck@{samba.host}:{samba.port}/private"
+
+    code, stderr, _ = at_a_real_prompt(["report", "--target", url], typed=b"\x04")
+
+    assert code == 2, stderr
+    assert b"Traceback" not in stderr
+
+
+def test_ctrl_c_at_a_real_prompt_is_exit_2_and_leaves_the_terminal_as_it_was(samba: Samba) -> None:
+    url = f"smb://beck@{samba.host}:{samba.port}/private"
+
+    code, stderr, _ = at_a_real_prompt(["report", "--target", url], interrupted=True)
+
+    assert code == 2, stderr
+    assert b"Traceback" not in stderr
 
 
 def test_end_to_end_an_empty_user_is_a_guest_on_a_real_server(

@@ -302,6 +302,7 @@ def test_show_takes_the_user_from_the_url_and_leaves_it_out_of_the_target(
     monkeypatch.setenv("BECK_TARGET", "smb://url-user@host/bios")
     monkeypatch.setenv("BECK_SMB_USER", "env-user")
 
+    # With a user and no password, showing the settings still asks for nothing.
     assert cli.main(["--json", "config", "show"]) == 0
 
     settings = document(capsys)["settings"]
@@ -546,7 +547,8 @@ def test_someone_with_the_old_file_is_told_what_to_write(
         "  ",
         "  [smb]",
         '  user = "me"',
-        "The password in the old file can't go in the new one. Set BECK_SMB_PASSWORD instead.",
+        "The password in the old file can't go in the new one. BECK asks for it, or set "
+        "BECK_SMB_PASSWORD.",
     ]
     assert SENTINEL not in out.out + out.err
 
