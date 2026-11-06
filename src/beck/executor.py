@@ -26,6 +26,7 @@ def _size_matches(upload: PlannedUpload, transport: Transport, errors: list[Item
                 item=item,
                 message=f"{item} has {size} bytes on the target, not {upload.source.size}, "
                 f"so {upload.source.relative} wasn't deleted",
+                code="size_mismatch",
             )
         )
         return False
@@ -62,7 +63,8 @@ def _delete(file: LocalFile, errors: list[ItemError]) -> bool:
         file.path.unlink()
     except OSError as e:
         item = file.relative.as_posix()
-        errors.append(ItemError(item=item, message=f"Couldn't delete {item}: {e.strerror}"))
+        message = f"Couldn't delete {item}: {e.strerror}"
+        errors.append(ItemError(item=item, message=message, code="delete_failed"))
         return False
     return True
 

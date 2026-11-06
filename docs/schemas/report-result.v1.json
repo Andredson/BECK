@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Andredson/BECK/main/docs/schemas/report-result.v1.json",
+  "title": "Result of beck --json report",
+  "description": "See docs/json-output.md. Within schema_version 1, fields are only added, so ignore fields you don't know.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "beck_version",
+    "command",
+    "ok",
+    "frontend",
+    "target",
+    "summary",
+    "missing",
+    "incorrect",
+    "errors"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "beck_version": {
+      "type": "string"
+    },
+    "command": {
+      "const": "report"
+    },
+    "ok": {
+      "type": "boolean",
+      "description": "False when the exit code isn't 0."
+    },
+    "frontend": {
+      "type": "string"
+    },
+    "target": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The target as a URL, never with a user name or a password. Null when no target was opened."
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "missing",
+        "incorrect"
+      ],
+      "properties": {
+        "missing": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "incorrect": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "missing": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/missing"
+      }
+    },
+    "incorrect": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/incorrect"
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/error"
+      }
+    }
+  },
+  "$defs": {
+    "md5": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "missing": {
+      "type": "object",
+      "required": [
+        "name",
+        "target",
+        "md5s",
+        "required"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "md5s": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/md5"
+          },
+          "minItems": 1
+        },
+        "required": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "True if any entry for this target is required. Null if none is and the report doesn't say for one."
+        }
+      }
+    },
+    "incorrect": {
+      "type": "object",
+      "required": [
+        "name",
+        "target",
+        "md5s",
+        "required",
+        "current_md5"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "md5s": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/md5"
+          },
+          "minItems": 1
+        },
+        "required": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "True if any entry for this target is required. Null if none is and the report doesn't say for one."
+        },
+        "current_md5": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/md5"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "required": [
+        "code",
+        "message",
+        "item"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "usage, config, transport, report_not_found, report_parse, internal, size_mismatch or delete_failed. New codes may be added."
+        },
+        "message": {
+          "type": "string"
+        },
+        "item": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The target, folder or local file this is about. Null for an error that stopped the run."
+        }
+      }
+    }
+  }
+}

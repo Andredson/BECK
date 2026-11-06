@@ -181,7 +181,7 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `feat(executor): warn when an upload changes the file extension`
 
 ### 06.7 — JSON output and schema v1 (DEC-23)
-- [ ] Done
+- [x] Done
 - **What:**
   - `output/json.py` renders a `RunResult` (or an error) as a single JSON document on **stdout**. All logs and
     prompts go to stderr, so stdout is always parseable.
@@ -197,6 +197,9 @@ beck config  init | show | path                     # added in stage 07
   - **Compatibility promise** (in `docs/json-output.md`): within `schema_version` 1, fields are only *added*;
     renaming, removing or changing the meaning of a field means `schema_version` 2. Consumers must ignore
     unknown fields.
+  - Added while building it, so that JSON never knows less than the human output: `uploads[].replaces`, `already_filled[]`,
+    `unreadable[]`, and `required` on `incorrect[]`. A command line that can't be parsed gives a smaller document, with its own schema
+    (`rejected-command.v1.json`). [ADR-0007](../docs/adr/0007-cli-contract.md#details-settled-in-step-067) has the reasons.
 - **Files:** `src/beck/output/json.py`, `docs/schemas/*.json`, `docs/json-output.md`, `src/beck/cli.py`
 - **Done when:** `--json` works for `check`, `scan` and `report`, including error cases.
 - **Verify:** `uv run beck --json report --report-file "$(ls tests/fixtures/reports/*/*.txt | head -n1)" | python3 -m json.tool`
@@ -216,7 +219,7 @@ beck config  init | show | path                     # added in stage 07
 - [ ] Done
 - **What:** Implement the exit-code table exactly as documented. `--fail-if-missing` returns 5 when any entry
   with `required` true (or unknown) is still missing after the run. An item-level upload failure returns 3 even
-  though the run continued.
+  though the run continued. With `--json`, `ok` must be false for 5 too, since the guide says it's false for any exit code but 0.
 - **Files:** `src/beck/cli.py`, `tests/unit/test_cli.py`
 - **Done when:** Each code 0–5 is produced by at least one test.
 - **Verify:** `uv run pytest tests/unit/test_cli.py -q -k exit`
@@ -234,7 +237,7 @@ beck config  init | show | path                     # added in stage 07
 
 ### 06.11 — `beck scan` and `beck report`
 - [ ] Done
-- **What:** `scan` lists local files with relative path, size and MD5. `report` already lists missing entries, grouped
+- **What:** `scan` lists local files with relative path, size and MD5, for people too (06.7 built only `--json`). `report` already lists missing entries, grouped
   by folder, with the `required` / optional marker (06.4). Both support `--json`. Neither ever writes anything.
 - **Files:** `src/beck/cli.py`, `tests/unit/test_cli.py`
 - **Done when:** Both commands work offline (`scan`, and `report --report-file`) and are covered by tests.

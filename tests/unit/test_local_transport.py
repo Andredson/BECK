@@ -206,5 +206,9 @@ def test_a_root_reached_through_a_symlink_works(tmp_path: Path, root: Path) -> N
     assert (root / "a.bin").exists()
 
 
+def test_url_is_the_folder_as_a_file_url(root: Path, transport: Transport) -> None:
+    assert transport.url() == root.resolve().as_uri()
+
+
 def test_describe_names_the_folder(root: Path, transport: Transport) -> None:
     assert transport.describe() == f"local folder {root.resolve()}"

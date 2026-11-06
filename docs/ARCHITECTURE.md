@@ -31,7 +31,8 @@ src/beck/
 │   └── smb.py           # pysmb (DEC-53)
 └── output/
     ├── __init__.py
-    └── console.py       # human output: colors, NO_COLOR, TTY detection
+    ├── console.py       # human output: colors, NO_COLOR, TTY detection
+    └── json.py          # --json: one document on stdout, a public contract (docs/json-output.md)
 ```
 
 ## Data flow
@@ -47,7 +48,7 @@ flowchart LR
     T --> SMB[transports.smb]
     T --> LOC[transports.local]
     FE -. reads report through .-> T
-    EX -- RunResult --> OUT[output.console]
+    EX -- RunResult --> OUT[output.console or output.json]
 ```
 
 1. `cli.py` loads the settings, picks a frontend adapter and opens a transport.
@@ -56,7 +57,7 @@ flowchart LR
 4. `matcher.plan` turns both lists into a `Plan`. Nothing has been written yet.
 5. `executor.execute` applies the plan through the transport and returns a `RunResult`. With `dry_run=True`, it calls no
    write method.
-6. `output/console.py` renders the result, and `cli.py` returns the exit code.
+6. `output/console.py`, or `output/json.py` with `--json`, renders the result, and `cli.py` returns the exit code.
 
 ## Modules
 
@@ -70,7 +71,7 @@ flowchart LR
 | `executor.py` | Creating folders and uploading through a `Transport`; recording a failed item and continuing | Delete local files, or know which transport it's using |
 | `frontends/` | One adapter per system: where its report is, how to parse it, and how device paths map to relative paths | Open connections |
 | `transports/` | Reading, checking and writing files on a target | Know about reports or matching |
-| `output/` | Rendering a `RunResult` for people | Decide anything |
+| `output/` | Rendering a `RunResult` for people, or as one JSON document for machines | Decide anything |
 
 ## Matching rules
 `matcher.plan` keeps the behavior proven in stage 03:
@@ -98,8 +99,10 @@ These are the boundaries to keep when changing the code:
 4. **`executor` depends on the `Transport` Protocol**, never on a specific transport.
 5. **Never delete or rename a user's local file** without an explicit opt-in flag (DEC-02). Only `executor.py` deletes, and nothing
    renames, which a test checks on the source.
-6. **Secrets don't leave the transport.** `Transport.describe()` is for messages and never includes a password.
-7. **Output goes to its own stream.** Human output goes to stdout, and logs from `logging.getLogger("beck")` go to stderr.
+6. **Secrets don't leave the transport.** `Transport.describe()` is for messages and never includes a password. `Transport.url()` is for
+   the JSON output and never includes a user name or a password.
+7. **Output goes to its own stream.** Human output or one JSON document goes to stdout, and logs from `logging.getLogger("beck")` go to
+   stderr. With `--json`, stdout has nothing else, whatever happens.
 
 ## Errors
 

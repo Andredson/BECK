@@ -62,3 +62,6 @@ class LocalTransport:
 
     def describe(self) -> str:
         return f"local folder {self.root}"
+
+    def url(self) -> str:
+        return self.root.as_uri()

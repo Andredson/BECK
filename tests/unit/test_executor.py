@@ -142,6 +142,9 @@ class Untouchable:
     def describe(self) -> str:
         raise AssertionError("a dry run has nothing to describe")
 
+    def url(self) -> str:
+        raise AssertionError("a dry run has nothing to describe")
+
 
 def test_dry_run_only_checks_what_is_there(source: Path) -> None:
     file = make_bios_file(source, "copy.bin")

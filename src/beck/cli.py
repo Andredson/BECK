@@ -5,7 +5,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 import yaml
 
@@ -18,6 +18,7 @@ from beck.hashing import scan
 from beck.matcher import plan
 from beck.models import MissingBios, RunResult
 from beck.output.console import LOGGER_NAME, ConsoleRenderer, configure_logging
+from beck.output.json import JsonRenderer, write_rejected_command
 from beck.targets import URL_FORM, parse_smb_url
 from beck.transports.base import Transport
 from beck.transports.local import LocalTransport
@@ -43,6 +44,29 @@ COMMANDS = {
 SMB_SETTINGS = ("server", "port", "user", "passwd")
 DEFAULT_FRONTEND = "recalbox"
 REPORT_FILE_HELP = "read this local copy of the report, not the one on the target"
+
+Renderer = ConsoleRenderer | JsonRenderer
+
+
+class _Parser(argparse.ArgumentParser):
+    """With ``--json``, a bad command line must still give a document on stdout."""
+
+    def __init__(self, *args: Any, json_errors: bool = False, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.json_errors = json_errors
+
+    def error(self, message: str) -> NoReturn:
+        if self.json_errors:
+            raise UsageError(message)
+        super().error(message)
+
+
+def _asks_for_json(argv: list[str]) -> bool:
+    """Whether a command line asks for JSON. Needed before parsing, which can fail.
+
+    Like argparse, this accepts a shortened option: ``--js``.
+    """
+    return any(len(arg) > 2 and "--json".startswith(arg) for arg in argv)
 
 
 def load_legacy_config(file: Path) -> dict[str, Any]:
@@ -118,10 +142,10 @@ def _source_folder(args: argparse.Namespace, base_dir: Path) -> Path:
     return source
 
 
-def _confirm_deletion(preview: RunResult, renderer: ConsoleRenderer) -> None:
+def _confirm_deletion(preview: RunResult, renderer: Renderer) -> None:
     """Ask before deleting. Without a terminal to ask on, deleting needs --yes."""
     count = len(preview.deleted)
-    if not sys.stdin.isatty():
+    if not renderer.can_ask():
         raise UsageError(
             f"BECK would delete {count} local files, and can't ask here. Nothing was changed. "
             "To see them, use --dry-run. To confirm, use --yes."
@@ -130,24 +154,31 @@ def _confirm_deletion(preview: RunResult, renderer: ConsoleRenderer) -> None:
         raise UsageError("Nothing was changed, because you didn't confirm the deletion.")
 
 
-def _run_check(args: argparse.Namespace, base_dir: Path, renderer: ConsoleRenderer) -> int:
+def _run_check(args: argparse.Namespace, base_dir: Path, renderer: Renderer) -> int:
     source = _source_folder(args, base_dir)
     adapter = get_adapter(args.frontend)
 
-    with _open_target(args, base_dir) as transport:
+    def ended_early(entries: list[MissingBios]) -> int:
+        """Nothing to upload. The plan still says what's missing and incorrect."""
+        renderer.ended_early(RunResult(plan=plan(entries, []), dry_run=args.dry_run))
+        return 0
+
+    transport = _open_target(args, base_dir)
+    renderer.opened(transport.url())
+    with transport:
         if args.report_file is not None:
             entries = _entries_from_file(adapter, args.report_file)
         else:
             entries = _entries_from_target(adapter, transport)
         if not entries:
             renderer.nothing_missing()
-            return 0
+            return ended_early(entries)
         incorrect = [entry for entry in entries if entry.incorrect]
         if not args.overwrite:
             renderer.incorrect(incorrect)
         to_fill = {e.target for e in entries if args.overwrite or not e.incorrect}
         if not to_fill:
-            return 0
+            return ended_early(entries)
         renderer.missing_count(len(to_fill))
 
         scanned = scan(source)
@@ -156,7 +187,7 @@ def _run_check(args: argparse.Namespace, base_dir: Path, renderer: ConsoleRender
             if args.overwrite:
                 renderer.incorrect(incorrect)
             renderer.no_files(source)
-            return 0
+            return ended_early(entries)
         renderer.files_found(len(scanned.files))
 
         built = plan(entries, scanned.files, replace_incorrect=args.overwrite)
@@ -181,15 +212,23 @@ def _run_check(args: argparse.Namespace, base_dir: Path, renderer: ConsoleRender
     return TransportError.exit_code if result.errors else 0
 
 
-def _run_report(args: argparse.Namespace, base_dir: Path, renderer: ConsoleRenderer) -> int:
+def _run_report(args: argparse.Namespace, base_dir: Path, renderer: Renderer) -> int:
     """List what the report says. It never writes anything, and a local copy needs no target."""
     adapter = get_adapter(args.frontend)
     if args.report_file is not None:
         entries = _entries_from_file(adapter, args.report_file)
     else:
-        with _open_target(args, base_dir) as transport:
+        transport = _open_target(args, base_dir)
+        renderer.opened(transport.url())
+        with transport:
             entries = _entries_from_target(adapter, transport)
     renderer.report(entries)
+    return 0
+
+
+def _run_scan(args: argparse.Namespace, base_dir: Path, renderer: JsonRenderer) -> int:
+    """List the local files. It uses no network and writes nothing."""
+    renderer.scan(scan(_source_folder(args, base_dir)))
     return 0
 
 
@@ -205,6 +244,12 @@ def _add_global_options(parser: argparse.ArgumentParser, *, on_a_command: bool) 
         default=argparse.SUPPRESS if on_a_command else False,
         help="don't use colors, the same as setting NO_COLOR",
     )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        default=argparse.SUPPRESS if on_a_command else False,
+        help="print one JSON document on stdout, and never ask anything (see docs/json-output.md)",
+    )
 
 
 def _add_target_options(parser: argparse.ArgumentParser) -> Any:
@@ -218,8 +263,9 @@ def _add_target_options(parser: argparse.ArgumentParser) -> Any:
     return group
 
 
-def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+def _build_parser(*, json_errors: bool = False) -> argparse.ArgumentParser:
+    parser = _Parser(
+        json_errors=json_errors,
         prog="beck",
         description=DESCRIPTION,
         epilog=EXAMPLES,
@@ -231,6 +277,7 @@ def _build_parser() -> argparse.ArgumentParser:
     for name, (summary, example) in COMMANDS.items():
         command = commands.add_parser(
             name,
+            json_errors=json_errors,
             help=summary,
             description=summary,
             epilog=example,
@@ -296,17 +343,30 @@ def main(argv: list[str] | None = None, *, base_dir: Path | None = None) -> int:
 
     With no ``base_dir``, that's the current directory: an installed tool has no folder of its own.
     """
-    args = _build_parser().parse_args(argv)
+    parser = _build_parser(json_errors=_asks_for_json(sys.argv[1:] if argv is None else argv))
+    try:
+        args = parser.parse_args(argv)
+    except UsageError as error:
+        write_rejected_command(str(error))
+        return error.exit_code
     logger = configure_logging()
-    environ = {**os.environ, "NO_COLOR": "1"} if args.no_color else None
-    renderer = ConsoleRenderer(environ=environ)
+    renderer: Renderer
+    if args.json:
+        renderer = JsonRenderer(
+            args.command or "check", frontend=args.frontend, dry_run=args.dry_run
+        )
+    else:
+        environ = {**os.environ, "NO_COLOR": "1"} if args.no_color else None
+        renderer = ConsoleRenderer(environ=environ)
     if args.command is None:
         logger.warning("Hint: use 'beck check'. Running beck with no command is going away.")
 
     try:
-        if args.command == "scan":
-            raise UsageError("beck scan isn't available yet")
         folder = Path.cwd() if base_dir is None else base_dir
+        if args.command == "scan":
+            if isinstance(renderer, ConsoleRenderer):  # step 06.11 adds the human output
+                raise UsageError("beck scan isn't available yet")
+            return _run_scan(args, folder, renderer)
         if args.command == "report":
             return _run_report(args, folder, renderer)
         return _run_check(args, folder, renderer)
@@ -316,4 +376,5 @@ def main(argv: list[str] | None = None, *, base_dir: Path | None = None) -> int:
     except Exception:
         # A bug in BECK: the traceback goes to stderr, for the bug report.
         logging.getLogger(LOGGER_NAME).exception("Unexpected error")
+        renderer.unexpected_error()
         return 1

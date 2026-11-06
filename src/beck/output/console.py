@@ -8,7 +8,9 @@ from collections.abc import Mapping
 from pathlib import Path, PurePosixPath
 from typing import TextIO
 
+from beck.errors import BeckError
 from beck.models import SHARE_ROOT, LocalFile, MissingBios, RunResult, Unreadable
+from beck.output import distinct_targets, extension_warning
 
 RESET = "\033[0m"
 RED = "\033[91m"
@@ -67,11 +69,6 @@ def _deletes_unmatched(result: RunResult) -> bool:
     return any(file in result.plan.unmatched for file in result.deleted)
 
 
-def _distinct_targets(result: RunResult) -> int:
-    plan = result.plan
-    return len({u.target for u in plan.uploads} | {e.target for e in plan.still_missing})
-
-
 def _files_analysed(result: RunResult) -> list[LocalFile]:
     plan = result.plan
     files = {upload.source for upload in plan.uploads}
@@ -109,8 +106,20 @@ class ConsoleRenderer:
     def no_files(self, folder: Path) -> None:
         self._print(self._paint(f"No BIOS files found in {folder}", CYAN))
 
-    def error(self, message: object) -> None:
+    def error(self, message: BeckError | str) -> None:
         self._print(f"{self._paint('Error', RED)}: {message}")
+
+    def unexpected_error(self) -> None:
+        """Nothing on stdout: the traceback goes to stderr, for the bug report."""
+
+    def opened(self, target: str) -> None:
+        """Nothing: human output names the target only when something goes wrong with it."""
+
+    def ended_early(self, result: RunResult) -> None:
+        """Nothing: the lines before this one already said why there's nothing to upload."""
+
+    def can_ask(self) -> bool:
+        return sys.stdin.isatty()
 
     def confirm_deletion(self, preview: RunResult) -> bool:
         """List what would be deleted, and ask. On stderr, so that stdout stays the result."""
@@ -213,10 +222,7 @@ class ConsoleRenderer:
                 lines.append(f"{path}: {outcome} -> {upload.target}")
                 if upload in result.extension_changes:
                     label = self._paint("Warning", YELLOW)
-                    lines.append(
-                        f"{label}: {path} has a different extension from {upload.target}. The MD5 "
-                        "matches, but an emulator may not be able to read it."
-                    )
+                    lines.append(f"{label}: {extension_warning(upload)}")
             if uploads and file in result.deleted:
                 lines.append(f"{path}: {gone}")
 
@@ -226,7 +232,7 @@ class ConsoleRenderer:
         if _deletes_unmatched(result) and result.dry_run:
             self._print(UNMATCHED_WARNING)
         files = len(_files_analysed(result))
-        total = self._paint(_distinct_targets(result), BLUE)
+        total = self._paint(distinct_targets(result.plan), BLUE)
         if result.dry_run:
             would = self._paint(len(result.skipped), GREEN)
             self._print(

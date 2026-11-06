@@ -3,6 +3,7 @@
 Run with BECK_TEST_SMB_HOST=127.0.0.1 BECK_TEST_SMB_PORT=4450 uv run pytest -m integration
 """
 
+import json
 import os
 import socket
 from collections.abc import Callable
@@ -338,6 +339,43 @@ def test_end_to_end_with_a_target_url_and_no_config(
 
     with samba.guest() as transport:
         assert transport.read_bytes(target) == good.path.read_bytes()
+
+
+def test_end_to_end_json_on_a_real_server(
+    samba: Samba,
+    tmp_path: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    app = tmp_path / "no-config"
+    good = make_bios_file(app / "bios", "good.bin")
+    target = folder / "a.zip"
+    put_report(make_report_text([make_missing(target.as_posix(), good.md5)]))
+    url = f"smb://{samba.host}:{samba.port}/bios"
+
+    assert cli.main(["--json", "check", "--target", url], base_dir=app) == 0
+
+    doc = json.loads(capsys.readouterr().out)
+    assert doc["ok"] is True
+    assert doc["target"] == url
+    assert [(u["target"], u["status"]) for u in doc["uploads"]] == [(target.as_posix(), "uploaded")]
+    assert doc["uploads"][0]["warning"]
+    with samba.guest() as transport:
+        assert transport.read_bytes(target) == good.path.read_bytes()
+
+
+def test_a_refused_connection_is_a_json_document(
+    samba: Samba, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    url = f"smb://{samba.host}:{samba.port}/no-such-share"
+
+    assert cli.main(["--json", "report", "--target", url], base_dir=tmp_path) == 3
+
+    doc = json.loads(capsys.readouterr().out)
+    assert doc["ok"] is False
+    assert doc["target"] == url
+    assert doc["errors"][0]["code"] == "transport"
 
 
 def test_end_to_end_with_a_sub_path_in_the_target_url(

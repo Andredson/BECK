@@ -414,6 +414,21 @@ def test_makedirs_creates_a_missing_root_folder(server: FakeSMBServer) -> None:
     assert ("bios", "a/b/c") in server.dirs
 
 
+def test_url_has_the_host_port_share_and_root_but_no_credentials() -> None:
+    plain = SmbTransport("beck-test-server", 445, "bios", "beck-test-user", "beck-test-password")
+    nested = SmbTransport(
+        "beck-test-server",
+        4450,
+        "bios",
+        "beck-test-user",
+        "beck-test-password",
+        root=PurePosixPath("a/b"),
+    )
+
+    assert plain.url() == "smb://beck-test-server:445/bios"
+    assert nested.url() == "smb://beck-test-server:4450/bios/a/b"
+
+
 def test_describe_shows_the_root_folder(server: FakeSMBServer) -> None:
     transport = SmbTransport("beck-test-server", 445, "bios", "", "", root=PurePosixPath("a/b"))
 

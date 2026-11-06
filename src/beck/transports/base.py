@@ -33,3 +33,6 @@ class Transport(Protocol):
 
     def describe(self) -> str:
         """The target, for messages. Never includes a secret."""
+
+    def url(self) -> str:
+        """The target as a URL, for machines. Never includes a user name or a password."""

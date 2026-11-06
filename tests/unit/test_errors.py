@@ -6,6 +6,15 @@ import pytest
 
 from beck import errors
 
+JSON_CODES: dict[type[errors.BeckError], str] = {
+    errors.BeckError: "internal",
+    errors.UsageError: "usage",
+    errors.ConfigError: "config",
+    errors.TransportError: "transport",
+    errors.ReportNotFoundError: "report_not_found",
+    errors.ReportParseError: "report_parse",
+}
+
 EXIT_CODES: dict[type[errors.BeckError], int] = {
     errors.BeckError: 1,
     errors.UsageError: 2,
@@ -36,3 +45,18 @@ def test_every_error_in_the_module_has_a_pinned_code() -> None:
     }
 
     assert defined == set(EXIT_CODES)
+
+
+@pytest.mark.parametrize(("error", "code"), JSON_CODES.items())
+def test_each_error_has_its_json_code(error: type[errors.BeckError], code: str) -> None:
+    assert error.code == code
+
+
+def test_every_error_class_has_a_pinned_json_code() -> None:
+    classes = {
+        cls
+        for _, cls in inspect.getmembers(errors, inspect.isclass)
+        if issubclass(cls, errors.BeckError)
+    }
+
+    assert classes == set(JSON_CODES)

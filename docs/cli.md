@@ -4,7 +4,7 @@ The reference for using BECK from the command line.
 
 **Status:** this is the design [stage 06](../roadmap/06-cli-ux-and-machine-output.md) is building, so most of it doesn't exist yet.
 Today, `beck check` and `beck report` work with the options under [Choosing what BECK works on](#choosing-what-beck-works-on), the
-[safety options](#safety) work except `--fail-if-missing`, and `--version` and `--no-color` work. `beck scan` only says it isn't available yet. The rest arrives in later steps of the stage.
+[safety options](#safety) work except `--fail-if-missing`, and `--version`, `--no-color` and `--json` work. `beck scan` only works with `--json`, and otherwise says it isn't available yet. The rest arrives in later steps of the stage.
 
 ```text
 beck [--version] [-v | -q] [--no-color] [--json] <command> [options]
@@ -163,8 +163,8 @@ Some details:
 ## JSON output
 
 `--json` prints a single JSON document on stdout, for every command and for errors that stop a run, so stdout can always be parsed.
-It carries a `schema_version`, and is described by JSON Schema files in `docs/schemas/`. Step 06.7 adds both, with a full guide in
-`docs/json-output.md`.
+It carries a `schema_version`, and is described by [JSON Schema files](schemas/). [JSON output](json-output.md) has every field. Only
+`--help` and `--version` print text.
 
 Within `schema_version` 1, fields are only ever added. Renaming or removing a field, or changing its meaning, needs `schema_version` 2.
 Ignore fields you don't know.

@@ -140,6 +140,7 @@ class ItemError:
 
     item: str
     message: str
+    code: str = "transport"  # part of the JSON output: see docs/json-output.md
 
 
 @dataclass(frozen=True, slots=True)

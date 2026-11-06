@@ -27,6 +27,21 @@ Within `schema_version` 1, fields are only added. Renaming, removing or changing
 Consumers must ignore unknown fields. Contract tests enforce this (step 06.8), and agents must ask the owner before changing an
 existing field.
 
+### Details settled in step 06.7
+The roadmap listed the main fields. Building them raised these details, which the agent settled and reported to the owner:
+
+- **JSON never knows less than the human output.** So it has `uploads[].replaces`, because a dry run's `planned` can't show that an upload
+  would overwrite a file, and `already_filled[]` and `unreadable[]`, because otherwise those files would vanish from the result.
+- **List items are objects, not strings,** even when one field would do, so that fields can be added within version 1.
+- **One item per target,** with its MD5s merged, because a file listed in several systems is one file to find. That's the rule `beck report`
+  already uses for people.
+- **`target` is a URL with no user name** as well as no password, built by a new `Transport.url()`. `describe()` stays a sentence for
+  messages.
+- **A command line BECK can't parse still gives a document,** with only the common fields and `command: null`, because no command ran.
+  It has its own schema, a fourth one. BECK looks for `--json` before parsing, since parsing is what failed.
+- **A bug's message stays on stderr,** because it could hold anything, including a password.
+- **The schemas allow extra fields,** so that a newer BECK still validates against them.
+
 ### Deleting is always explicit
 Nothing is deleted without `--move` or `--clean-unmatched`, and off a terminal not without `--yes` too. `--json` never prompts, so that
 a consumer can't hang on a question or confirm one by accident.

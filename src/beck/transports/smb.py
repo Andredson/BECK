@@ -152,6 +152,11 @@ class SmbTransport:
             )
             return int(written)
 
+    def _where(self) -> str:
+        return self.share if self.root == SHARE_ROOT else f"{self.share}/{self.root}"
+
     def describe(self) -> str:
-        where = self.share if self.root == SHARE_ROOT else f"{self.share}/{self.root}"
-        return f"SMB share {where} on {self.host}:{self.port}"
+        return f"SMB share {self._where()} on {self.host}:{self.port}"
+
+    def url(self) -> str:
+        return f"smb://{self.host}:{self.port}/{self._where()}"
