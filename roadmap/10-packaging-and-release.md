@@ -91,7 +91,8 @@ flowchart LR
 - **Commit message:** `ci: build, check and smoke-install the wheel on every PR`
 
 ### 10.5 — SBOM generation with Trivy (DEC-37)
-- [ ] Done
+- [x] Done (2026-11-06: run with CI's pinned Trivy, from a scratch folder. It lists exactly the five runtime packages in `uv.lock`, with their versions, and `beck-bios`. Three things differ from the step. The file goes in `sbom/`, because `twine check` fails with it in `dist/`, which was run. It skips `requirements.txt`, which would count them twice, and `sbom/`, which would add an old SBOM on a second run, and `.venv`, as CI's scan
+  does. Dev dependencies are excluded, because Trivy doesn't label them as dev, so the "included and labeled" option isn't possible. It holds no local paths or names, but no licenses either, and its top-level name is `.`. Beyond the list below: `sbom/` in `.gitignore`, and the note in 10.6.)
 - **What:** `trivy fs --format cyclonedx --output dist/beck-bios-<version>.cdx.json .`, using the pinned Trivy
   from 02.13. Check that the SBOM lists the **runtime** dependencies from `uv.lock` (pysmb, platformdirs
   and their transitive dependencies). Note in `docs/releasing.md` how dev dependencies are treated
@@ -105,7 +106,7 @@ flowchart LR
 - [ ] Done
 - **What:** `.github/workflows/release.yml`, triggered on tag push `v*`:
   - `build` (permissions `contents: read`): checkout, setup-uv, check that the tag equals `v$(uv version --short)`,
-    `uv build`, `twine check`, SBOM; upload `dist/` as an artifact.
+    `uv build`, `twine check`, SBOM in `sbom/` (never `dist/`, 10.5); upload `dist/` and `sbom/` as separate artifacts, so that the publish jobs only get `dist/`.
   - `publish-testpypi` (only for `rc` tags): environment `testpypi`, `permissions: id-token: write`,
     `pypa/gh-action-pypi-publish@<sha>` with `repository-url: https://test.pypi.org/legacy/`.
   - `publish-pypi` (final tags only): environment `pypi` (the owner approves), `id-token: write`, the same action.

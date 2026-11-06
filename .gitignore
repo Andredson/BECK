@@ -24,4 +24,5 @@ htmlcov/
 
 # Build output (stage 10)
 dist/
+sbom/
 build/

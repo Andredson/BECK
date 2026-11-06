@@ -59,3 +59,17 @@ test "$GITHUB_REF_NAME" = "v$(uv version --short)"
 ```
 
 Never move a tag or reuse a version. PyPI won't accept the same version twice, even after a delete, so a mistake in a release gets a new version.
+
+## The SBOM
+
+Each GitHub Release has a software bill of materials: a [CycloneDX](https://cyclonedx.org/) list of what BECK depends on, so that users and distributors can check it against known problems (DEC-37). Trivy makes it, at the version pinned in `.github/workflows/ci.yml`:
+
+```sh
+mkdir -p sbom
+trivy fs --format cyclonedx --skip-dirs .venv --skip-dirs sbom --skip-files requirements.txt --output "sbom/beck-bios-$(uv version --short).cdx.json" .
+```
+
+- **What's in it:** the runtime packages in `uv.lock`, with their exact versions, and `beck-bios` itself. That's the same list as `requirements.txt`, which it skips so as not to count it twice.
+- **Dev dependencies are left out.** They never reach a user's computer, and Trivy has no way to label them as dev, so including them would make them look like part of BECK.
+- **It goes in `sbom/`, not `dist/`.** `twine check dist/*` fails on anything that isn't a package, and the upload to PyPI takes the whole folder.
+- **What it doesn't have:** licenses, because `uv.lock` doesn't hold them. Its top-level name is `.`, from the path Trivy was given, so the file's name and the `beck-bios` entry are what say what it describes.
