@@ -141,7 +141,7 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
 
 ### 09.7 — Skill: `diagnose-missing-bios` (user-facing)
 - [x] Done (2026-11-06: the reference's table is an exact copy of the one in `docs/cli.md`, and the test that keeps it so comes in 09.9. The skill's table of reasons was checked against a real dry run. Three `claude -p` sessions, in clean clones and allowed only `beck`, were given real requests, one of them "can you sort it out?". None copied
-  anything or asked for a password, and each found the skill. The last gave the right diagnosis, but my permissions stopped `beck` from running in all three, so it compared the MD5s by hand: **no agent has yet followed the JSON itself**, which 09.10 has to cover. That run led to the note on what to do if `beck` isn't found. Beyond the
+  anything or asked for a password, and each found the skill. The last gave the right diagnosis, but the test's permissions stopped `beck` from running in all three, so it compared the MD5s by hand: **no agent has yet followed the JSON itself**, which 09.10 has to cover. That run led to the note on what to do if `beck` isn't found. Beyond the
   list below: `--overwrite` is on the list of flags to ask about, as `AGENTS.md` says, and the skill says never to suggest where to get a BIOS file.)
 - **What:** For agents **helping an end user** (not developing BECK):
   1. run `beck --json check --dry-run …` (never without `--dry-run` first);
@@ -159,7 +159,9 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
 - **Commit message:** `feat(skills): add diagnose-missing-bios skill for end-user support`
 
 ### 09.8 — Using BECK with agents: documentation
-- [ ] Done
+- [x] Done (2026-11-06: a `claude -p` session in an empty folder, given the guide's example request, read the skill, ran `beck --json check --dry-run`, read its document, gave the right diagnosis, and asked before copying. That closes the gap 09.7 left. It's one vendor, told where `beck` was, and reading the skill from disk, because the guide's
+  link to `main` only works after the merge. It's the same path on this branch, which answered. The guide also covers what the step's list doesn't: an agent started outside this repository hasn't read `AGENTS.md`, so it has to be told to read the skill. The guide's claim that `--json` refuses a deletion without `--yes` was run. Beyond the list below: "my permissions" corrected
+  in 09.7's note.)
 - **What:** Extend `docs/agents.md` with: the support matrix (from 01.3), how agents find instructions
   (AGENTS.md only) and skills (the index), the JSON contract and exit codes (links), safety rules for agents, and
   how to ask an agent to run BECK for you. Keep it vendor-neutral: describe behavior, not product menus.

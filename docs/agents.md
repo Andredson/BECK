@@ -1,8 +1,66 @@
 # AI agents and BECK
 
-BECK keeps all agent instructions in one vendor-neutral file, [AGENTS.md](../AGENTS.md) (DEC-21). This page
-records which agents have been **tested** loading it from this repository with no vendor-specific file
-present, and how to test another agent.
+You can ask an AI coding agent to run BECK for you, or to work on its code. This page says how, what to expect, and which agents have been tested. All agent instructions are in one vendor-neutral file, [AGENTS.md](../AGENTS.md) (DEC-21).
+
+## Using BECK with an agent
+
+BECK has a mode for this: `--json` gives an agent one document it can read, and never asks a question. An agent can check your files and explain what's missing. The copying and any deleting stay your decision.
+
+### Giving it the instructions
+
+An agent only has BECK's rules if it has read them, so this depends on where you start it:
+
+- **In a copy of this repository:** it finds `AGENTS.md` and the skills by itself, if it reads `AGENTS.md` (see [the support matrix](#support-matrix)). There, `uv run beck` runs BECK.
+- **Anywhere else,** such as your own folder with BECK installed: it knows nothing about BECK's rules, so tell it to read them, as in the first example below.
+
+### What to ask
+
+Say which folder holds your files and which device you mean, and ask for a dry run first. From your own folder, for example:
+
+> Read https://github.com/Andredson/BECK/blob/main/.agents/skills/diagnose-missing-bios/SKILL.md and follow it. Use `beck` to find out why my Recalbox still says scph5501.bin is missing. My BIOS files are in ~/beck/bios, and the Recalbox is at smb://recalbox.local/bios. Do a dry run, and don't copy anything until I say so.
+
+Inside this repository, you can leave out the first sentence. Some other requests:
+
+> Use `beck` to check which BIOS files my Recalbox needs that I don't have. Don't copy anything yet.
+
+> That plan looks right. Copy those files with `beck`, without `--overwrite`, `--move` or `--clean-unmatched`.
+
+### What to expect
+
+1. **It runs a dry run.** That changes nothing, but it does connect to the device you named. Your agent may ask your permission to run the command.
+2. **It explains the plan:** what would go where, what would be replaced, what's still missing, and why, as far as it can tell. Its reasons are likely ones, not certain ones.
+3. **It asks before copying.** Check the plan, and say yes only to that.
+4. **You scan the BIOS files on your Recalbox** afterwards, to see the result.
+
+An agent won't tell you where to get a BIOS file, because they're copyrighted. BECK only matches files you already have.
+
+### Your password
+
+**Never type your password into a chat with an agent.** What you send there may be stored, and BECK doesn't need it to go that way. If your Recalbox needs a login, either run BECK yourself so that it asks you, or set `BECK_SMB_PASSWORD` in your terminal before you start the agent, as in [Passwords](cli.md#passwords). If you've already pasted one, change it.
+
+### The rules agents follow
+
+[Using BECK as a tool](../AGENTS.md#using-beck-as-a-tool) has them in full:
+
+- Run a dry run first, and show you the plan.
+- Use only a device you named.
+- Add `--overwrite`, `--move`, `--clean-unmatched` or `--yes` only if you asked for that flag, for that run. `--overwrite` keeps no copy, and the other two [delete local files](cli.md#what-beck-deletes-and-when), so read what they do first.
+- Never put a password on a command line.
+
+These are instructions, and an agent can get them wrong. So read what it plans to run, particularly any of those flags. BECK's own safeguards hold either way: `--json` never asks, so without `--yes` a deletion is refused, and files on the device are kept unless `--overwrite` is there.
+
+### If you're writing a script or an agent
+
+- [JSON output](json-output.md): every field, and how to read a result. The [schemas](schemas/) describe each document.
+- [Exit codes](cli.md#exit-codes): what each one means. Branch on these first.
+- [The troubleshooting guide](troubleshooting.md): each message, with why and what to do.
+
+Within `schema_version` 1, fields are only added, so ignore any you don't know.
+
+## How agents find instructions
+
+- **Project instructions:** only [AGENTS.md](../AGENTS.md). There are no vendor-specific copies (DEC-21), so an agent that doesn't read it needs to be pointed at it.
+- **Skills:** procedures in `.agents/skills/`, for tasks that take several steps. The [index in AGENTS.md](../AGENTS.md#skills) lists them, and it's how an agent finds them (DEC-22). See [Skills](#skills) for the details.
 
 ## Support matrix
 
@@ -72,6 +130,3 @@ From each vendor's documentation on the same date, for the agents in [the suppor
 | opencode | 1.18.33 | [`.opencode/skills/`, and for compatibility `.claude/skills/` and `.agents/skills/`](https://opencode.ai/docs/skills/) | Yes, according to its documentation. That page describes its "V2", so version 1.18.33 may differ. |
 
 So the index in AGENTS.md is still needed. DEC-22's decision stands, but its consequence "No tool auto-discovers `.agents/skills/` natively" no longer holds for opencode, according to that documentation.
-
-## Coming later
-- Using BECK itself from an agent (`--json`, exit codes, safety rules): steps 06.12 and 09.8.

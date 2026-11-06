@@ -79,7 +79,7 @@ Flags beat environment variables, which beat the settings file. [The guide to th
 
 ## Automation and AI agents
 
-Add `--json` to any command to get [one JSON document](docs/json-output.md) on stdout, and branch on [the exit code](docs/cli.md#exit-codes). `--json` never asks a question. For AI
+Add `--json` to any command to get [one JSON document](docs/json-output.md) on stdout, and branch on [the exit code](docs/cli.md#exit-codes). `--json` never asks a question. To have an AI agent do this for you, see [Using BECK with an agent](docs/agents.md#using-beck-with-an-agent). For AI
 agents, [`AGENTS.md`](AGENTS.md#using-beck-as-a-tool) has the rules for using BECK safely.
 
 ## Troubleshooting
