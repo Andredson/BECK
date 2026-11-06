@@ -99,6 +99,10 @@ the VM's Samba with `port: 445`, with only the TCP port number redirected; real 
 uploaded under the wrong name, and a report with only those blocks read as "nothing missing". It was in the parser from the
 start, and fixed in [05.3a](05-testing-hardening.md#053a--a-report-beck-cant-recognize-isnt-nothing-missing) (DEC-54).
 
+**Found later, still open:** D18, a local file name that isn't valid UTF-8 crashes the human output after the uploads and deletions are
+done, so the run exits with 1 and loses its summary. D19, a dry run says `would copy` for a target it failed to check. Both are for
+[06.7a](06-cli-ux-and-machine-output.md#067a--fix-two-bugs-in-the-human-output-d18-d19).
+
 ### Hygiene findings (not numbered, fixed in [03.12](03-critical-fixes-and-data-safety.md#0312--cleanup-messages-imports-exceptions-typos-d12))
 - `import json` is unused, and so are `ITALIC`, `UNDERLINE`, `BLINK`, `BLACK` and `WHITE`.
 - Bare `except:` at lines 31 and 225; `exit()` (the `site` builtin) instead of `sys.exit()` or exceptions.
