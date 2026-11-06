@@ -91,7 +91,9 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
 - **Commit message:** `feat(skills): add execute-roadmap-step skill`
 
 ### 09.4 — Skill: `quality-gates`
-- [ ] Done
+- [x] Done (2026-11-06: each command was compared with `ci.yml`, and all 19 in the skill were extracted from it and run, passing, with gitleaks and Trivy at CI's pinned versions and hashes from a scratch folder. It follows CI's order, not the list below: the hygiene script comes before the tests, the
+  link test is part of `pytest`, and `requirements.txt` and the other three jobs are included. Differences from CI: the commit range, a wait loop that can't close a terminal, and the cleanup. The pre-commit line in `AGENTS.md` and the list in `docs/maintenance.md` now match CI. The other CI checks in `AGENTS.md`
+  still lack a few output flags, which change no result. Nothing keeps the skill matching CI yet, so 09.9 now checks it. Beyond the list below: `docs/maintenance.md`, and that line in 09.9.)
 - **What:** Runs the full local check suite in CI order (ruff check, ruff format check, mypy, unit tests with
   coverage, hygiene script, link test; integration tests if the Samba container is available) and explains how
   to read and fix each kind of failure. Never "fix" a failure by disabling a rule, lowering coverage or adding an
@@ -169,7 +171,8 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
     colon followed by a space, which isn't valid YAML;
   - every relative link inside a skill resolves;
   - every skill appears in the AGENTS.md index, and every index row points to an existing skill;
-  - the exit-code reference matches `docs/cli.md` (09.7).
+  - the exit-code reference matches `docs/cli.md` (09.7);
+  - the `quality-gates` commands are still the ones in `ci.yml` (09.4).
 - **Files:** `tests/test_skills.py`, `.agents/skills/README.md` (name the test in its steps)
 - **Done when:** Breaking any rule above makes the test fail.
 - **Verify:** `uv run pytest tests/test_skills.py -q`

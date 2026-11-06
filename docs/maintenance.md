@@ -64,13 +64,16 @@ CI fails if this file doesn't match `uv.lock` ([step 02.9](../roadmap/02-foundat
 The same commands CI runs:
 
 ```sh
-uv lock --check
+uv sync --locked
 uv run ruff check .
 uv run ruff format --check .
 uv run mypy
-uv run pytest
 uv run python scripts/check_repo_hygiene.py
+uv export --no-dev --no-hashes --no-emit-project -o requirements.txt && git diff --exit-code -- requirements.txt
+uv run pytest --cov --cov-report=xml
 ```
+
+`git add` the files from step 2 first, because `git diff` compares with what's staged. [The `quality-gates` skill](../.agents/skills/quality-gates/SKILL.md) has the other jobs, and says how to read a failure.
 
 ## 4. Pinned Actions and tools
 

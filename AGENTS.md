@@ -72,10 +72,10 @@ podman build -t beck-samba tests/integration/samba && podman run -d --rm -p 127.
 BECK_TEST_SMB_HOST=127.0.0.1 BECK_TEST_SMB_PORT=4450 uv run pytest -m integration
 ```
 
-Before committing, this must pass; it's what the `quality` and `tests` CI jobs run:
+Before committing, this must pass; it's what the `quality` and `tests` CI jobs run, and [the `quality-gates` skill](.agents/skills/quality-gates/SKILL.md) has the rest:
 
 ```sh
-uv lock --check && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest && uv run python scripts/check_repo_hygiene.py
+uv sync --locked && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run python scripts/check_repo_hygiene.py && uv export --no-dev --no-hashes --no-emit-project -o requirements.txt && git diff --exit-code -- requirements.txt && uv run pytest --cov --cov-report=xml
 ```
 
 - **After changing a flag or its help**, regenerate the reference: `uv run python scripts/gen_cli_reference.py`.
@@ -197,6 +197,7 @@ Agent Skills live in `.agents/skills/<name>/SKILL.md` (open agentskills.io forma
 | Skill | Path | Use it when |
 |---|---|---|
 | `execute-roadmap-step` | [`.agents/skills/execute-roadmap-step/SKILL.md`](.agents/skills/execute-roadmap-step/SKILL.md) | Asked to do or continue the next roadmap step, or to work on a stage. |
+| `quality-gates` | [`.agents/skills/quality-gates/SKILL.md`](.agents/skills/quality-gates/SKILL.md) | Before committing, when asked to run the checks or tests, or when a check or CI job fails. |
 
 ## Code style
 
