@@ -120,7 +120,7 @@ flowchart LR
 - [ ] Done
 - **What:** Complete `docs/releasing.md` with a numbered checklist, and mark who does each step:
   1. *(agent or owner)* Make sure the planned stages are closed and `main` is green.
-  2. *(agent)* Bump the version, regenerate `CHANGELOG.md` and `docs/cli-reference.md`, and commit
+  2. *(agent)* Bump the version, regenerate [`CHANGELOG.md`](../docs/maintenance.md#regenerating-the-changelog) and `docs/cli-reference.md`, and commit
      `chore(release): X.Y.Z` (DEC-46).
   3. *(owner)* Push, open the PR, merge with a merge commit.
   4. *(owner)* `git tag -a vX.Y.Z -m "beck-bios X.Y.Z" && git push origin vX.Y.Z`.

@@ -93,7 +93,9 @@ DEC-13, DEC-20, DEC-30, DEC-42, DEC-43.
 - **Commit message:** `docs(code): add docstrings to the public API`
 
 ### 08.6 — Changelog with git-cliff (DEC-20)
-- [ ] Done
+- [x] Done (2026-11-06: git-cliff 2.14.2, run with `uvx` and pinned in `docs/maintenance.md`. docs, test, ci, build, chore and style commits are hidden, unless breaking. Every commit is accounted for: 22 Added, 4 Changed, 20 Fixed, 11 under Earlier
+  history, 74 hidden and 8 PR merges. `40856f1` is marked breaking from `cliff.toml`, because its message has no `!`. There's no tag yet, so a release was tried with `--tag`, which only shows one release; the release notes from `--latest` will
+  also carry the Earlier history entry, for 10.6 to decide on. Nothing checks that the file is current, which would need git-cliff in the test run. Beyond the list below: `AGENTS.md`, the release steps in stage 10.)
 - **What:**
   - `cliff.toml`: Keep a Changelog layout; sections mapped from Conventional Commit types (feat → Added,
     fix → Fixed, refactor/perf → Changed, `!` → a **Breaking** marker, docs/test/ci/build/chore hidden or
