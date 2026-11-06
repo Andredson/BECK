@@ -58,7 +58,8 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
 - **Commit message:** `docs(agents): record the Agent Skills specification in use`
 
 ### 09.2 — Skills folder and AGENTS.md index
-- [ ] Done
+- [x] Done (2026-11-06: the index was already there, empty, from stage 01, so this added the rule and a row in the repository map. The README's example meets the limits from 09.1. It also says a skill never overrides the hard rules, which the step didn't ask for: otherwise "follow it
+  over your general habits" could be read that way. Step 09.9 adds its test to the README's steps.)
 - **What:** Create `.agents/skills/README.md` (the format above, how to add a skill) and an **index table** in
   AGENTS.md with columns: skill, path, use it when. Add the rule: "When a task matches a skill, read its whole
   `SKILL.md` before acting, and follow it over your general habits." No copies, symlinks or vendor folders (DEC-22).
@@ -167,7 +168,7 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
   - every relative link inside a skill resolves;
   - every skill appears in the AGENTS.md index, and every index row points to an existing skill;
   - the exit-code reference matches `docs/cli.md` (09.7).
-- **Files:** `tests/test_skills.py`
+- **Files:** `tests/test_skills.py`, `.agents/skills/README.md` (name the test in its steps)
 - **Done when:** Breaking any rule above makes the test fail.
 - **Verify:** `uv run pytest tests/test_skills.py -q`
 - **Commit message:** `test(skills): validate skill frontmatter, links and index`
