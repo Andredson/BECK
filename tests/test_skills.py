@@ -28,8 +28,8 @@ INDEX_ROW = re.compile(r"^\| `([^`]+)` \| \[`([^`]+)`\]\(([^)]+)\) \| .+ \|$")
 
 # Steps that only make sense on a CI runner: installing tools, waiting and showing logs.
 CI_ONLY = re.compile(
-    r"""^(?:echo\ |test\ "\$RESULT"|curl\ |"https://|mkdir\ |tar\ |for\ attempt|if\ timeout|exit\ |sleep\ |
-    done$|fi$|podman\ logs)""",
+    r"""^(?:echo\ |test\ "\$RESULT"|curl\ |"https://|mkdir\ |tar\ |for\ attempt|if\ timeout|
+    exit\ |sleep\ |done$|fi$|podman\ logs)""",
     re.VERBOSE,
 )
 # CI sets this in the step's ``env:``, and a local command has to set it on its own line.
