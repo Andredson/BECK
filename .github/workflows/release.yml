@@ -1,0 +1,145 @@
+# Publishes a pushed tag: rc tags to TestPyPI, final tags to PyPI after the owner approves (DEC-11, DEC-37, DEC-41).
+# No stored tokens: PyPI trusts this workflow through its OIDC identity. The owner sets that up, and pushes the tags.
+# Actions are pinned to full commit SHAs of releases at least 14 days old (DEC-45), and tests/test_workflow_pins.py
+# keeps the pins the same as in ci.yml. tests/test_release_workflow.py checks who gets which permission.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths: [.github/workflows/release.yml] # try the build job before a tag reaches it; nothing publishes
+
+permissions: {}
+
+env:
+  UV_VERSION: "0.13.2" # newest uv release at least 14 days old when pinned (2026-11-02)
+  TWINE_VERSION: "7.0.0" # newest twine release at least 14 days old when pinned (2026-11-06)
+  GIT_CLIFF_VERSION: "2.14.2" # newest git-cliff release at least 14 days old when pinned (2026-11-06)
+  TRIVY_VERSION: "0.76.0" # newest Trivy release at least 14 days old when pinned (2026-11-02); immutable release
+  # SHA-256 of trivy_0.76.0_Linux-64bit.tar.gz; matches the release's checksums file and GitHub's asset digest.
+  TRIVY_SHA256: "e24b1c51293c1b15e4ba8d45bbc7891ba053f90278ec2698f3562c993e145fe7"
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: false # nothing in a release should come from a cache
+      - name: The tag is the project's version
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: test "$GITHUB_REF_NAME" = "v$(uv version --short)"
+      - run: uv build
+      # --exclude-newer applies the 14-day cooldown (DEC-45) here too: uvx ignores the project's [tool.uv] settings.
+      - run: uvx --exclude-newer "14 days" --from "twine==${TWINE_VERSION}" twine check --strict dist/*
+      - name: Install Trivy (pinned release, SHA-256 verified)
+        run: |
+          curl -sSfL --retry 3 -o "$RUNNER_TEMP/trivy.tar.gz" \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  $RUNNER_TEMP/trivy.tar.gz" | sha256sum --check --strict
+          mkdir -p "$RUNNER_TEMP/bin"
+          tar -xzf "$RUNNER_TEMP/trivy.tar.gz" -C "$RUNNER_TEMP/bin" trivy
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      # In sbom/, not dist/: twine and the upload to PyPI take everything in dist/ (docs/releasing.md).
+      - name: Generate the SBOM
+        run: |
+          mkdir -p sbom
+          trivy fs --format cyclonedx --skip-dirs .venv --skip-files requirements.txt --output "sbom/beck-bios-$(uv version --short).cdx.json" .
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom
+          path: sbom/
+          if-no-files-found: error
+
+  # Publishes the files build made and checked. Only this job and the next get an identity PyPI trusts,
+  # and neither runs any of the project's code.
+  publish-testpypi:
+    name: publish to TestPyPI
+    needs: build
+    if: ${{ startsWith(github.ref, 'refs/tags/v') && contains(github.ref_name, 'rc') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/beck-bios
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  publish-pypi:
+    name: publish to PyPI
+    needs: build
+    if: ${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, 'rc') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi # the owner approves each run
+      url: https://pypi.org/p/beck-bios
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+
+  # After publishing, so that a release page never exists for a version PyPI refused.
+  github-release:
+    name: GitHub Release
+    needs: [publish-testpypi, publish-pypi]
+    if: ${{ !cancelled() && (needs.publish-testpypi.result == 'success' || needs.publish-pypi.result == 'success') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # the notes need the tags and the commits since the last release
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: sbom
+          path: sbom/
+      # From the last final release, not the last tag: otherwise a final's notes only say what changed since its rc.
+      - name: Write the release notes
+        run: |
+          PREVIOUS=$(git describe --tags --abbrev=0 --exclude '*rc*' HEAD^ 2>/dev/null || true)
+          uvx --exclude-newer "14 days" "git-cliff@${GIT_CLIFF_VERSION}" ${PREVIOUS:+"$PREVIOUS..HEAD"} --tag "$GITHUB_REF_NAME" --strip header > notes.md
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=()
+          case "$GITHUB_REF_NAME" in *rc*) prerelease=(--prerelease) ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/* sbom/* --verify-tag --title "$GITHUB_REF_NAME" --notes-file notes.md "${prerelease[@]}"

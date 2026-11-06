@@ -103,7 +103,9 @@ flowchart LR
 - **Commit message:** `docs(release): document SBOM generation with Trivy`
 
 ### 10.6 — Release workflow
-- [ ] Done
+- [x] Done (2026-11-06: `actionlint` 1.7.12.25 passes on `release.yml` (DEC-66), though without `shellcheck`, so not the shell lines. On all the workflows, its only finding is `ubuntu-26.04` in `ci.yml`, which it doesn't know and CI runs on. With the owner's OK, real tags in a throwaway repo showed that `--latest` gives a final only what changed since its rc, so the notes use a range from the last final release, and `ignore_tags` in `cliff.toml`
+  folds rcs into their release; both were checked over rc, rc, final, rc, final. The first release's notes also carry the Earlier history entry, which stays. Beyond the list above: `pull_request` on this file runs the build job, so it can be tried before a tag; nothing publishes, because those jobs need a tag. The publishing jobs can't run until 10.9. Beyond the list below: DEC-65 (`actions/download-artifact`) and DEC-66, `tests/test_release_workflow.py`, which
+  caught 17 deliberate breaks, `cliff.toml`, `docs/maintenance.md`'s pins, and the `AGENTS.md` map.)
 - **What:** `.github/workflows/release.yml`, triggered on tag push `v*`:
   - `build` (permissions `contents: read`): checkout, setup-uv, check that the tag equals `v$(uv version --short)`,
     `uv build`, `twine check`, SBOM in `sbom/` (never `dist/`, 10.5); upload `dist/` and `sbom/` as separate artifacts, so that the publish jobs only get `dist/`.
@@ -112,7 +114,7 @@ flowchart LR
   - `publish-pypi` (final tags only): environment `pypi` (the owner approves), `id-token: write`, the same action.
     Attestations are produced automatically with trusted publishing.
   - `github-release` (after publishing; the only job with `contents: write`): release notes from
-    `uvx git-cliff@<version> --latest --strip header`; `gh release create "$TAG" dist/* --notes-file notes.md`,
+    `uvx git-cliff@<version>` over the range from the last final release, with `--tag` and `--strip header`, because `--latest` gives a final only what changed since its rc; `gh release create "$TAG" dist/* --notes-file notes.md`,
     with `--prerelease` for rc tags. Attach the SBOM.
   - All actions pinned by SHA. No long-lived tokens anywhere.
 - **Files:** `.github/workflows/release.yml`

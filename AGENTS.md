@@ -29,6 +29,7 @@ CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against
 | `tests/integration/samba/` | The Samba test server for integration tests, built with **Podman, never Docker** (DEC-55). See [its README](tests/integration/samba/README.md). |
 | `scripts/check_repo_hygiene.py` | Fails if git tracks BIOS/ROM-like files, files over 1 MiB, config files, or a TOML file with a password in it (each allowed exception has a reason). |
 | `.github/workflows/ci.yml` | CI on every PR and push to `main`: `quality`, the `tests` matrix (Linux × Python 3.11–3.14; Windows and macOS removed, DEC-49) summarized by `tests-passed`, `package` (builds and smoke-installs the wheel), `integration` (a real Samba server, with Podman), `commits`, `secrets`, `sca`. |
+| `.github/workflows/release.yml` | Publishes a pushed tag: rc tags to TestPyPI, final tags to PyPI after the owner approves, then a GitHub Release with an SBOM. No stored tokens. `tests/test_release_workflow.py` checks who gets which permission. |
 | `.github/workflows/security.yml` | Weekly (Mondays 06:00 UTC): full-history secret scan and dependency scan. |
 | `.gitleaks.toml`, `.trivyignore` | gitleaks settings (fake `beck-test-*` values allowed only under `tests/`); accepted Trivy findings, each with a link and an expiry date. |
 | `.editorconfig`, `.gitattributes` | Editor settings; LF line endings in the repository. |

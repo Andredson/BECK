@@ -150,6 +150,8 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-61 | A file already on the device is **kept and reported**, and `--overwrite` replaces it, including files listed as `INCORRECT` (the flag DEC-54 left open). *(2026-11-05, step 06.5)* |
 | DEC-62 | What BECK does, and its exit code, **don't depend on whether its output can be written**. The run carries on when stdout fails: a closed pipe is silent, and any other failure prints one line on stderr. *(2026-11-05, step 06.7b)* |
 | DEC-63 | `types-jsonschema` is a dev-only dependency, so that mypy can check the tests that use `jsonschema`, which ships no type hints. *(2026-11-06, step 06.8)* |
+| DEC-65 | The release workflow passes built files between jobs with `actions/download-artifact`, pinned by SHA, so what's published is exactly what was built and checked. *(2026-11-06, step 10.6)* |
+| DEC-66 | `actionlint` is run by hand with `uvx` when a workflow changes, and isn't in CI. *(2026-11-06, step 10.6)* |
 | DEC-64 | An upload whose size, or with `--verify` whose MD5, doesn't match has the status `failed`, not `uploaded` with an `error`. *(2026-11-06, step 07.7)* |
 
 ### CI/CD, security, and release
