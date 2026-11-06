@@ -188,7 +188,8 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
 - **Commit message:** `test(skills): validate skill frontmatter, links and index`
 
 ### 09.10 — Cross-vendor evaluation
-- [ ] Done
+- [x] Done (2026-11-06: ten sessions, five skills on two agents, in clean clones. All opened the right skill first, none changed a file, ran a risky command or proposed a trailer, and my transcript check found no personal data. No wording needed fixing. opencode found the skills with its own `skill` tool, which settles what 09.1 left untested. Not proven: `big-pickle`'s maker isn't
+  stated, so this is two vendors' agents and possibly not two makers' models, and the owner decides whether to repeat it with a named one. Four of the five were plans, not real runs. opencode's permissions were set by a config file in each clone, never in the repository.)
 - **What:** For each skill, give the same short task to agents from **at least two different vendors** (e.g.
   "add this report as a fixture", "why is scph5501.bin still missing?"). Record in `docs/agents.md` whether each
   agent found the skill through the AGENTS.md index, followed it, and respected the safety rules. Fix wording in
