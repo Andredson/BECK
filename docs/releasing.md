@@ -66,7 +66,7 @@ Each GitHub Release has a software bill of materials: a [CycloneDX](https://cycl
 
 ```sh
 mkdir -p sbom
-trivy fs --format cyclonedx --skip-dirs .venv --skip-dirs sbom --skip-files requirements.txt --output "sbom/beck-bios-$(uv version --short).cdx.json" .
+trivy fs --format cyclonedx --skip-dirs .venv --skip-files requirements.txt --output "sbom/beck-bios-$(uv version --short).cdx.json" .
 ```
 
 - **What's in it:** the runtime packages in `uv.lock`, with their exact versions, and `beck-bios` itself. That's the same list as `requirements.txt`, which it skips so as not to count it twice.
