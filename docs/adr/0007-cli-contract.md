@@ -56,6 +56,21 @@ Testing the table against the real command raised these details, which the agent
   its message never repeats a value, because that may be a password. A blank `user` or `passwd` means guest, as the example config says.
 - **A local target that can't be checked is one failed item,** with exit 3, like any other transport failure, and the run carries on.
 
+### Details settled in step 06.10
+The roadmap says `-q` prints only errors and the final summary. Building it raised these details, which the agent settled and reported to
+the owner:
+
+- **`-q` never hides a deletion,** because [the docs](../cli.md#what-beck-deletes-and-when) promise that every one is listed, and the prompt
+  still appears.
+- **`-q` doesn't shorten `beck report`,** because the list is what the command is for.
+- **A run that ends early still says how:** `No missing bios were found`, or `No BIOS files found in …`, because there's no other summary.
+- **A run that fails `--fail-if-missing` still says why,** with each file, because otherwise exit 5 would explain nothing. An `INCORRECT` file
+  gets a short line here, because its usual line is hidden.
+- **`-q` hides warnings too,** such as an extension that changes, and files it can't read, because the roadmap asks for errors and the summary.
+  `--json` still has them.
+- **`-v` names no user,** as `--json` doesn't, and turns on only BECK's own logs, because pysmb's debug logs show what crosses the network.
+- **No counter with `-v`,** because it would break up the log lines, or with `--json`, because a counter is for people.
+
 ### Deleting is always explicit
 Nothing is deleted without `--move` or `--clean-unmatched`, and off a terminal not without `--yes` too. `--json` never prompts, so that
 a consumer can't hang on a question or confirm one by accident.

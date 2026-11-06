@@ -159,6 +159,12 @@ class JsonRenderer:
     def no_files(self, folder: Path) -> None:
         """Nothing yet: the document has it at the end."""
 
+    def hashing(self, count: int) -> None:
+        """Nothing: a counter is for people."""
+
+    def hashing_done(self) -> None:
+        """Nothing: a counter is for people."""
+
     def unreadable(self, items: tuple[Unreadable, ...]) -> None:
         self.unreadable_items = items
 

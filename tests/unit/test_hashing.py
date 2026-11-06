@@ -10,6 +10,7 @@ import pytest
 
 from beck.hashing import md5_file, scan
 from beck.models import LocalFile, ScanResult, Unreadable
+from tests.factories import make_bios_file
 
 
 def write(path: Path, data: bytes = b"\x00\x01") -> Path:
@@ -257,3 +258,23 @@ def test_scanning_prints_nothing_and_changes_nothing(
     captured = capsys.readouterr()
     assert captured.out == captured.err == ""
     assert file.stat().st_mtime_ns == before
+
+
+def test_scan_counts_each_file_as_it_goes(tmp_path: Path) -> None:
+    make_bios_file(tmp_path, "a.bin")
+    make_bios_file(tmp_path, "sub/b.bin")
+    (tmp_path / "broken").symlink_to(tmp_path / "nowhere")
+    counts: list[int] = []
+
+    scan(tmp_path, counts.append)
+
+    assert counts == [1, 2, 3]
+
+
+def test_scan_skips_what_it_does_not_count(tmp_path: Path) -> None:
+    make_bios_file(tmp_path, ".hidden")
+    counts: list[int] = []
+
+    scan(tmp_path, counts.append)
+
+    assert counts == []

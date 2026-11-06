@@ -4,7 +4,7 @@ The reference for using BECK from the command line.
 
 **Status:** this is the design [stage 06](../roadmap/06-cli-ux-and-machine-output.md) is building, so most of it doesn't exist yet.
 Today, `beck check` and `beck report` work with the options under [Choosing what BECK works on](#choosing-what-beck-works-on), the
-[safety options](#safety) work, and `--version`, `--no-color` and `--json` work. `beck scan` only works with `--json`, and otherwise says it isn't available yet. The rest arrives in later steps of the stage.
+[safety options](#safety) work, and all the global options work. `beck scan` only works with `--json`, and otherwise says it isn't available yet. The rest arrives in later steps of the stage.
 
 ```text
 beck [--version] [-v | -q] [--no-color] [--json] <command> [options]
@@ -61,10 +61,14 @@ They work before or after the command.
 | Option | What it does |
 |---|---|
 | `--version` | Prints `beck <version>`. |
-| `-v` | Adds debug logs on stderr: connection steps, timings and plan details, never credentials. |
-| `-q` | Prints only errors and the final summary. |
+| `-v` | Adds debug logs on stderr: connection steps, timings and plan details, never credentials or user names. Each line starts with the time since BECK started. |
+| `-q` | With `beck check`, prints only errors, deletions and how the run ended, including why `--fail-if-missing` failed. The deletion prompt still appears. It doesn't shorten `beck report`, whose list is what you asked for. |
 | `--no-color` | The same as setting `NO_COLOR`. |
-| `--json` | Prints one JSON document on stdout, and logs and prompts on stderr. See [JSON output](#json-output). |
+| `--json` | Prints one JSON document on stdout, and logs on stderr. It never asks anything. See [JSON output](#json-output). |
+
+`-v` and `-q` can't be combined, and neither changes a `--json` document.
+
+While hashing, a counter shows on stderr, but only on a terminal, and not with `-v`, `-q` or `--json`.
 
 Colors follow `NO_COLOR`, then `FORCE_COLOR`, and otherwise appear only on a terminal. An empty value counts as not set.
 

@@ -3,7 +3,9 @@
 import argparse
 import logging
 import os
+import platform
 import sys
+import time
 from pathlib import Path
 from typing import Any, NoReturn
 
@@ -16,7 +18,7 @@ from beck.frontends import get_adapter
 from beck.frontends.base import FrontendAdapter
 from beck.hashing import scan
 from beck.matcher import plan
-from beck.models import MissingBios, RunResult
+from beck.models import MissingBios, Plan, RunResult, ScanResult
 from beck.output import LOGGER_NAME, finish_output
 from beck.output.console import ConsoleRenderer, configure_logging
 from beck.output.json import JsonRenderer, write_rejected_command
@@ -49,6 +51,8 @@ HIGHEST_PORT = 65535
 REPORT_FILE_HELP = "read this local copy of the report, not the one on the target"
 
 Renderer = ConsoleRenderer | JsonRenderer
+
+_log = logging.getLogger(__name__)
 
 
 class _Parser(argparse.ArgumentParser):
@@ -143,7 +147,7 @@ def _entries_from_file(adapter: FrontendAdapter, report_file: str) -> list[Missi
         raw = Path(report_file).read_bytes()
     except OSError as e:
         raise ReportNotFoundError(f"Can't read the report {report_file}: {e.strerror}") from e
-    return adapter.parse_report(raw.decode("utf-8", errors="replace"))
+    return _parsed_report(adapter, raw)
 
 
 def _entries_from_target(adapter: FrontendAdapter, transport: Transport) -> list[MissingBios]:
@@ -153,8 +157,54 @@ def _entries_from_target(adapter: FrontendAdapter, transport: Transport) -> list
             f"{adapter.report_path} not found on {transport.describe()}. "
             "Generate the report on the device first."
         )
-    raw = transport.read_bytes(adapter.report_path)
-    return adapter.parse_report(raw.decode("utf-8", errors="replace"))
+    return _parsed_report(adapter, transport.read_bytes(adapter.report_path))
+
+
+def _parsed_report(adapter: FrontendAdapter, raw: bytes) -> list[MissingBios]:
+    entries = adapter.parse_report(raw.decode("utf-8", errors="replace"))
+    _log.debug("Report: %d entries, from %d bytes", len(entries), len(raw))
+    return entries
+
+
+def _scan_with_progress(source: Path, renderer: Renderer) -> ScanResult:
+    started = time.monotonic()
+    scanned = scan(source, renderer.hashing)
+    renderer.hashing_done()
+    _log.debug(
+        "Scanned %s: %d files, %d can't be read, in %.3f s",
+        source,
+        len(scanned.files),
+        len(scanned.unreadable),
+        time.monotonic() - started,
+    )
+    return scanned
+
+
+def _log_plan(built: Plan) -> None:
+    _log.debug(
+        "Plan: %d uploads, %d folders, %d duplicates, %d unmatched, %d already filled, "
+        "%d still missing, %d incorrect",
+        len(built.uploads),
+        len(built.directories),
+        len(built.duplicates),
+        len(built.unmatched),
+        len(built.already_filled),
+        len(built.still_missing),
+        len(built.incorrect),
+    )
+    for upload in built.uploads:
+        _log.debug("Plan: %s -> %s", upload.source.relative, upload.target)
+
+
+def _log_run(result: RunResult, started: float) -> None:
+    _log.debug(
+        "Ran in %.3f s: %d uploaded, %d kept, %d deleted, %d errors",
+        time.monotonic() - started,
+        len(result.completed),
+        len(result.kept),
+        len(result.deleted),
+        len(result.errors),
+    )
 
 
 def _source_folder(args: argparse.Namespace, base_dir: Path) -> Path:
@@ -209,6 +259,7 @@ def _run_check(args: argparse.Namespace, base_dir: Path, renderer: Renderer) -> 
 
     transport = _open_target(args, base_dir)
     renderer.opened(transport.url())
+    _log.debug("Target: %s", transport.url())
     with transport:
         if args.report_file is not None:
             entries = _entries_from_file(adapter, args.report_file)
@@ -225,7 +276,7 @@ def _run_check(args: argparse.Namespace, base_dir: Path, renderer: Renderer) -> 
             return ended_early(entries)
         renderer.missing_count(len(to_fill))
 
-        scanned = scan(source)
+        scanned = _scan_with_progress(source, renderer)
         renderer.unreadable(scanned.unreadable)
         if not scanned.files:
             if args.overwrite:
@@ -235,11 +286,13 @@ def _run_check(args: argparse.Namespace, base_dir: Path, renderer: Renderer) -> 
         renderer.files_found(len(scanned.files))
 
         built = plan(entries, scanned.files, replace_incorrect=args.overwrite)
+        _log_plan(built)
         options = {
             "overwrite": args.overwrite,
             "move": args.move,
             "clean_unmatched": args.clean_unmatched,
         }
+        started = time.monotonic()
         if args.dry_run:
             result = execute(built, transport, dry_run=True, **options)
         else:
@@ -249,6 +302,7 @@ def _run_check(args: argparse.Namespace, base_dir: Path, renderer: Renderer) -> 
                 if preview.deleted:
                     _confirm_deletion(preview, renderer)
             result = execute(built, transport, dry_run=False, **options)
+        _log_run(result, started)
 
     if args.overwrite:
         renderer.incorrect(list(result.plan.incorrect))
@@ -267,6 +321,7 @@ def _run_report(args: argparse.Namespace, base_dir: Path, renderer: Renderer) ->
     else:
         transport = _open_target(args, base_dir)
         renderer.opened(transport.url())
+        _log.debug("Target: %s", transport.url())
         with transport:
             entries = _entries_from_target(adapter, transport)
     renderer.report(entries)
@@ -275,7 +330,7 @@ def _run_report(args: argparse.Namespace, base_dir: Path, renderer: Renderer) ->
 
 def _run_scan(args: argparse.Namespace, base_dir: Path, renderer: JsonRenderer) -> int:
     """List the local files. It uses no network and writes nothing."""
-    renderer.scan(scan(_source_folder(args, base_dir)))
+    renderer.scan(_scan_with_progress(_source_folder(args, base_dir), renderer))
     return 0
 
 
@@ -285,6 +340,20 @@ def _add_global_options(parser: argparse.ArgumentParser, *, on_a_command: bool) 
     On a command, the default must be SUPPRESS. Otherwise, argparse sets it after reading the part
     before the command, so ``beck --no-color check`` would lose the flag.
     """
+    parser.add_argument(
+        "-v",
+        dest="verbose",
+        action="store_true",
+        default=argparse.SUPPRESS if on_a_command else False,
+        help="add debug logs on stderr: steps, timings and the plan, never credentials",
+    )
+    parser.add_argument(
+        "-q",
+        dest="quiet",
+        action="store_true",
+        default=argparse.SUPPRESS if on_a_command else False,
+        help="with check, print only errors, deletions and how the run ended",
+    )
     parser.add_argument(
         "--no-color",
         action="store_true",
@@ -407,10 +476,13 @@ def _main(argv: list[str] | None, base_dir: Path | None) -> int:
     parser = _build_parser(json_errors=_asks_for_json(sys.argv[1:] if argv is None else argv))
     try:
         args = parser.parse_args(argv)
+        if args.verbose and args.quiet:  # checked here because they can be on different sides
+            parser.error("-v and -q can't be used together")
     except UsageError as error:
         write_rejected_command(str(error))
         return error.exit_code
-    logger = configure_logging()
+    logger = configure_logging(logging.DEBUG if args.verbose else logging.WARNING)
+    _log.debug("BECK %s, Python %s", __version__, platform.python_version())
     renderer: Renderer
     if args.json:
         renderer = JsonRenderer(
@@ -418,8 +490,10 @@ def _main(argv: list[str] | None, base_dir: Path | None) -> int:
         )
     else:
         environ = {**os.environ, "NO_COLOR": "1"} if args.no_color else None
-        renderer = ConsoleRenderer(environ=environ)
-    if args.command is None:
+        # A report's list is what it's for, so quiet is only for check.
+        quiet = args.quiet and args.command in (None, "check")
+        renderer = ConsoleRenderer(environ=environ, quiet=quiet, progress=not args.verbose)
+    if args.command is None and not args.quiet:
         logger.warning("Hint: use 'beck check'. Running beck with no command is going away.")
 
     try:

@@ -4,6 +4,7 @@ Most of these run real processes with real pipes, because these failures depend 
 on what the interpreter does when it exits.
 """
 
+import contextlib
 import errno
 import io
 import json
@@ -650,3 +651,81 @@ def test_a_stream_that_fails_cannot_change_exit_5(tmp_path: Path, mode: str, std
     done = run_beck(*MODES[mode], "check", *flags, stdout=stdout)
 
     assert done.returncode == 5
+
+
+# -v writes a lot to stderr, and the counter writes to a terminal
+
+
+@pytest.mark.parametrize("stderr", ["full disk", "closed pipe", "closed"])
+def test_v_with_a_stderr_that_fails_cannot_change_the_run(tmp_path: Path, stderr: str) -> None:
+    source, device = tmp_path / "source", tmp_path / "device"
+    source.mkdir()
+    device.mkdir()
+    (source / "good.bin").write_bytes(GOOD)
+    write_report(device, make_missing("good.bin", md5_of(GOOD)))
+    arguments = ["-v", "check", "--source", str(source), "--target-dir", str(device)]
+    to_close: list[int] = []
+    kwargs: dict[str, Any] = {}
+    if stderr == "closed":
+        kwargs["close"] = "2>&-"
+    elif stderr == "closed pipe":
+        read_end, write_end = os.pipe()
+        os.close(read_end)
+        to_close.append(write_end)
+        kwargs["stderr"] = write_end
+    else:
+        kwargs["stderr"] = stderr
+
+    try:
+        done = run_beck(*arguments, **kwargs)
+    finally:
+        for descriptor in to_close:
+            os.close(descriptor)
+
+    assert done.returncode == 0
+    assert (device / "good.bin").read_bytes() == GOOD
+
+
+def read_terminal(master: int) -> bytes:
+    """What's waiting on a pseudo-terminal whose other end is closed."""
+    found = b""
+    with contextlib.suppress(OSError):  # Linux reports the closed end as an I/O error
+        while chunk := os.read(master, 4096):
+            found += chunk
+    return found
+
+
+def test_a_real_terminal_shows_the_counter_and_stdout_stays_clean(tmp_path: Path) -> None:
+    import pty  # here because it doesn't exist on Windows
+
+    source, device = tmp_path / "source", tmp_path / "device"
+    source.mkdir()
+    device.mkdir()
+    (source / "good.bin").write_bytes(GOOD)
+    write_report(device, make_missing("good.bin", md5_of(GOOD)))
+    master, slave = pty.openpty()
+    try:
+        done = run_beck("check", "--source", str(source), "--target-dir", str(device), stderr=slave)
+    finally:
+        os.close(slave)
+    try:
+        shown = read_terminal(master)
+    finally:
+        os.close(master)
+
+    assert done.returncode == 0
+    assert b"Hashing files: 1" in shown
+    assert b"Hashing" not in done.stdout
+
+
+def test_a_stderr_that_is_no_terminal_gets_no_counter(tmp_path: Path) -> None:
+    source, device = tmp_path / "source", tmp_path / "device"
+    source.mkdir()
+    device.mkdir()
+    (source / "good.bin").write_bytes(GOOD)
+    write_report(device, make_missing("good.bin", md5_of(GOOD)))
+
+    done = run_beck("check", "--source", str(source), "--target-dir", str(device))
+
+    assert done.returncode == 0
+    assert done.stderr == b""

@@ -288,7 +288,9 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `feat(cli): return documented exit codes and support --fail-if-missing`
 
 ### 06.10 — Verbosity, logging and color flags
-- [ ] Done
+- [x] Done (2026-11-06: the choices `-q` needed are in [ADR-0007](../docs/adr/0007-cli-contract.md#details-settled-in-step-0610). Beyond the list
+  below: `src/beck/hashing.py` for the counter, `src/beck/transports/` for the connection steps, `src/beck/output/json.py`, the docs,
+  and tests in `tests/unit/test_hashing.py`, `tests/unit/test_output_streams.py` and the integration tests.)
 - **What:** `-v` sets debug logs on stderr (connection steps, timings, plan details; **never** credentials).
   `-q` prints only errors and the final summary. `--no-color` already exists (06.2). Hashing many files
   shows a simple progress counter on stderr, on a TTY only.

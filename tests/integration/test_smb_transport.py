@@ -449,6 +449,31 @@ def test_end_to_end_fail_if_missing_on_a_real_server(
         assert transport.read_bytes(target) == good.path.read_bytes()
 
 
+def test_end_to_end_v_never_shows_the_credentials_on_a_real_server(
+    samba: Samba,
+    tmp_path: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "config.yml").write_text(
+        samba.config("beck", ACCOUNT_CREDENTIAL), encoding="utf-8"
+    )
+    good = make_bios_file(tmp_path / "bios", "good.bin")
+    target = (folder / "good.bin").as_posix()
+    put_report(make_report_text([make_missing(target, good.md5)]))
+
+    assert cli.main(["-v", "check"], base_dir=tmp_path) == 0
+
+    out = capsys.readouterr()
+    assert f"Uploaded {target}" in out.err
+    assert ACCOUNT_CREDENTIAL not in out.out + out.err
+    assert "with a user name" in out.err
+    with samba.guest() as transport:
+        assert transport.read_bytes(PurePosixPath(target)) == good.path.read_bytes()
+
+
 def test_end_to_end_blank_credentials_are_a_guest_on_a_real_server(
     samba: Samba, tmp_path: Path, put_report: PutReport
 ) -> None:

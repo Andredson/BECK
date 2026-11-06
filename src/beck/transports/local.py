@@ -1,12 +1,16 @@
 """A folder on disk: a mounted SD card or USB drive, a run on the device itself, or a test."""
 
+import logging
 import shutil
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
 from typing import Self
 
 from beck.errors import TransportError
+
+_log = logging.getLogger(__name__)
 
 
 @contextmanager
@@ -31,6 +35,7 @@ class LocalTransport:
     def __enter__(self) -> Self:
         if not self.root.is_dir():
             raise TransportError(f"Folder {self.root} doesn't exist")
+        _log.debug("Using folder %s", self.root)
         return self
 
     def __exit__(self, *exc: object) -> None:
@@ -68,8 +73,11 @@ class LocalTransport:
     def upload(self, local: Path, remote: PurePosixPath) -> int:
         with _reporting(f"copying {local} to", remote):
             target = self._resolve(remote)
+            started = time.monotonic()
             shutil.copyfile(local, target)
-            return target.stat().st_size
+            size = target.stat().st_size
+            _log.debug("Copied %s: %d bytes in %.3f s", remote, size, time.monotonic() - started)
+            return size
 
     def describe(self) -> str:
         return f"local folder {self.root}"

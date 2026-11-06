@@ -1,7 +1,7 @@
 # JSON output
 
-For scripts and AI agents. With `--json`, BECK prints **one JSON document on stdout** and nothing else there. Logs go to stderr, and
-it never asks a question. The option works before or after the command.
+For scripts and AI agents. With `--json`, BECK prints **one JSON document on stdout** and nothing else there. Logs go to stderr, `-v`
+adds more of them, `-q` changes nothing, and it never asks a question. The option works before or after the command.
 
 ```sh
 beck --json check --dry-run

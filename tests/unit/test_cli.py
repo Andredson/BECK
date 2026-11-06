@@ -1493,7 +1493,7 @@ def test_an_unexpected_error_returns_1_with_a_traceback_on_stderr(
 ) -> None:
     report(server, block("a.bin", "0" * 32))
 
-    def a_bug(_folder: Path) -> NoReturn:
+    def a_bug(_folder: Path, _on_file: Any) -> NoReturn:
         raise RuntimeError("a bug in BECK")
 
     monkeypatch.setattr(cli, "scan", a_bug)

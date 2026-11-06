@@ -1,7 +1,9 @@
 """A share on an SMB server, through pysmb (DEC-53). Only this module talks to pysmb."""
 
 import io
+import logging
 import socket
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
@@ -13,6 +15,8 @@ from smb.SMBConnection import SMBConnection
 
 from beck.errors import TransportError
 from beck.models import SHARE_ROOT
+
+_log = logging.getLogger(__name__)
 
 
 @contextmanager
@@ -74,11 +78,19 @@ class SmbTransport:
             use_ntlm_v2=True,
             is_direct_tcp=self.port == 445,
         )
+        _log.debug(
+            "Connecting to %s:%d, %s, %s",
+            self.host,
+            self.port,
+            "over plain TCP" if self.port == 445 else "with a NetBIOS session",
+            "with a user name" if self.user else "as a guest",
+        )
         try:
             self._open(conn)
         except BaseException:
             conn.close()  # __exit__ doesn't run when __enter__ fails
             raise
+        _log.debug("Connected, and the share %s exists", self.share)
         self._conn = conn
         return self
 
@@ -106,6 +118,7 @@ class SmbTransport:
         return [e for e in entries if e.filename not in (".", "..")]
 
     def read_bytes(self, path: PurePosixPath) -> bytes:
+        _log.debug("Reading %s", path)
         buffer = io.BytesIO()  # in memory: no local or temporary file is written (D6)
         with _reporting(f"reading {path} from share {self.share}"):
             self._conn.retrieveFile(
@@ -138,6 +151,7 @@ class SmbTransport:
             actual = _same_name(name, self._list_dirs(parent))
             if actual is None:
                 actual = name
+                _log.debug("Creating folder %s%s", parent, name)
                 with _reporting(f"creating folder {parent}{name} on share {self.share}"):
                     self._conn.createDirectory(self.share, f"{parent}{name}", timeout=self.timeout)
             parent = f"{parent}{actual}/"
@@ -147,10 +161,16 @@ class SmbTransport:
             _reporting(f"uploading {local} to {remote} on share {self.share}"),
             local.open("rb") as file,  # closed before this returns (D7)
         ):
-            written = self._conn.storeFile(
-                self.share, (self.root / remote).as_posix(), file, timeout=self.timeout
+            started = time.monotonic()
+            written = int(
+                self._conn.storeFile(
+                    self.share, (self.root / remote).as_posix(), file, timeout=self.timeout
+                )
             )
-            return int(written)
+            _log.debug(
+                "Uploaded %s: %d bytes in %.3f s", remote, written, time.monotonic() - started
+            )
+            return written
 
     def _where(self) -> str:
         return self.share if self.root == SHARE_ROOT else f"{self.share}/{self.root}"

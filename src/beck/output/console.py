@@ -47,10 +47,17 @@ UNMATCHED_WARNING = (
 
 
 def configure_logging(level: int = logging.WARNING) -> logging.Logger:
-    """Send BECK's diagnostics to stderr, so that stdout only has the human output."""
+    """Send BECK's diagnostics to stderr, so that stdout only has the human output.
+
+    Only BECK's: pysmb's debug logs show what crosses the network, which isn't for a log. With debug
+    logs, each line says how long the run has taken so far.
+    """
     logger = logging.getLogger(LOGGER_NAME)
     logger.setLevel(level)
-    logger.handlers[:] = [logging.StreamHandler(sys.stderr)]  # replaced, so lines never repeat
+    handler = logging.StreamHandler(sys.stderr)
+    if level <= logging.DEBUG:
+        handler.setFormatter(logging.Formatter("%(relativeCreated)6d ms  %(message)s"))
+    logger.handlers[:] = [handler]  # replaced, so lines never repeat
     return logger
 
 
@@ -106,14 +113,26 @@ def _files_analysed(result: RunResult) -> list[LocalFile]:
 
 
 class ConsoleRenderer:
-    """Prints each stage of a run. Nothing here decides anything."""
+    """Prints each stage of a run. Nothing here decides anything.
+
+    ``quiet`` leaves only errors, deletions and how the run ended. ``progress`` allows the counter
+    while hashing, which also needs a terminal, and which ``quiet`` turns off.
+    """
 
     def __init__(
-        self, stream: TextIO | None = None, environ: Mapping[str, str] | None = None
+        self,
+        stream: TextIO | None = None,
+        environ: Mapping[str, str] | None = None,
+        *,
+        quiet: bool = False,
+        progress: bool = True,
     ) -> None:
         self.stream = sys.stdout if stream is None else stream
         settings = os.environ if environ is None else environ
         self.color = self.stream is not None and wants_color(self.stream, settings)
+        self.quiet = quiet
+        self.progress = progress and not quiet and sys.stderr is not None and sys.stderr.isatty()
+        self._counter = ""
 
     def _paint(self, text: object, color: str) -> str:
         return f"{color}{text}{RESET}" if self.color else str(text)
@@ -121,14 +140,36 @@ class ConsoleRenderer:
     def _print(self, line: str) -> None:
         print_safely(_printable(line, self.stream), self.stream)
 
+    def _detail(self, line: str) -> None:
+        if not self.quiet:
+            self._print(line)
+
+    def _show_counter(self, text: str) -> None:
+        """On stderr, to leave stdout as the result. If it fails, the run carries on without it."""
+        try:
+            sys.stderr.write(text)
+            sys.stderr.flush()
+        except OSError:
+            self.progress = False
+
+    def hashing(self, count: int) -> None:
+        if self.progress:
+            self._counter = f"Hashing files: {count}"
+            self._show_counter(f"\r{self._counter}")
+
+    def hashing_done(self) -> None:
+        """Clears the counter by writing over it, which any terminal can do."""
+        if self.progress and self._counter:
+            self._show_counter(f"\r{' ' * len(self._counter)}\r")
+
     def missing_count(self, count: int) -> None:
-        self._print(f"There are {self._paint(count, MAGENTA)} missing bios in your RECALBOX")
+        self._detail(f"There are {self._paint(count, MAGENTA)} missing bios in your RECALBOX")
 
     def nothing_missing(self) -> None:
         self._print(self._paint("No missing bios were found in your RECALBOX!", CYAN))
 
     def files_found(self, count: int) -> None:
-        self._print(
+        self._detail(
             f"There are {self._paint(count, MAGENTA)} possible bios to be analysed in your system"
         )
 
@@ -173,13 +214,13 @@ class ConsoleRenderer:
         """Local files and folders that couldn't be read. The run carries on without them."""
         for item in items:
             label = self._paint("can't be read", RED)
-            self._print(f"{item.relative}: {label}, skipped: {item.reason}")
+            self._detail(f"{item.relative}: {label}, skipped: {item.reason}")
 
     def incorrect(self, entries: list[MissingBios]) -> None:
         """Files on the device with a wrong hash, which BECK keeps (DEC-54). One line per target."""
         for target in sorted({entry.target for entry in entries}):
             label = self._paint("INCORRECT:", RED)
-            self._print(f"{label} {target} is on the device with a wrong MD5, and was kept")
+            self._detail(f"{label} {target} is on the device with a wrong MD5, and was kept")
 
     def report(self, entries: list[MissingBios]) -> None:
         """What a report lists, grouped by folder. One line per target."""
@@ -205,13 +246,13 @@ class ConsoleRenderer:
     def result(self, result: RunResult, failing: Sequence[MissingBios] = ()) -> None:
         """What happened: uploads, then one or more lines per local file, then the summary."""
         for upload in result.completed:
-            self._print(f"{self._paint('FOUND:', GREEN)} {upload.entry.name} -> {upload.target}")
-        for line in self._file_lines(result):
+            self._detail(f"{self._paint('FOUND:', GREEN)} {upload.entry.name} -> {upload.target}")
+        for line in self._deleted_lines(result) if self.quiet else self._file_lines(result):
             self._print(line)
         for error in result.errors:
             self.error(error.message)
         if result.kept:
-            self._print(
+            self._detail(
                 f"{len(result.kept)} files were already on the device, and were kept. If the "
                 "report is out of date, generate a new one. To replace them, use --overwrite."
             )
@@ -219,16 +260,25 @@ class ConsoleRenderer:
         self._failing_if_missing(failing, dry_run=result.dry_run)
 
     def _failing_if_missing(self, failing: Sequence[MissingBios], *, dry_run: bool) -> None:
-        """Why the run exits with 5. INCORRECT files already have their own lines."""
+        """Why the run exits with 5. INCORRECT files have their own lines, unless quiet."""
         if not failing:
             return
         for target in sorted({entry.target for entry in failing if not entry.incorrect}):
             self._print(f"{self._paint('MISSING:', RED)} {target}")
+        if self.quiet:
+            for target in sorted({entry.target for entry in failing if entry.incorrect}):
+                self._print(f"{self._paint('INCORRECT:', RED)} {target}")
         state = "that would still be" if dry_run else "still"
         self._print(
             f"Required files {state} missing or incorrect: {len({e.target for e in failing})}. "
             "Exit code 5, because of --fail-if-missing."
         )
+
+    def _deleted_lines(self, result: RunResult) -> list[str]:
+        """Quiet never hides a deletion: the result lists every one (docs/cli.md)."""
+        gone = "would be deleted" if result.dry_run else "deleted"
+        paths = sorted(file.relative.as_posix() for file in result.deleted)
+        return [f"{path}: {gone}" for path in paths]
 
     def _file_lines(self, result: RunResult) -> list[str]:
         plan = result.plan

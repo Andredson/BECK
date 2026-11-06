@@ -2,6 +2,7 @@
 
 import hashlib
 import os
+from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 
 from beck.models import LocalFile, ScanResult, Unreadable
@@ -24,11 +25,11 @@ def _describe_file(path: Path, relative: PurePosixPath) -> LocalFile | Unreadabl
         return Unreadable(relative=relative, reason=e.strerror or str(e))
 
 
-def scan(folder: Path) -> ScanResult:
+def scan(folder: Path, on_file: Callable[[int], None] | None = None) -> ScanResult:
     """Every non-hidden file under a folder, sorted by its path relative to that folder.
 
     A file or sub-folder that can't be read is recorded, and the scan carries on. A folder that
-    doesn't exist has nothing in it.
+    doesn't exist has nothing in it. ``on_file`` gets the count so far, after each file.
     """
     found: list[LocalFile | Unreadable] = []
 
@@ -46,6 +47,8 @@ def scan(folder: Path) -> ScanResult:
                 continue
             path = Path(root, filename)
             found.append(_describe_file(path, PurePosixPath(path.relative_to(folder).as_posix())))
+            if on_file is not None:
+                on_file(len(found))
 
     in_order = sorted(found, key=lambda item: item.relative.as_posix())
     return ScanResult(
