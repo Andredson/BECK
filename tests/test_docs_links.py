@@ -23,6 +23,8 @@ LINK_TARGET = re.compile(r"\]\(\s*<?([^)\s>]*)")  # inline links and images: ...
 REFERENCE_DEF = re.compile(r"^\s{0,3}\[[^\]]+\]:\s*<?([^\s>]+)")  # [ref]: target
 HEADING = re.compile(r"^\s{0,3}#{1,6}\s+(.*?)\s*#*\s*$")
 EXTERNAL = re.compile(r"^(?:[a-z][a-z0-9+.-]*:|//)", re.IGNORECASE)  # http:, mailto:, tel:, ...
+# A link to this repository, as the README's are so that they work on PyPI. It's still checked.
+THIS_REPOSITORY = "https://github.com/Andredson/BECK/blob/main/"
 
 
 def markdown_files(root: Path = ROOT) -> list[Path]:
@@ -96,10 +98,12 @@ def broken_links(md: Path, root: Path = ROOT) -> list[str]:
     where = md.relative_to(root)
     for number, line in prose_lines(md):
         for target in link_targets(line):
-            if EXTERNAL.match(target):
+            inside = target.removeprefix(THIS_REPOSITORY)
+            if inside == target and EXTERNAL.match(target):
                 continue
-            path_part, _, anchor = target.partition("#")
-            dest = (md.parent / unquote(path_part)).resolve() if path_part else md
+            path_part, _, anchor = inside.partition("#")
+            base = root.resolve() if inside != target else md.parent
+            dest = (base / unquote(path_part)).resolve() if path_part else md
             if not dest.is_relative_to(root.resolve()):
                 problems.append(f"{where}:{number}: '{target}' points outside the repository")
             elif not dest.exists():
@@ -155,3 +159,32 @@ def test_checker_reports_missing_files_and_anchors(tmp_path: Path) -> None:
     assert "source.md:6: 'nope.md' -> file not found" in problems[0]
     assert "no heading with that anchor" in problems[1]
     assert "points outside the repository" in problems[2]
+
+
+def test_an_absolute_link_to_this_repository_is_checked_too(tmp_path: Path) -> None:
+    anchors.cache_clear()
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "guide.md").write_text("# Real heading\n", encoding="utf-8")
+    page = tmp_path / "page.md"
+    page.write_text(
+        f"[fine]({THIS_REPOSITORY}docs/guide.md#real-heading)\n"
+        f"[no file]({THIS_REPOSITORY}docs/nope.md)\n"
+        f"[no heading]({THIS_REPOSITORY}docs/guide.md#nope)\n"
+        f"[elsewhere](https://github.com/Other/Repo/blob/main/docs/nope.md)\n",
+        encoding="utf-8",
+    )
+
+    problems = broken_links(page, tmp_path)
+
+    assert len(problems) == 2
+    assert "file not found" in problems[0]
+    assert "no heading" in problems[1]
+
+
+def test_the_readme_has_no_relative_links() -> None:
+    # PyPI shows the README as the project's page, and doesn't resolve them (DEC-68).
+    readme = ROOT / "README.md"
+    targets = [target for _, line in prose_lines(readme) for target in link_targets(line)]
+
+    assert any(target.startswith(THIS_REPOSITORY) for target in targets)
+    assert [t for t in targets if not EXTERNAL.match(t) and not t.startswith("#")] == []

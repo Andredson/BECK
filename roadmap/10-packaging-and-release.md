@@ -153,12 +153,13 @@ flowchart LR
 
 ### 10.9 — Release-candidate rehearsal on TestPyPI
 - [ ] Done
+> BLOCKED (2026-11-06): needs 10.1, which is the owner's, and this stage's work merged, because the checklist tags `main`. The owner chose `0.5.0` (DEC-67) and absolute links in the README (DEC-68), which are done, and the TestPyPI page will show whether they work.
 - **What:** **Ask the owner for the first public version number** (e.g. `0.5.0`, or `0.9.0` as a 1.0
   candidate). Bump to `<version>rc1` and follow the checklist. After the TestPyPI upload, install from it with
   dependencies coming from PyPI, for example:
   `uvx --index https://test.pypi.org/simple/ --index-strategy unsafe-best-match --from "beck-bios==<version>rc1" beck --version`.
   Check the exact flags for the installed uv version, and make sure only `beck-bios` comes from TestPyPI.
-- **Also check, on the TestPyPI page:** PyPI shows the README as the project's page, and doesn't resolve its relative links, such as `docs/cli.md`. A published release's page can't be edited, so decide before 10.10 how to fix them.
+- **Also check, on the TestPyPI page:** PyPI shows the README as the project's page, and doesn't resolve its relative links, such as `docs/cli.md`. A published release's page can't be edited. Absolute links are the fix (DEC-68), so check that they work there.
 - **Files:** `pyproject.toml`, `CHANGELOG.md`
 - **Done when:** The rc installs from TestPyPI and `beck --version` prints it; the GitHub pre-release exists with the SBOM.
 - **Verify:** Owner confirmation plus the install command above.
@@ -166,7 +167,8 @@ flowchart LR
 
 ### 10.10 — First PyPI release
 - [ ] Done
-- **What:** Bump to the final `<version>` and follow the checklist end to end. PyPI's page is the README as it is in this release and can't be edited afterwards, so first change what it says about installing and status ("isn't on PyPI yet", "no release yet"), and fix its relative links as decided in 10.9.
+> BLOCKED (2026-11-06): follows 10.9.
+- **What:** Bump to the final `<version>` and follow the checklist end to end. PyPI's page is the README as it is in this release and can't be edited afterwards, so first change what it says about installing and status ("isn't on PyPI yet", "no release yet"), so that its page doesn't say it isn't released.
 - **Files:** `pyproject.toml`, `CHANGELOG.md`
 - **Done when:** `pipx install beck-bios` and `uv tool install beck-bios` both work on a clean machine; PyPI shows
   provenance attestations; the GitHub Release has notes and the SBOM.
@@ -175,6 +177,7 @@ flowchart LR
 
 ### 10.11 — Define and reach 1.0
 - [ ] Done
+> BLOCKED (2026-11-06): follows 10.10, and needs a run on a real device with the installed package, by the owner.
 - **What:** Write the 1.0 criteria in `docs/releasing.md` and check them off:
   - stages 01–10 done; D1–D16 fixed;
   - a real fixture exists for the current stable Recalbox, and an end-to-end run with the **installed** package on
