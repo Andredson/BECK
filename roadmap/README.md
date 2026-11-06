@@ -149,6 +149,7 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-60 | **Supersedes DEC-58.** `beck export` copies only `.rom` and `.bin` files, in any case, under the target's BIOS root, as DEC-57 said. *(2026-11-05, step 11.12)* |
 | DEC-61 | A file already on the device is **kept and reported**, and `--overwrite` replaces it, including files listed as `INCORRECT` (the flag DEC-54 left open). *(2026-11-05, step 06.5)* |
 | DEC-62 | What BECK does, and its exit code, **don't depend on whether its output can be written**. The run carries on when stdout fails: a closed pipe is silent, and any other failure prints one line on stderr. *(2026-11-05, step 06.7b)* |
+| DEC-63 | `types-jsonschema` is a dev-only dependency, so that mypy can check the tests that use `jsonschema`, which ships no type hints. *(2026-11-06, step 06.8)* |
 
 ### CI/CD, security, and release
 

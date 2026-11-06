@@ -260,11 +260,16 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `fix(output): keep a run and its exit code independent of its output streams`
 
 ### 06.8 — JSON contract tests
-- [ ] Done
+- [x] Done (2026-11-06: `jsonschema` 4.26.0 and `types-jsonschema` 4.26.0.20261006, resolved under the cooldown. The second wasn't planned:
+  mypy refuses `jsonschema` without it, and the owner chose it over an exemption (DEC-63). The scenarios are a table, and tests fail if
+  they stop reaching a field, null, status or error code. `V1_FIELDS` is the record of what version 1 promises, and it also fails on a new
+  field, so that a new promise gets written down. Beyond the list below: documents are also checked against closed copies of the schemas,
+  so BECK can't write a field they leave out, and the guide's examples are checked too.)
 - **What:** `uv add --dev jsonschema` (dev-only, DEC-23). Tests run every command in success **and** error
   scenarios with `--json` and validate the output against the schema files. Another test fails if a field
   present in the v1 schema disappears, which guards the compatibility promise.
-- **Files:** `pyproject.toml`, `uv.lock`, `tests/unit/test_json_contract.py`
+- **Files:** `pyproject.toml`, `uv.lock`, `tests/unit/test_json_contract.py`, `AGENTS.md`, and for DEC-63 `roadmap/README.md`,
+  `docs/adr/0003-tooling.md`, `docs/adr/README.md`
 - **Done when:** Every JSON-producing path is validated against its schema.
 - **Verify:** `uv run pytest tests/unit/test_json_contract.py -q`
 - **Commit message:** `test(output): validate JSON output against the published schemas`
