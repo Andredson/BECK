@@ -1,6 +1,6 @@
 # Stage 09 — Agent Skills & automation
 
-**Status:** Not started · **Depends on:** 08 · **Branch:** `stage/09-agent-skills` · **Effort:** M
+**Status:** In progress · **Depends on:** 08 · **Branch:** `stage/09-skills` · **Effort:** M
 
 ## Goal
 Package BECK's recurring workflows as **Agent Skills**, in the open SKILL.md format, so that any agent can
@@ -37,15 +37,17 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
 ```
 
 - Only fields defined by the spec, and only single-line values (keeps validation trivial, 09.9).
-- `name`: lowercase letters, digits and hyphens; must equal the folder name. Check the current spec limits in 09.1.
-- `description` says **what it does and when to use it**; agents decide from this line alone.
+- `name`: at most 64 lowercase letters, digits and hyphens, with no hyphen at either end and no `--`; must equal the folder name.
+- `description` says **what it does and when to use it**, in at most 1024 characters; agents decide from this line alone. It can't contain a colon followed by a space, because that isn't valid YAML.
 - The body is plain Markdown. Supporting files go in `scripts/` or `references/` next to `SKILL.md`, are
   referenced by relative path, and use the standard library only.
 
 ## Steps
 
 ### 09.1 — Confirm the current Agent Skills spec
-- [ ] Done
+- [x] Done (2026-11-06: the spec has no version, so the section gives the date and the commit it last changed at. It doesn't define a repository folder, and its client guide calls `.agents/skills/` a convention, so DEC-22 stands. opencode's documentation now lists that
+  folder, so DEC-22's consequence that no tool finds it no longer holds; the decision isn't affected, and accepted text isn't edited, so `docs/agents.md` says this. What each agent finds comes from its documentation, not from a test. Beyond the list below: the limits in this
+  stage's skill format, a colon check in 09.9, and this stage's branch name, which is `stage/09-skills` because the agent gave the owner that name by mistake.)
 - **What:** Read the current specification at agentskills.io and record in `docs/agents.md` (a "Skills" section):
   the allowed frontmatter fields, the length limits for `name` and `description`, the folder conventions, and
   which tools in the 01.3 support matrix auto-discover which folder. If the spec changed in a way that affects
@@ -160,7 +162,8 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
 - **What:** `tests/test_skills.py`, standard library only:
   - every folder in `.agents/skills/` (except `README.md`) has a `SKILL.md`;
   - the frontmatter, parsed as single-line `key: value` pairs between `---` lines, has a valid `name` equal to
-    the folder name, a non-empty `description` within the spec limit, and no keys outside the spec;
+    the folder name, a non-empty `description` within the spec limit, no keys outside the spec, and no value with a
+    colon followed by a space, which isn't valid YAML;
   - every relative link inside a skill resolves;
   - every skill appears in the AGENTS.md index, and every index row points to an existing skill;
   - the exit-code reference matches `docs/cli.md` (09.7).
