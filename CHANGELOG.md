@@ -5,7 +5,7 @@ Notable changes to BECK, in the layout of [Keep a Changelog](https://keepachange
 This file is generated from the commit messages by [git-cliff](https://git-cliff.org/), so don't edit it by hand.
 Changes to the documentation, tests and tooling aren't listed.
 
-## [Unreleased]
+## [0.5.0rc1] - 2026-11-06
 
 ### Added
 
@@ -31,6 +31,12 @@ Changes to the documentation, tests and tooling aren't listed.
 - **Breaking:** config: Switch to TOML config with migration from config.yml
 - config: Support guest, environment and prompted SMB credentials
 - transfer: Verify uploads by size and optionally by MD5
+- skills: Add execute-roadmap-step skill
+- skills: Add quality-gates skill
+- skills: Add add-report-fixture skill
+- skills: Add add-frontend-adapter skill
+- skills: Add diagnose-missing-bios skill for end-user support
+- skills: Add cut-release skill
 
 ### Changed
 
