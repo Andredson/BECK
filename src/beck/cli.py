@@ -44,6 +44,8 @@ COMMANDS = {
 
 SMB_SETTINGS = ("server", "port", "user", "passwd")
 DEFAULT_FRONTEND = "recalbox"
+FAILED_IF_MISSING_EXIT_CODE = 5
+HIGHEST_PORT = 65535
 REPORT_FILE_HELP = "read this local copy of the report, not the one on the target"
 
 Renderer = ConsoleRenderer | JsonRenderer
@@ -81,6 +83,10 @@ def load_legacy_config(file: Path) -> dict[str, Any]:
         ) from e
     except yaml.YAMLError as e:
         raise ConfigError(f"{file} isn't valid YAML: {e}") from e
+    except UnicodeDecodeError as e:  # its message is left out, because it can show the file's bytes
+        raise ConfigError(f"{file} isn't UTF-8 text") from e
+    except OSError as e:
+        raise ConfigError(f"Can't read {file}: {e.strerror}") from e
 
     try:
         settings: dict[str, Any] = data["smb"]
@@ -89,6 +95,24 @@ def load_legacy_config(file: Path) -> dict[str, Any]:
     except (KeyError, TypeError) as e:
         raise ConfigError(f"{file} needs an smb section with {', '.join(SMB_SETTINGS)}") from e
 
+    return _checked_smb_settings(file, settings)
+
+
+def _checked_smb_settings(file: Path, settings: dict[str, Any]) -> dict[str, Any]:
+    """Refuse values that could never connect. Messages never repeat a value: it may be a password.
+
+    A blank ``user`` or ``passwd`` means guest access, as the example config says.
+    """
+    server, port = settings["server"], settings["port"]
+    if not server or not isinstance(server, str):
+        raise ConfigError(f"In {file}, server must be a host name or an IP address")
+    if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= HIGHEST_PORT:
+        raise ConfigError(f"In {file}, port must be a number from 1 to {HIGHEST_PORT}")
+    for name in ("user", "passwd"):
+        if settings[name] is None:
+            settings[name] = ""
+        elif not isinstance(settings[name], str):
+            raise ConfigError(f"In {file}, {name} must be text: put it in quotes")
     return settings
 
 
@@ -159,14 +183,29 @@ def _confirm_deletion(preview: RunResult, renderer: Renderer) -> None:
         raise UsageError("Nothing was changed, because you didn't confirm the deletion.")
 
 
+def _failing_if_missing(args: argparse.Namespace, result: RunResult) -> list[MissingBios]:
+    """The entries ``--fail-if-missing`` fails on: required, or the report doesn't say.
+
+    A required INCORRECT file counts, because the device still can't use it, and a failed item wins,
+    because the run didn't do all it could (DEC-59). A file kept on the device isn't missing. In a
+    dry run, this is what the same run would leave.
+    """
+    if not args.fail_if_missing or result.errors:
+        return []
+    still_needed = (*result.plan.still_missing, *result.plan.incorrect)
+    return [entry for entry in still_needed if entry.required is not False]
+
+
 def _run_check(args: argparse.Namespace, base_dir: Path, renderer: Renderer) -> int:
     source = _source_folder(args, base_dir)
     adapter = get_adapter(args.frontend)
 
     def ended_early(entries: list[MissingBios]) -> int:
         """Nothing to upload. The plan still says what's missing and incorrect."""
-        renderer.ended_early(RunResult(plan=plan(entries, []), dry_run=args.dry_run))
-        return 0
+        result = RunResult(plan=plan(entries, []), dry_run=args.dry_run)
+        failing = _failing_if_missing(args, result)
+        renderer.ended_early(result, failing)
+        return FAILED_IF_MISSING_EXIT_CODE if failing else 0
 
     transport = _open_target(args, base_dir)
     renderer.opened(transport.url())
@@ -213,8 +252,11 @@ def _run_check(args: argparse.Namespace, base_dir: Path, renderer: Renderer) -> 
 
     if args.overwrite:
         renderer.incorrect(list(result.plan.incorrect))
-    renderer.result(result)
-    return TransportError.exit_code if result.errors else 0
+    failing = _failing_if_missing(args, result)
+    renderer.result(result, failing)
+    if result.errors:
+        return TransportError.exit_code
+    return FAILED_IF_MISSING_EXIT_CODE if failing else 0
 
 
 def _run_report(args: argparse.Namespace, base_dir: Path, renderer: Renderer) -> int:
@@ -320,6 +362,11 @@ def _build_parser(*, json_errors: bool = False) -> argparse.ArgumentParser:
                 "--yes", action="store_true", help="confirm deletions without asking"
             )
             command.add_argument(
+                "--fail-if-missing",
+                action="store_true",
+                help="exit with 5 if required files are still missing or incorrect after the run",
+            )
+            command.add_argument(
                 "--frontend",
                 default=DEFAULT_FRONTEND,
                 metavar="NAME",
@@ -339,6 +386,7 @@ def _build_parser(*, json_errors: bool = False) -> argparse.ArgumentParser:
         move=False,
         clean_unmatched=False,
         yes=False,
+        fail_if_missing=False,
     )
     return parser
 

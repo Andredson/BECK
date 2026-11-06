@@ -42,6 +42,8 @@ def parse_smb_url(url: str) -> SmbTarget:
     except ValueError as e:
         raise UsageError(f"The target isn't a valid URL. Use {URL_FORM}") from e
 
+    if port == 0:
+        raise UsageError(f"The target isn't a valid URL. Use {URL_FORM}")
     if parts.scheme != "smb":
         raise UsageError(f"The target must start with smb://. Use {URL_FORM}")
     if ":" in parts.netloc.rpartition("@")[0]:

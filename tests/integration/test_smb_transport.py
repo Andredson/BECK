@@ -423,6 +423,46 @@ def test_end_to_end_json_on_a_real_server(
         assert transport.read_bytes(target) == good.path.read_bytes()
 
 
+def test_end_to_end_fail_if_missing_on_a_real_server(
+    samba: Samba,
+    tmp_path: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    app = tmp_path / "no-config"
+    good = make_bios_file(app / "bios", "good.bin")
+    target = folder / "good.bin"
+    gone = folder / "gone.bin"
+    entries = [make_missing(target.as_posix(), good.md5), make_missing(gone.as_posix(), "0" * 32)]
+    put_report(make_report_text(entries))
+    url = f"smb://{samba.host}:{samba.port}/bios"
+
+    code = cli.main(["--json", "check", "--target", url, "--fail-if-missing"], base_dir=app)
+
+    assert code == 5
+    doc = json.loads(capsys.readouterr().out)
+    assert doc["ok"] is False
+    assert doc["errors"] == []
+    assert [item["target"] for item in doc["still_missing"]] == [gone.as_posix()]
+    with samba.guest() as transport:
+        assert transport.read_bytes(target) == good.path.read_bytes()
+
+
+def test_end_to_end_blank_credentials_are_a_guest_on_a_real_server(
+    samba: Samba, tmp_path: Path, put_report: PutReport
+) -> None:
+    """Real pysmb crashes on a blank YAML value, which is null, so the fake can't show this."""
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "config.yml").write_text(
+        f"smb:\n  user:\n  passwd:\n  server: {samba.host}\n  port: {samba.port}\n",
+        encoding="utf-8",
+    )
+    put_report(make_report_text([]))
+
+    assert cli.main(["report"], base_dir=tmp_path) == 0
+
+
 def test_a_refused_connection_is_a_json_document(
     samba: Samba, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

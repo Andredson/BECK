@@ -5,7 +5,7 @@ import logging
 import os
 import re
 import sys
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path, PurePosixPath
 from typing import TextIO
 
@@ -144,8 +144,9 @@ class ConsoleRenderer:
     def opened(self, target: str) -> None:
         """Nothing: human output names the target only when something goes wrong with it."""
 
-    def ended_early(self, result: RunResult) -> None:
-        """Nothing: the lines before this one already said why there's nothing to upload."""
+    def ended_early(self, result: RunResult, failing: Sequence[MissingBios] = ()) -> None:
+        """The lines before this one already said why there's nothing to upload."""
+        self._failing_if_missing(failing, dry_run=result.dry_run)
 
     def can_ask(self) -> bool:
         """Only with a terminal to read the answer from, and a stderr to ask on."""
@@ -201,7 +202,7 @@ class ConsoleRenderer:
                     kind = "required" if by_target[target] else "optional"
                     self._print(f"  {target.name} ({kind})")
 
-    def result(self, result: RunResult) -> None:
+    def result(self, result: RunResult, failing: Sequence[MissingBios] = ()) -> None:
         """What happened: uploads, then one or more lines per local file, then the summary."""
         for upload in result.completed:
             self._print(f"{self._paint('FOUND:', GREEN)} {upload.entry.name} -> {upload.target}")
@@ -215,6 +216,19 @@ class ConsoleRenderer:
                 "report is out of date, generate a new one. To replace them, use --overwrite."
             )
         self._summary(result)
+        self._failing_if_missing(failing, dry_run=result.dry_run)
+
+    def _failing_if_missing(self, failing: Sequence[MissingBios], *, dry_run: bool) -> None:
+        """Why the run exits with 5. INCORRECT files already have their own lines."""
+        if not failing:
+            return
+        for target in sorted({entry.target for entry in failing if not entry.incorrect}):
+            self._print(f"{self._paint('MISSING:', RED)} {target}")
+        state = "that would still be" if dry_run else "still"
+        self._print(
+            f"Required files {state} missing or incorrect: {len({e.target for e in failing})}. "
+            "Exit code 5, because of --fail-if-missing."
+        )
 
     def _file_lines(self, result: RunResult) -> list[str]:
         plan = result.plan

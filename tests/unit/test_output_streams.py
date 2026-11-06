@@ -631,3 +631,22 @@ def test_an_answer_that_is_not_text_is_no(
 
     assert "you didn't confirm" in capsys.readouterr().out
     assert (snapshot(source), snapshot(device)) == before
+
+
+# Exit 5 too: --fail-if-missing is decided by the run, not by what could be printed
+
+
+@pytest.mark.parametrize("stdout", STDOUTS)
+@pytest.mark.parametrize("mode", MODES)
+def test_a_stream_that_fails_cannot_change_exit_5(tmp_path: Path, mode: str, stdout: str) -> None:
+    source, device = tmp_path / "source", tmp_path / "device"
+    source.mkdir()
+    device.mkdir()
+    (device / "missing_bios_report.txt").write_text(
+        make_report_text([make_missing("gone.bin", "0" * 32)]), encoding="utf-8", newline=""
+    )
+    flags = ["--source", str(source), "--target-dir", str(device), "--fail-if-missing"]
+
+    done = run_beck(*MODES[mode], "check", *flags, stdout=stdout)
+
+    assert done.returncode == 5

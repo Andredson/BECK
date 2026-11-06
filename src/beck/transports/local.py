@@ -11,10 +11,13 @@ from beck.errors import TransportError
 
 @contextmanager
 def _reporting(action: str, path: object) -> Iterator[None]:
-    """Turn an OSError into a TransportError with a readable message."""
+    """Turn a failure into a TransportError with a readable message.
+
+    Python before 3.13 raises RuntimeError when a path resolves through a symlink loop.
+    """
     try:
         yield
-    except OSError as e:
+    except (OSError, RuntimeError) as e:
         raise TransportError(f"Error {action} {path}: {e}") from e
 
 
@@ -22,7 +25,8 @@ class LocalTransport:
     """Reads and copies files under one folder, and refuses any path that resolves outside it."""
 
     def __init__(self, root: Path) -> None:
-        self.root = root.resolve()
+        with _reporting("finding folder", root):
+            self.root = root.resolve()
 
     def __enter__(self) -> Self:
         if not self.root.is_dir():
@@ -44,7 +48,8 @@ class LocalTransport:
             return self._resolve(path).read_bytes()
 
     def exists(self, path: PurePosixPath) -> bool:
-        return self._resolve(path).exists()
+        with _reporting("checking", path):
+            return self._resolve(path).exists()
 
     def size(self, path: PurePosixPath) -> int:
         with _reporting("getting the size of", path):

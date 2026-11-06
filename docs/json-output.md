@@ -15,6 +15,9 @@ beck --json scan --source ~/my-bios
 2. Branch on the [exit code](cli.md#exit-codes). `ok` is `false` whenever it isn't 0.
 3. Read `errors` for what went wrong, and the other fields for what happened.
 
+Exit code 5, from `--fail-if-missing`, has `ok` set to `false` and `errors` empty, because the run itself went fine. The files it's about are
+in `still_missing` and `incorrect`, with `required` not `false`.
+
 `--help` and `--version` print text, and a run stopped by Ctrl-C prints no document.
 
 If stdout itself can't be written, the document is lost or cut short, but the run carries on, and the exit code still reports it

@@ -42,6 +42,20 @@ The roadmap listed the main fields. Building them raised these details, which th
 - **A bug's message stays on stderr,** because it could hold anything, including a password.
 - **The schemas allow extra fields,** so that a newer BECK still validates against them.
 
+### Details settled in step 06.9
+Testing the table against the real command raised these details, which the agent settled and reported to the owner:
+
+- **A file already on the device doesn't count for `--fail-if-missing`.** It isn't missing, and an out-of-date report is the usual reason
+  for it. Otherwise, running `beck check --fail-if-missing` twice would fail the second time, after a first run that worked. The cost is that
+  nothing proves the kept file is good, which a new report would show. The same goes the other way: BECK goes by the report, so a target
+  with no local copy counts as missing even if a report out of date is wrong about that.
+- **A dry run predicts.** `--dry-run --fail-if-missing` exits with 5 if the real run would, because a dry run's job is to preview it.
+- **Exit 5 isn't an item in `errors`.** The run went fine, and an item there would need a new code. So `ok` is `false`, `errors` is empty,
+  and the files are in `still_missing` and `incorrect`.
+- **Exit 1 means a bug, so a user's mistake never gets it.** A config file that can't be read, or a value of the wrong kind, exits with 2, and
+  its message never repeats a value, because that may be a password. A blank `user` or `passwd` means guest, as the example config says.
+- **A local target that can't be checked is one failed item,** with exit 3, like any other transport failure, and the run carries on.
+
 ### Deleting is always explicit
 Nothing is deleted without `--move` or `--clean-unmatched`, and off a terminal not without `--yes` too. `--json` never prompts, so that
 a consumer can't hang on a question or confirm one by accident.

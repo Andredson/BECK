@@ -4,7 +4,7 @@ The reference for using BECK from the command line.
 
 **Status:** this is the design [stage 06](../roadmap/06-cli-ux-and-machine-output.md) is building, so most of it doesn't exist yet.
 Today, `beck check` and `beck report` work with the options under [Choosing what BECK works on](#choosing-what-beck-works-on), the
-[safety options](#safety) work except `--fail-if-missing`, and `--version`, `--no-color` and `--json` work. `beck scan` only works with `--json`, and otherwise says it isn't available yet. The rest arrives in later steps of the stage.
+[safety options](#safety) work, and `--version`, `--no-color` and `--json` work. `beck scan` only works with `--json`, and otherwise says it isn't available yet. The rest arrives in later steps of the stage.
 
 ```text
 beck [--version] [-v | -q] [--no-color] [--json] <command> [options]
@@ -81,7 +81,8 @@ keeps the exact name.
 | `--frontend NAME` | `check` | The kind of device. Only `recalbox`, for now. |
 | `--report-file FILE` | `check`, `report` | Reads a local copy of the report, not the one on the target. `beck report` then needs no target, and can't take one. `beck check` still needs a target to upload to. |
 
-With no target, BECK uses the settings in `config/config.yml`.
+With no target, BECK uses the settings in `config/config.yml`. A blank `user` or `passwd` means guest access. A value that can't work,
+such as a `port` that isn't a number from 1 to 65535, exits with 2. Put a password made only of digits in quotes.
 
 ### Safety
 
@@ -92,7 +93,7 @@ With no target, BECK uses the settings in `config/config.yml`.
 | `--move` | Deletes a local file once it's uploaded to **all** its targets and each remote size matches. If any upload of that file failed, the file stays. |
 | `--clean-unmatched` | Deletes local files that matched nothing. Read the warning below first. |
 | `--yes` | Confirms deletions without asking. Required when BECK can't ask. |
-| `--fail-if-missing` | Exits with 5 if required files are still missing after the run. See [exit codes](#exit-codes). |
+| `--fail-if-missing` | Exits with 5 if required files are still missing or incorrect after the run, and lists them. See [exit codes](#exit-codes). |
 
 ## What BECK deletes, and when
 
@@ -160,7 +161,10 @@ Some details:
 - A failed upload exits with 3 even though the other uploads finished.
 - A local file or folder that can't be read, such as a broken symlink, is reported and skipped, and doesn't change the exit code.
 - `--fail-if-missing` counts entries that are required or whose status is unknown. A required file listed as `INCORRECT` counts too,
-  because the device still can't use it.
+  because the device still can't use it. A file listed in several systems counts if any of them requires it.
+- A file that was already on the device, and kept, doesn't count for `--fail-if-missing`, because it isn't missing. BECK goes by the report
+  it read, and doesn't look on the device for a file it has no local copy of, so a report that's out of date can give 5. Generate a new one.
+- With `--dry-run`, `--fail-if-missing` looks at what the same run would leave, so it exits with 5 if the real run would.
 - If several apply, the transport error wins over `--fail-if-missing`, because the run didn't do all it could.
 - What BECK does, and its exit code, don't depend on whether its output can be written (DEC-62). If you quit `beck check | less` early,
   the uploads still finish, and the exit code reports them. A closed pipe is silent, and any other failure, such as a full disk, prints one

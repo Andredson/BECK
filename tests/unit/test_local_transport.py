@@ -212,3 +212,16 @@ def test_url_is_the_folder_as_a_file_url(root: Path, transport: Transport) -> No
 
 def test_describe_names_the_folder(root: Path, transport: Transport) -> None:
     assert transport.describe() == f"local folder {root.resolve()}"
+
+
+def test_a_check_that_fails_is_a_transport_error_not_a_crash(transport: Transport) -> None:
+    with pytest.raises(TransportError, match="Error checking"):
+        transport.exists(PurePosixPath(f"{'x' * 300}.bin"))
+
+
+def test_a_target_folder_that_is_a_symlink_loop_is_a_transport_error(tmp_path: Path) -> None:
+    loop = tmp_path / "loop"
+    loop.symlink_to(loop)
+
+    with pytest.raises(TransportError), LocalTransport(loop):
+        pass

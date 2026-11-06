@@ -67,6 +67,7 @@ def test_a_password_is_refused_and_never_repeated(url: str) -> None:
         ("smb://recalbox/", "has no share"),
         ("smb://recalbox:notaport/bios", "isn't a valid URL"),
         ("smb://recalbox:99999/bios", "isn't a valid URL"),
+        ("smb://recalbox:0/bios", "isn't a valid URL"),
         ("smb://recalbox/bios?x=1", "query or fragment"),
         ("smb://recalbox/bios#x", "query or fragment"),
     ],

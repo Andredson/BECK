@@ -165,12 +165,14 @@ class JsonRenderer:
     def incorrect(self, entries: list[MissingBios]) -> None:
         """Nothing yet: the document has it at the end."""
 
-    def ended_early(self, result: RunResult) -> None:
+    def ended_early(self, result: RunResult, failing: Sequence[MissingBios] = ()) -> None:
         """The run had nothing to upload, and is complete."""
-        self.result(result)
+        self.result(result, failing)
 
-    def result(self, result: RunResult) -> None:
-        _write(self._check(result, _error_items(result.errors)), self.stream)
+    def result(self, result: RunResult, failing: Sequence[MissingBios] = ()) -> None:
+        """``failing`` is what ``--fail-if-missing`` fails on. It's no error, but it isn't ok."""
+        errors = _error_items(result.errors)
+        _write(self._check(result, errors, ok=not errors and not failing), self.stream)
 
     def report(self, entries: list[MissingBios]) -> None:
         _write(self._report(entries, []), self.stream)
@@ -194,14 +196,17 @@ class JsonRenderer:
         else:
             self.files_scanned = 0
             self.unreadable_items = ()
-            document = self._check(RunResult(plan=Plan(), dry_run=self.dry_run), [error])
+            stopped = RunResult(plan=Plan(), dry_run=self.dry_run)
+            document = self._check(stopped, [error], ok=False)
         _write(document, self.stream)
 
-    def _check(self, result: RunResult, errors: list[dict[str, Any]]) -> dict[str, Any]:
+    def _check(
+        self, result: RunResult, errors: list[dict[str, Any]], *, ok: bool
+    ) -> dict[str, Any]:
         plan = result.plan
         still_missing = _missing_items(plan.still_missing)
         return {
-            **_header(self.command, ok=not errors),
+            **_header(self.command, ok=ok),
             "dry_run": result.dry_run,
             "frontend": self.frontend,
             "target": self.target,

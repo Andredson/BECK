@@ -563,6 +563,35 @@ def check_dry_run_with_a_failed_check(world: World) -> list[str]:
     return world.check("--dry-run", "--report-file", report)
 
 
+# check: --fail-if-missing
+
+
+@scenario(CHECK, 5)
+def check_fails_if_a_required_file_is_still_missing(world: World) -> list[str]:
+    file = make_bios_file(world.source, "a.bin")
+    world.report(make_missing("a.bin", file.md5), make_missing("gone.bin", A))
+    return world.check("--fail-if-missing")
+
+
+@scenario(CHECK, 5)
+def check_fails_if_a_required_file_is_incorrect(world: World) -> list[str]:
+    world.report(make_missing("a.bin", A, incorrect=True, current_md5=B))
+    return world.check("--fail-if-missing")
+
+
+@scenario(CHECK, 5)
+def check_dry_run_would_fail_if_missing(world: World) -> list[str]:
+    make_bios_file(world.source, "junk.bin")
+    world.report(make_missing("gone.bin", A))
+    return world.check("--dry-run", "--fail-if-missing")
+
+
+@scenario(CHECK)
+def check_passes_if_only_optional_files_are_missing(world: World) -> list[str]:
+    world.report(make_missing("gone.bin", A, required=False))
+    return world.check("--fail-if-missing")
+
+
 # check: an error stops the run
 
 

@@ -275,7 +275,10 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `test(output): validate JSON output against the published schemas`
 
 ### 06.9 — Exit codes and `--fail-if-missing`
-- [ ] Done
+- [x] Done (2026-11-06: the choices `--fail-if-missing` needed are in [ADR-0007](../docs/adr/0007-cli-contract.md#details-settled-in-step-069).
+  Running odd inputs through the real command showed the table wasn't true yet, so this also fixes D22 and D23 in the
+  [assessment](00-assessment.md). Beyond the list below: `src/beck/output/`, `src/beck/targets.py`, `src/beck/transports/local.py`,
+  `docs/cli.md`, `docs/json-output.md` and the ADR.)
 - **What:** Implement the exit-code table exactly as documented. `--fail-if-missing` returns 5 when any entry
   with `required` true (or unknown) is still missing after the run. An item-level upload failure returns 3 even
   though the run continued. With `--json`, `ok` must be false for 5 too, since the guide says it's false for any exit code but 0.
