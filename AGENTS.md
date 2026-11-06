@@ -42,7 +42,7 @@ CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against
 | `docs/maintenance.md` | [Monthly maintenance routine](docs/maintenance.md): dependency upgrades, pin refreshes, security review (replaces an update bot, DEC-29). Follow it when asked to update dependencies, or when the weekly *Security* run or an expired `.trivyignore` entry fails. |
 | `.github/pull_request_template.md` | PR description template with the roadmap checklist. Fill it in when preparing a PR description for the human. |
 | `docs/adr/` | [Architecture Decision Records](docs/adr/README.md): the reasoning and rejected alternatives behind every DEC. Read the relevant ADR before proposing to change a decision. |
-| `README.md` | User-facing readme: install with pip or uv, configure, run, the legal notice. It says BECK deletes local files only when asked. The full rewrite is step 08.1. Development commands are in [Commands](#commands) below. |
+| `README.md` | User-facing readme: what BECK does, the legal notice, install, quick start, safety and project status. Development commands are in [Commands](#commands) below. |
 | `LICENSE` | GNU GPL v3 text. Package metadata uses `GPL-3.0-only` (DEC-13). |
 
 ## Commands

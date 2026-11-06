@@ -1,6 +1,6 @@
 # Stage 08 — Documentation
 
-**Status:** Not started · **Depends on:** 07 · **Branch:** `stage/08-docs` · **Effort:** M
+**Status:** In progress · **Depends on:** 07 · **Branch:** `stage/08-docs` · **Effort:** M
 
 ## Goal
 Make the documentation complete enough that a Recalbox user with no Python background can install and use BECK,
@@ -18,7 +18,9 @@ DEC-13, DEC-20, DEC-30, DEC-42, DEC-43.
 ## Steps
 
 ### 08.1 — Rewrite the README
-- [ ] Done
+- [x] Done (2026-11-06: followed literally from an empty home folder, with uv and with pipx, from `git+https://github.com/Andredson/BECK` to an upload on the Samba test server. The troubleshooting guide (08.3) and
+  `CONTRIBUTING.md` (12.1) don't exist yet, so for now the README has a short table of its own and points contributors to `AGENTS.md`. Only the CI badge, so no DEC was needed. Rough wording such as `1 files` is in the code, so it isn't
+  part of this step, despite what the stage 07 re-score says. Beyond the list below: `AGENTS.md`'s description of the README.)
 - **What:** Structure:
   1. One-line description, then badges. Use only the GitHub-native CI status badge. A PyPI or Python-version
      badge from shields.io is a third-party service: **ask the owner first** and record a DEC if accepted.
@@ -59,7 +61,7 @@ DEC-13, DEC-20, DEC-30, DEC-42, DEC-43.
   - a file "not matched" (wrong dump, zipped file, wrong region);
   - permission denied on the target;
   - a Windows path or long-path issue.
-- **Files:** `docs/troubleshooting.md`
+- **Files:** `docs/troubleshooting.md`, `README.md` (replace its short table with a link)
 - **Done when:** Every `BeckError` subclass and exit code appears in at least one entry.
 - **Verify:** `uv run pytest tests/test_docs_links.py -q`
 - **Commit message:** `docs: add troubleshooting guide keyed by error message`
