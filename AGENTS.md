@@ -199,6 +199,7 @@ Agent Skills live in `.agents/skills/<name>/SKILL.md` (open agentskills.io forma
 | `execute-roadmap-step` | [`.agents/skills/execute-roadmap-step/SKILL.md`](.agents/skills/execute-roadmap-step/SKILL.md) | Asked to do or continue the next roadmap step, or to work on a stage. |
 | `quality-gates` | [`.agents/skills/quality-gates/SKILL.md`](.agents/skills/quality-gates/SKILL.md) | Before committing, when asked to run the checks or tests, or when a check or CI job fails. |
 | `add-report-fixture` | [`.agents/skills/add-report-fixture/SKILL.md`](.agents/skills/add-report-fixture/SKILL.md) | Someone provides a `missing_bios_report.txt`, or a new Recalbox version needs support. |
+| `add-frontend-adapter` | [`.agents/skills/add-frontend-adapter/SKILL.md`](.agents/skills/add-frontend-adapter/SKILL.md) | Asked to support another system, such as Batocera or RetroBat. |
 
 ## Code style
 

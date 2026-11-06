@@ -122,7 +122,9 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
 - **Commit message:** `feat(skills): add add-report-fixture skill`
 
 ### 09.6 — Skill: `add-frontend-adapter`
-- [ ] Done
+- [x] Done (2026-11-06: each part of `recalbox.py` was matched against the skill. A made-up adapter was also added in a clone, run from start to finish, and the suite run, which found what the list below misses: three console messages say `RECALBOX`, `--frontend` is only on `beck check`, a path it doesn't refuse ends in a traceback,
+  and a second system's fixture fails four tests. The skill names each of these, and leaves the code alone: that's stage 11's work, after a decision. It also has an adapter share `_why_unsafe` rather than copy it, and report the data doesn't fit rather than guess. Nobody has followed the whole skill yet. Beyond the list below: a link from
+  `docs/ARCHITECTURE.md`.)
 - **What:** The procedure stage 11 will use for Batocera, RetroBat and others:
   1. collect real reference data (report or BIOS list) and fixtures;
   2. write an ADR;
