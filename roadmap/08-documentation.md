@@ -82,7 +82,8 @@ DEC-13, DEC-20, DEC-30, DEC-42, DEC-43.
 - **Commit message:** `docs(cli): generate the command reference from argparse`
 
 ### 08.5 — Docstrings
-- [ ] Done
+- [x] Done (2026-11-06: 49 places, and `__init__` and magic methods got docstrings rather than an exemption. Only docstrings changed: each file's syntax tree, with them removed, is the same as before. `"!src/**"` keeps the rules out of
+  everything else. Beyond the list below: `AGENTS.md`'s code style.)
 - **What:** Enable ruff's `D` rules with the Google convention for `src/` (not for tests). Write docstrings for
   every public module, class and function, explaining *why* where it isn't obvious, not restating the
   signature.

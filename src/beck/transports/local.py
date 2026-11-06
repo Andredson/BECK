@@ -29,16 +29,19 @@ class LocalTransport:
     """Reads and copies files under one folder, and refuses any path that resolves outside it."""
 
     def __init__(self, root: Path) -> None:
+        """Use this folder. It's resolved now, because every later path is compared with it."""
         with _reporting("finding folder", root):
             self.root = root.resolve()
 
     def __enter__(self) -> Self:
+        """Check the folder: a missing one is a failed target, not an empty one."""
         if not self.root.is_dir():
             raise TransportError(f"Folder {self.root} doesn't exist")
         _log.debug("Using folder %s", self.root)
         return self
 
     def __exit__(self, *exc: object) -> None:
+        """Nothing to do: no connection stays open."""
         pass
 
     def _resolve(self, path: PurePosixPath) -> Path:
@@ -49,10 +52,12 @@ class LocalTransport:
         return resolved
 
     def read_bytes(self, path: PurePosixPath) -> bytes:
+        """A file's content. A path that resolves outside the folder is an error."""
         with _reporting("reading", path):
             return self._resolve(path).read_bytes()
 
     def exists(self, path: PurePosixPath) -> bool:
+        """Whether a file or folder exists. A failure, such as a denied read, is an error."""
         # Not Path.exists(): from Python 3.14 it answers False for any failure, so a folder BECK
         # can't read would look like one with nothing in it.
         with _reporting("checking", path):
@@ -63,14 +68,17 @@ class LocalTransport:
             return True
 
     def size(self, path: PurePosixPath) -> int:
+        """A file's size in bytes, which is how an upload is checked once it's copied."""
         with _reporting("getting the size of", path):
             return self._resolve(path).stat().st_size
 
     def makedirs(self, path: PurePosixPath) -> None:
+        """Create a folder and any missing parents. An existing folder is fine."""
         with _reporting("creating folder", path):
             self._resolve(path).mkdir(parents=True, exist_ok=True)
 
     def upload(self, local: Path, remote: PurePosixPath) -> int:
+        """Copy a file, replacing any file there. Returns the size of the copy."""
         with _reporting(f"copying {local} to", remote):
             target = self._resolve(remote)
             started = time.monotonic()
@@ -80,7 +88,9 @@ class LocalTransport:
             return size
 
     def describe(self) -> str:
+        """The folder, for messages."""
         return f"local folder {self.root}"
 
     def url(self) -> str:
+        """The folder as a ``file://`` URL, for machines."""
         return self.root.as_uri()

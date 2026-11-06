@@ -61,6 +61,10 @@ class SmbTransport:
         timeout: float = DEFAULT_TIMEOUT,
         root: PurePosixPath = SHARE_ROOT,
     ) -> None:
+        """Keep the details. Nothing connects until the ``with`` block opens.
+
+        ``root`` is the BIOS folder, relative to the share.
+        """
         self.host = host
         self.port = port
         self.share = share
@@ -71,6 +75,7 @@ class SmbTransport:
         self._conn: Any = None
 
     def __enter__(self) -> Self:
+        """Connect, log in and check that the share exists, or raise TransportError."""
         # Port 445 is SMB over plain TCP; other ports need a NetBIOS session first (D16).
         conn = SMBConnection(
             self.user,
@@ -97,6 +102,7 @@ class SmbTransport:
         return self
 
     def __exit__(self, *exc: object) -> None:
+        """Close the connection, even after an error."""
         self._conn.close()
 
     def _open(self, conn: Any) -> None:
@@ -129,6 +135,7 @@ class SmbTransport:
         return self.root / path
 
     def read_bytes(self, path: PurePosixPath) -> bytes:
+        """A file's content, kept in memory so that no temporary file is left behind."""
         _log.debug("Reading %s", path)
         remote = self._inside(path).as_posix()
         buffer = io.BytesIO()  # in memory: no local or temporary file is written (D6)
@@ -137,6 +144,7 @@ class SmbTransport:
         return buffer.getvalue()
 
     def exists(self, path: PurePosixPath) -> bool:
+        """Whether a file or folder exists, ignoring case. A failed listing is an error."""
         # Walks down the listings, because pysmb raises the same exception for "not found" and for
         # a real failure such as "access denied". A failed listing stays an error here.
         parent = ""
@@ -148,12 +156,17 @@ class SmbTransport:
         return True
 
     def size(self, path: PurePosixPath) -> int:
+        """A file's size in bytes, as the server reports it."""
         remote = self._inside(path).as_posix()
         with _reporting(f"getting the size of {path} on share {self.share}"):
             attributes = self._conn.getAttributes(self.share, remote, timeout=self.timeout)
             return int(attributes.file_size)
 
     def makedirs(self, path: PurePosixPath) -> None:
+        """Create a folder and any missing parents, one level at a time.
+
+        A folder whose name differs only in case counts as the same one, as it does on Samba.
+        """
         # createDirectory isn't recursive, so each missing level is created in order (D4).
         parent = ""
         for name in self._inside(path).parts:
@@ -166,6 +179,7 @@ class SmbTransport:
             parent = f"{parent}{actual}/"
 
     def upload(self, local: Path, remote: PurePosixPath) -> int:
+        """Copy a file, replacing any file there. Returns the bytes the server says it stored."""
         inside = self._inside(remote).as_posix()
         with (
             _reporting(f"uploading {local} to {remote} on share {self.share}"),
@@ -182,7 +196,9 @@ class SmbTransport:
         return self.share if self.root == SHARE_ROOT else f"{self.share}/{self.root}"
 
     def describe(self) -> str:
+        """The share, host and port, for messages. The user isn't part of it."""
         return f"SMB share {self._where()} on {self.host}:{self.port}"
 
     def url(self) -> str:
+        """The target as an ``smb://`` URL, for machines. It has no user or password."""
         return f"smb://{self.host}:{self.port}/{self._where()}"

@@ -197,8 +197,8 @@ skill below, **read its whole `SKILL.md` before acting** and follow it.
 ## Code style
 
 - Keep changes minimal and focused on the current step.
-- Enforced by CI: `ruff format` and `ruff check` (including the `S` security rules), and `mypy` strict for new
-  code. Also expected: type hints everywhere, `pathlib` for paths, no bare `except:`, and `sys.exit` only at the CLI
+- Enforced by CI: `ruff format` and `ruff check` (including the `S` security rules, and for `src/` the `D` docstring
+  rules, Google convention), and `mypy` strict for new code. A docstring says why where it isn't obvious, and doesn't restate the signature. Also expected: type hints everywhere, `pathlib` for paths, no bare `except:`, and `sys.exit` only at the CLI
   boundary. There are no ruff or mypy exemptions for BECK's own code, only the mypy import override for `pysmb`. Don't add new ones.
 - Pure core (`models`, `hashing`, `matcher`) with device and network I/O only in adapters (`frontends/`,
   `transports/`, `output/`). See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design and its rules.

@@ -234,9 +234,9 @@ def _warn_about_unknown_settings(path: Path, data: dict[str, Any]) -> None:
 
 
 def load(path: Path, *, may_be_missing: bool = False) -> Config:
-    """Read a settings file. Raises ConfigError, listing every problem, each with its setting.
+    r"""Read a settings file. Raises ConfigError, listing every problem, each with its setting.
 
-    They're on one line, because a line break in a message would show as ``\\x0a``. A setting this
+    They're on one line, because a line break in a message would show as ``\x0a``. A setting this
     BECK doesn't know is only a warning, because it's probably a typo, and may be from a newer BECK.
 
     With ``may_be_missing``, no file means no settings, but any other failure is still an error.

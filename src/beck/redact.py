@@ -23,6 +23,7 @@ def add_secret(value: str) -> None:
 
 
 def forget_secrets() -> None:
+    """Start with nothing to mask: ``cli.main`` can run more than once in a process."""
     _secrets.clear()
 
 

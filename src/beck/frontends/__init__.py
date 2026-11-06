@@ -10,6 +10,7 @@ _ADAPTERS: dict[str, Callable[[], FrontendAdapter]] = {"recalbox": RecalboxAdapt
 
 
 def known_frontends() -> list[str]:
+    """The names ``--frontend`` accepts, sorted for messages."""
     return sorted(_ADAPTERS)
 
 
