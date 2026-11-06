@@ -224,6 +224,41 @@ beck config  init | show | path                     # added in stage 07
 - **Verify:** `uv run pytest tests/unit/test_console.py tests/unit/test_cli.py -q -k "utf8 or encode or failed_check"`
 - **Commit message:** `fix(output): show undecodable file names and failed dry-run checks correctly`
 
+### 06.7b — A stream that fails can't change the run (D20, D21)
+- [ ] Done
+- **What:** The end-to-end runs of 06.7a found these, and measuring them showed more than a wrong exit code. In all of them, the exit code
+  breaks the contract in [docs/cli.md](../docs/cli.md#exit-codes), and a script that retries could repeat or lose work.
+  - **D20, stdout can't be written, so the run changes:** today, the result depends on how much BECK has printed when it notices.
+
+    | Stdout | Human output | `--json` |
+    |---|---|---|
+    | Closed pipe, little output | Uploads done, exit 120 | Uploads done, exit 120 |
+    | Closed pipe, lots of output after the uploads | Uploads done, exit 1 and a traceback. With `--move`, the local file is gone too | Uploads done, exit 120 and a traceback |
+    | Closed pipe, lots of output before the uploads | **Nothing uploaded**, exit 1 and a traceback | Uploads done, exit 120 and a traceback |
+    | Full disk (`> /dev/full`) | Uploads done, exit 120 | Uploads done, exit 120 |
+    | Closed (`>&-`) | **Nothing uploaded**, exit 1 and a traceback | Uploads done, exit 0 |
+
+    The rule to build: **what BECK does, and its exit code, don't depend on whether its output can be written.** The run carries on, and the
+    exit code reports the work, as in a run nobody piped: 0, or 3 if an upload failed. There's no traceback, and nothing is reported as a bug.
+    A closed pipe is silent, because the reader chose to stop. Any other failure, such as a full disk, prints one line on stderr saying the
+    output was lost, because nobody chose that. Interpreter shutdown can't change the exit code either, as in
+    [Python's note on SIGPIPE](https://docs.python.org/3/library/signal.html#note-on-sigpipe).
+  - **D21, the prompt can't get an answer, so BECK crashes:** nothing is changed in any of these, but each exits with 1 and a traceback, as a
+    bug. Bytes that aren't valid text typed at the prompt raise `UnicodeDecodeError`. A closed stdin (`<&-`) or stderr (`2>&-`) raises
+    `AttributeError`. They must fail towards no, and exit with 2: invalid bytes count as an answer that isn't `y` or `yes`, and with a closed
+    stream BECK can't ask, so it gives the message that says to use `--dry-run` or `--yes`. So does a stderr that fails while asking.
+  - Record the D20 rule as a new DEC, in [ADR-0007](../docs/adr/0007-cli-contract.md), with the alternative: stopping as soon as the reader
+    is gone. That needs a new exit code, and BECK only notices when a buffer fills, so what got done would still depend on the output.
+- **Files:** `src/beck/output/__init__.py`, `src/beck/output/console.py`, `src/beck/output/json.py`, `src/beck/cli.py`,
+  `tests/unit/test_output_streams.py`, `docs/cli.md`, `docs/json-output.md`, `docs/adr/0007-cli-contract.md`, `roadmap/README.md`,
+  `roadmap/00-assessment.md`
+- **Done when:** Tests with real child processes and real pipes, not fakes, cover each row of the table in both modes: the same files end up
+  on the target and locally as in an unpiped run, the exit code is the same, including 3 for a failed upload, stderr has no traceback, and
+  `--move` deletes the same files. A full disk gives exactly one line on stderr, and a closed pipe gives none. Invalid bytes at the prompt, on a
+  real pseudo-terminal, and `<&-` and `2>&-` each exit with 2 and change nothing. D20 and D21 are marked as fixed.
+- **Verify:** `uv run pytest tests/unit/test_output_streams.py -q`
+- **Commit message:** `fix(output): keep a run and its exit code independent of its output streams`
+
 ### 06.8 — JSON contract tests
 - [ ] Done
 - **What:** `uv add --dev jsonschema` (dev-only, DEC-23). Tests run every command in success **and** error

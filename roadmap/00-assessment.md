@@ -103,6 +103,10 @@ start, and fixed in [05.3a](05-testing-hardening.md#053a--a-report-beck-cant-rec
 the run exited with 1 and lost its summary. D19, a dry run said `would copy` for a target it failed to check. Both were found by the
 end-to-end runs of step 06.7, and fixed in [06.7a](06-cli-ux-and-machine-output.md#067a--fix-two-bugs-in-the-human-output-d18-d19).
 
+**Found later, still open:** D20, when stdout can't be written, the exit code leaves the documented range, and a closed pipe can even stop
+the uploads, depending on how much BECK has printed. D21, a prompt that can't get an answer crashes with exit 1, though nothing has changed.
+Both are for [06.7b](06-cli-ux-and-machine-output.md#067b--a-stream-that-fails-cant-change-the-run-d20-d21).
+
 ### Hygiene findings (not numbered, fixed in [03.12](03-critical-fixes-and-data-safety.md#0312--cleanup-messages-imports-exceptions-typos-d12))
 - `import json` is unused, and so are `ITALIC`, `UNDERLINE`, `BLINK`, `BLACK` and `WHITE`.
 - Bare `except:` at lines 31 and 225; `exit()` (the `site` builtin) instead of `sys.exit()` or exceptions.
