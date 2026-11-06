@@ -126,7 +126,7 @@ These are the boundaries to keep when changing the code:
 ## Extending BECK
 
 - **A new frontend** (stage 11): add an adapter in `frontends/` that follows `FrontendAdapter`, register it, and add real
-  report fixtures for it.
+  report fixtures for it. [The `add-frontend-adapter` skill](../.agents/skills/add-frontend-adapter/SKILL.md) has the whole procedure.
 - **A new transport**: add a class in `transports/` that follows `Transport`. Only `cli.py` needs to know it exists.
 
 The Protocols exist because DEC-03 and DEC-04 need them. Don't add a plugin system or other abstractions beyond them.

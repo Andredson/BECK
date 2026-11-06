@@ -40,4 +40,4 @@ All are cut from `recalbox-10.1.1/default-install`, using its original blocks.
 | `derived-nested-paths` | Share root, two-level folders, and one name in three folders (`IPL.bin`) | Nothing |
 | `derived-shared-md5` | One MD5 in several entries, repeated targets, two locations on a `Path:` line, a repeated MD5 in one list | Nothing |
 
-To add a report from another Recalbox version, keep the file byte-exact, remove anything personal, and add a row above.
+To add a report, follow [the `add-report-fixture` skill](../../.agents/skills/add-report-fixture/SKILL.md).

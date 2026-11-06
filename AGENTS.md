@@ -10,7 +10,7 @@ BECK (BIOS checker for Recalbox) matches a user's BIOS files against the MD5 has
 report that Recalbox generates, then copies the matching files, under the expected names, into the right
 folders on the Recalbox over SMB.
 
-**Status (2026-11-06, stage 08 closed):** prototype, not published yet. The application is the `beck` package in `src/beck/`, with a pure
+**Status (2026-11-06, stage 09 closed):** prototype, not published yet. The application is the `beck` package in `src/beck/`, with a pure
 core and adapters around it ([design](docs/ARCHITECTURE.md)). Its [known defects are fixed](roadmap/00-assessment.md#defects),
 and it never renames local files, or deletes them unless `--move` or `--clean-unmatched` asks for it. The repository around it has tooling and
 CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against a real Samba server, commit-message, secret and dependency checks. It is being improved stage by stage following
@@ -34,6 +34,7 @@ CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against
 | `.editorconfig`, `.gitattributes` | Editor settings; LF line endings in the repository. |
 | `roadmap/` | The improvement plan: [index and decision log](roadmap/README.md), [assessment](roadmap/00-assessment.md), one file per stage. |
 | [`CHANGELOG.md`](CHANGELOG.md), `cliff.toml` | The changelog, **generated** from the commit messages by git-cliff (DEC-20). Don't edit it by hand; [the command](docs/maintenance.md#regenerating-the-changelog) is in the maintenance routine. |
+| `.agents/skills/` | [Agent Skills](.agents/skills/README.md): procedures for tasks that take several steps, listed in the [index](#skills) below (DEC-22). `tests/test_skills.py` checks their format, links and index, and that what they copy still matches. |
 | `docs/agents.md` | Which AI agents were tested loading this file, and how to test another one. |
 | `docs/ARCHITECTURE.md` | [The design](docs/ARCHITECTURE.md): the core is pure and adapters do the I/O. Data flow, and the rules to keep, which `tests/unit/test_architecture.py` enforces. Read it before changing `src/beck/`. |
 | `docs/troubleshooting.md` | [Each message BECK prints](docs/troubleshooting.md), with why and what to do. A new error needs an entry here, which `tests/test_troubleshooting.py` checks for its code. |
@@ -71,10 +72,10 @@ podman build -t beck-samba tests/integration/samba && podman run -d --rm -p 127.
 BECK_TEST_SMB_HOST=127.0.0.1 BECK_TEST_SMB_PORT=4450 uv run pytest -m integration
 ```
 
-Before committing, this must pass; it's what the `quality` and `tests` CI jobs run:
+Before committing, this must pass; it's what the `quality` and `tests` CI jobs run, and [the `quality-gates` skill](.agents/skills/quality-gates/SKILL.md) has the rest:
 
 ```sh
-uv lock --check && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest && uv run python scripts/check_repo_hygiene.py
+uv sync --locked && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run python scripts/check_repo_hygiene.py && uv export --no-dev --no-hashes --no-emit-project -o requirements.txt && git diff --exit-code -- requirements.txt && uv run pytest --cov --cov-report=xml
 ```
 
 - **After changing a flag or its help**, regenerate the reference: `uv run python scripts/gen_cli_reference.py`.
@@ -189,12 +190,17 @@ field, with [the schemas](docs/schemas/), and [the `beck` command](docs/cli.md) 
 
 ### Skills
 
-Agent Skills live in `.agents/skills/<name>/SKILL.md` (open agentskills.io format, DEC-22). When a task matches a
-skill below, **read its whole `SKILL.md` before acting** and follow it.
+Agent Skills live in `.agents/skills/<name>/SKILL.md` (open agentskills.io format, DEC-22), and
+[their README](.agents/skills/README.md) says how to add one. No copies, symlinks or vendor folders. When a task matches a skill below,
+**read its whole `SKILL.md` before acting, and follow it over your general habits.** A skill never overrides the [hard rules](#hard-rules).
 
 | Skill | Path | Use it when |
 |---|---|---|
-| *(none yet; added in stage 09)* | | |
+| `execute-roadmap-step` | [`.agents/skills/execute-roadmap-step/SKILL.md`](.agents/skills/execute-roadmap-step/SKILL.md) | Asked to do or continue the next roadmap step, or to work on a stage. |
+| `quality-gates` | [`.agents/skills/quality-gates/SKILL.md`](.agents/skills/quality-gates/SKILL.md) | Before committing, when asked to run the checks or tests, or when a check or CI job fails. |
+| `add-report-fixture` | [`.agents/skills/add-report-fixture/SKILL.md`](.agents/skills/add-report-fixture/SKILL.md) | Someone provides a `missing_bios_report.txt`, or a new Recalbox version needs support. |
+| `add-frontend-adapter` | [`.agents/skills/add-frontend-adapter/SKILL.md`](.agents/skills/add-frontend-adapter/SKILL.md) | Asked to support another system, such as Batocera or RetroBat. |
+| `diagnose-missing-bios` | [`.agents/skills/diagnose-missing-bios/SKILL.md`](.agents/skills/diagnose-missing-bios/SKILL.md) | A user asks why a BIOS file is missing, or asks you to run BECK on their files. |
 
 ## Code style
 
