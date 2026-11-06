@@ -196,7 +196,7 @@ Agent Skills live in `.agents/skills/<name>/SKILL.md` (open agentskills.io forma
 
 | Skill | Path | Use it when |
 |---|---|---|
-| *(none yet; added in stage 09)* | | |
+| `execute-roadmap-step` | [`.agents/skills/execute-roadmap-step/SKILL.md`](.agents/skills/execute-roadmap-step/SKILL.md) | Asked to do or continue the next roadmap step, or to work on a stage. |
 
 ## Code style
 

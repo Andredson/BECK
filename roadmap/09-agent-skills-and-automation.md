@@ -69,7 +69,7 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
 - **Commit message:** `docs(agents): add skills folder and index`
 
 ### 09.3 — Skill: `execute-roadmap-step`
-- [ ] Done
+- [x] Done
 - **What:** Encodes the protocol from [roadmap README](README.md#how-to-execute-a-step-humans-and-agents):
   1. find the next step; check its blockers;
   2. confirm there is no missing decision; if there is, ask the owner with alternatives;
