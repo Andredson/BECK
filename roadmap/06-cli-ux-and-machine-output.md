@@ -225,7 +225,7 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `fix(output): show undecodable file names and failed dry-run checks correctly`
 
 ### 06.7b — A stream that fails can't change the run (D20, D21)
-- [ ] Done
+- [x] Done
 - **What:** The end-to-end runs of 06.7a found these, and measuring them showed more than a wrong exit code. In all of them, the exit code
   breaks the contract in [docs/cli.md](../docs/cli.md#exit-codes), and a script that retries could repeat or lose work.
   - **D20, stdout can't be written, so the run changes:** today, the result depends on how much BECK has printed when it notices.
@@ -249,9 +249,9 @@ beck config  init | show | path                     # added in stage 07
     stream BECK can't ask, so it gives the message that says to use `--dry-run` or `--yes`. So does a stderr that fails while asking.
   - Record the D20 rule as a new DEC, in [ADR-0007](../docs/adr/0007-cli-contract.md), with the alternative: stopping as soon as the reader
     is gone. That needs a new exit code, and BECK only notices when a buffer fills, so what got done would still depend on the output.
-- **Files:** `src/beck/output/__init__.py`, `src/beck/output/console.py`, `src/beck/output/json.py`, `src/beck/cli.py`,
-  `tests/unit/test_output_streams.py`, `docs/cli.md`, `docs/json-output.md`, `docs/adr/0007-cli-contract.md`, `roadmap/README.md`,
-  `roadmap/00-assessment.md`
+- **Files:** `src/beck/output/__init__.py`, `src/beck/output/console.py`, `src/beck/output/json.py`, `src/beck/cli.py`, `check_bios.py`,
+  `tests/unit/test_output_streams.py`, `tests/integration/test_smb_transport.py`, `docs/cli.md`, `docs/json-output.md`, `docs/ARCHITECTURE.md`,
+  `docs/adr/0007-cli-contract.md`, `docs/adr/README.md`, `roadmap/README.md`, `roadmap/00-assessment.md`
 - **Done when:** Tests with real child processes and real pipes, not fakes, cover each row of the table in both modes: the same files end up
   on the target and locally as in an unpiped run, the exit code is the same, including 3 for a failed upload, stderr has no traceback, and
   `--move` deletes the same files. A full disk gives exactly one line on stderr, and a closed pipe gives none. Invalid bytes at the prompt, on a

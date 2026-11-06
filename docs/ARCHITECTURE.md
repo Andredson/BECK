@@ -104,6 +104,9 @@ These are the boundaries to keep when changing the code:
 7. **Output goes to its own stream.** Human output or one JSON document goes to stdout, and logs from `logging.getLogger("beck")` go to
    stderr. With `--json`, stdout has nothing else, whatever happens. A file name can't crash the output, because this runs after the
    work is done: human output escapes what the stream can't encode. `upload_status` decides what happened to an upload for both outputs.
+8. **Output can't change the run** (DEC-62). What BECK does, and its exit code, don't depend on whether its output can be written. Output goes
+   through `print_safely`, and `cli.main` ends with `finish_output`. The deletion prompt is the one exception, because a question nobody saw
+   can't be answered: if it can't be shown, BECK can't ask, and nothing is deleted.
 
 ## Errors
 

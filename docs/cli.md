@@ -99,7 +99,7 @@ With no target, BECK uses the settings in `config/config.yml`.
 Without `--move` or `--clean-unmatched`, BECK never deletes or renames a local file (DEC-02).
 
 With either of them, BECK lists the files and asks `Delete N files? [y/N]` on a terminal, on stderr. Without a terminal, as in scripts, agents and
-CI, deleting requires `--yes`, and otherwise BECK exits with 2. `--json` never prompts, so it requires `--yes` too. A dry run deletes
+CI, or with stdin or stderr closed, deleting requires `--yes`, and otherwise BECK exits with 2. `--json` never prompts, so it requires `--yes` too. A dry run deletes
 nothing, even with these flags, and shows what would go. Every deletion is listed in the result.
 
 These are never deleted:
@@ -162,6 +162,9 @@ Some details:
 - `--fail-if-missing` counts entries that are required or whose status is unknown. A required file listed as `INCORRECT` counts too,
   because the device still can't use it.
 - If several apply, the transport error wins over `--fail-if-missing`, because the run didn't do all it could.
+- What BECK does, and its exit code, don't depend on whether its output can be written (DEC-62). If you quit `beck check | less` early,
+  the uploads still finish, and the exit code reports them. A closed pipe is silent, and any other failure, such as a full disk, prints one
+  line on stderr. So with `--move --yes | head`, files can be deleted without you seeing the list.
 
 ## JSON output
 

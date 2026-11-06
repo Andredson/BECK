@@ -15,7 +15,11 @@ beck --json scan --source ~/my-bios
 2. Branch on the [exit code](cli.md#exit-codes). `ok` is `false` whenever it isn't 0.
 3. Read `errors` for what went wrong, and the other fields for what happened.
 
-`--help` and `--version` are the only exceptions: they print text. A run stopped by Ctrl-C prints no document.
+`--help` and `--version` print text, and a run stopped by Ctrl-C prints no document.
+
+If stdout itself can't be written, the document is lost or cut short, but the run carries on, and the exit code still reports it
+(DEC-62). A closed pipe is silent, and any other failure, such as a full disk, prints one line on stderr. So when you save the document to a
+file, check that it parses.
 
 ## The compatibility promise
 

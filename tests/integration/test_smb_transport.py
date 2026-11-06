@@ -6,6 +6,8 @@ Run with BECK_TEST_SMB_HOST=127.0.0.1 BECK_TEST_SMB_PORT=4450 uv run pytest -m i
 import json
 import os
 import socket
+import subprocess
+import sys
 from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -360,6 +362,41 @@ def test_end_to_end_a_name_that_is_not_valid_utf8_reaches_a_real_server(
     output = capsys.readouterr().out
     assert f"bad-\\xff.bin: copied -> {target}" in output
     assert "PLEASE SCAN" in output
+
+
+@pytest.mark.parametrize("flags", [(), ("--json",)], ids=["human", "json"])
+def test_end_to_end_a_closed_pipe_changes_nothing_on_a_real_server(
+    samba: Samba,
+    tmp_path: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    flags: tuple[str, ...],
+) -> None:
+    source = tmp_path / "source"
+    good = make_bios_file(source, "good.bin")
+    for number in range(800):  # more than a buffer holds, in any supported Python
+        (source / f"{'x' * 200}{number}.bin").write_bytes(number.to_bytes(4, "big"))
+    target = folder / "a.bin"
+    put_report(make_report_text([make_missing(target.as_posix(), good.md5)]))
+    url = f"smb://{samba.host}:{samba.port}/bios"
+    read_end, write_end = os.pipe()
+    os.close(read_end)
+
+    result = subprocess.run(  # noqa: S603 - fixed arguments, no external input
+        [sys.executable, "-m", "beck", *flags, "check", "--source", str(source), "--target", url],
+        stdout=write_end,
+        stderr=subprocess.PIPE,
+        stdin=subprocess.DEVNULL,
+        check=False,
+        timeout=120,
+        cwd=tmp_path,
+    )
+    os.close(write_end)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stderr == b""
+    with samba.guest() as transport:
+        assert transport.read_bytes(target) == good.path.read_bytes()
 
 
 def test_end_to_end_json_on_a_real_server(

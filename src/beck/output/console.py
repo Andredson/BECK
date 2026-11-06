@@ -11,7 +11,13 @@ from typing import TextIO
 
 from beck.errors import BeckError
 from beck.models import SHARE_ROOT, LocalFile, MissingBios, RunResult, Unreadable
-from beck.output import distinct_targets, extension_warning, upload_status
+from beck.output import (
+    LOGGER_NAME,
+    distinct_targets,
+    extension_warning,
+    print_safely,
+    upload_status,
+)
 
 RESET = "\033[0m"
 RED = "\033[91m"
@@ -20,8 +26,6 @@ YELLOW = "\033[93m"
 BLUE = "\033[94m"
 MAGENTA = "\033[35m"
 CYAN = "\033[36m"
-
-LOGGER_NAME = "beck"
 
 # How Python holds a byte of a file name that isn't valid UTF-8: 0xff becomes the character U+DCFF.
 UNDECODABLE_BYTE = re.compile("[\udc80-\udcff]")
@@ -78,15 +82,15 @@ def wants_color(stream: TextIO, environ: Mapping[str, str]) -> bool:
     return stream.isatty() and enable_windows_ansi()
 
 
-def _write_line(stream: TextIO, line: str) -> None:
-    """Print a line, escaping what the stream can't encode, so that a name can't crash a run.
+def _printable(line: str, stream: TextIO | None) -> str:
+    """A line with what the stream can't encode escaped, so that a name can't crash a run.
 
     A name can be anything, and this runs after the uploads and deletions: a crash here would report
     a failure for work that's done. ``--json`` has the exact name, if someone needs it.
     """
     readable = UNDECODABLE_BYTE.sub(lambda byte: f"\\x{ord(byte[0]) - 0xDC00:02x}", line)
-    encoding = stream.encoding or "utf-8"  # a StringIO has none
-    print(readable.encode(encoding, "backslashreplace").decode(encoding), file=stream)
+    encoding = getattr(stream, "encoding", None) or "utf-8"  # a StringIO has none
+    return readable.encode(encoding, "backslashreplace").decode(encoding)
 
 
 def _deletes_unmatched(result: RunResult) -> bool:
@@ -108,13 +112,14 @@ class ConsoleRenderer:
         self, stream: TextIO | None = None, environ: Mapping[str, str] | None = None
     ) -> None:
         self.stream = sys.stdout if stream is None else stream
-        self.color = wants_color(self.stream, os.environ if environ is None else environ)
+        settings = os.environ if environ is None else environ
+        self.color = self.stream is not None and wants_color(self.stream, settings)
 
     def _paint(self, text: object, color: str) -> str:
         return f"{color}{text}{RESET}" if self.color else str(text)
 
     def _print(self, line: str) -> None:
-        _write_line(self.stream, line)
+        print_safely(_printable(line, self.stream), self.stream)
 
     def missing_count(self, count: int) -> None:
         self._print(f"There are {self._paint(count, MAGENTA)} missing bios in your RECALBOX")
@@ -143,16 +148,25 @@ class ConsoleRenderer:
         """Nothing: the lines before this one already said why there's nothing to upload."""
 
     def can_ask(self) -> bool:
-        return sys.stdin.isatty()
+        """Only with a terminal to read the answer from, and a stderr to ask on."""
+        return sys.stdin is not None and sys.stderr is not None and sys.stdin.isatty()
 
     def confirm_deletion(self, preview: RunResult) -> bool:
-        """List what would be deleted, and ask. On stderr, so that stdout stays the result."""
+        """List what would be deleted, and ask. On stderr, so that stdout stays the result.
+
+        This isn't ``print_safely``: nobody can answer a question that wasn't shown, so an OSError
+        here means BECK can't ask. Anything that isn't text isn't a yes.
+        """
         for file in preview.deleted:
-            _write_line(sys.stderr, f"  {file.relative.as_posix()}")
+            print(_printable(f"  {file.relative.as_posix()}", sys.stderr), file=sys.stderr)
         if _deletes_unmatched(preview):
             print(UNMATCHED_WARNING, file=sys.stderr)
         print(f"Delete {len(preview.deleted)} files? [y/N] ", end="", file=sys.stderr, flush=True)
-        return sys.stdin.readline().strip().lower() in ("y", "yes")
+        try:
+            answer = sys.stdin.readline()
+        except UnicodeDecodeError:
+            return False
+        return answer.strip().lower() in ("y", "yes")
 
     def unreadable(self, items: tuple[Unreadable, ...]) -> None:
         """Local files and folders that couldn't be read. The run carries on without them."""

@@ -21,7 +21,13 @@ from beck.models import (
     ScanResult,
     Unreadable,
 )
-from beck.output import distinct_targets, extension_warning, upload_errors, upload_status
+from beck.output import (
+    distinct_targets,
+    extension_warning,
+    print_safely,
+    upload_errors,
+    upload_status,
+)
 
 SCHEMA_VERSION = 1
 INTERNAL_ERROR = {
@@ -33,7 +39,7 @@ INTERNAL_ERROR = {
 
 def _write(document: dict[str, Any], stream: TextIO) -> None:
     # ensure_ascii, the default: a file name that isn't valid UTF-8 can't break the output.
-    print(json.dumps(document, indent=2), file=stream)
+    print_safely(json.dumps(document, indent=2), stream)
 
 
 def _header(command: str | None, *, ok: bool) -> dict[str, Any]:

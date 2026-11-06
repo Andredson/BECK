@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-05
-- **Decisions covered:** DEC-59. The rest of the contract follows from DEC-02, DEC-05, DEC-17, DEC-23 and DEC-54 (rows in the
+- **Decisions covered:** DEC-59, DEC-62. The rest of the contract follows from DEC-02, DEC-05, DEC-17, DEC-23 and DEC-54 (rows in the
   [decision log](../../roadmap/README.md#decision-log)).
 
 ## Context
@@ -73,3 +73,22 @@ The one-document-on-stdout rule and the `--json` no-prompt rule came from the ro
   - A local file that can't be read doesn't change the exit code, because the run completed and that file couldn't have matched.
 - **Alternatives considered:** none were offered separately. The owner gave no further reason.
 - **Consequences:** Steps 06.2a, 06.6 and 06.9 implement them.
+
+## DEC-62 — A stream that fails can't change the run
+- **Date:** 2026-11-05 (step 06.7b).
+- **Context:** The end-to-end runs of step 06.7a showed that a run's result depended on how much it had printed when stdout failed. With a
+  closed pipe, one run uploaded and exited with 120, another uploaded and exited with 1, and a third uploaded nothing and exited with 1,
+  depending on the amount of output. Exit codes 1 and 120 also told a script that a run had failed after it had uploaded and deleted files, so
+  a retry could repeat or lose work.
+- **Decision:** What BECK does, and its exit code, don't depend on whether its output can be written. The run carries on, and the exit code
+  reports the work. A closed pipe is silent, because the reader chose to stop. Any other failure, such as a full disk, prints one line on stderr.
+- **Alternatives considered:**
+  - *Keep going*: the option above, which the agent recommended.
+  - *Stop as soon as the reader is gone*, as most Unix tools do: not chosen. It needs an exit code outside the contract's 0 to 5, and BECK only
+    notices when a buffer fills, so what got done would still depend on the amount of output.
+
+  The agent said that running the step as written would accept the recommendation, and the owner ran it. The owner gave no further reason.
+- **Consequences:**
+  - With `--move --yes | head`, files can be deleted without the user seeing the list, though `--yes` confirmed that.
+  - A JSON document saved to a full disk is cut short while the exit code says 0, so the guide says to check that a saved document parses.
+  - The deletion prompt is the one exception: a question that can't be shown can't be answered, so BECK can't ask, and deletes nothing.

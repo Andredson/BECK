@@ -17,7 +17,8 @@ from beck.frontends.base import FrontendAdapter
 from beck.hashing import scan
 from beck.matcher import plan
 from beck.models import MissingBios, RunResult
-from beck.output.console import LOGGER_NAME, ConsoleRenderer, configure_logging
+from beck.output import LOGGER_NAME, finish_output
+from beck.output.console import ConsoleRenderer, configure_logging
 from beck.output.json import JsonRenderer, write_rejected_command
 from beck.targets import URL_FORM, parse_smb_url
 from beck.transports.base import Transport
@@ -144,13 +145,17 @@ def _source_folder(args: argparse.Namespace, base_dir: Path) -> Path:
 
 def _confirm_deletion(preview: RunResult, renderer: Renderer) -> None:
     """Ask before deleting. Without a terminal to ask on, deleting needs --yes."""
-    count = len(preview.deleted)
+    cant_ask = UsageError(
+        f"BECK would delete {len(preview.deleted)} local files, and can't ask here. Nothing was "
+        "changed. To see them, use --dry-run. To confirm, use --yes."
+    )
     if not renderer.can_ask():
-        raise UsageError(
-            f"BECK would delete {count} local files, and can't ask here. Nothing was changed. "
-            "To see them, use --dry-run. To confirm, use --yes."
-        )
-    if not renderer.confirm_deletion(preview):
+        raise cant_ask
+    try:
+        confirmed = renderer.confirm_deletion(preview)
+    except OSError as e:  # the question or the answer didn't get through
+        raise cant_ask from e
+    if not confirmed:
         raise UsageError("Nothing was changed, because you didn't confirm the deletion.")
 
 
@@ -342,7 +347,15 @@ def main(argv: list[str] | None = None, *, base_dir: Path | None = None) -> int:
     """Run BECK and return its exit code. Settings and files are found under ``base_dir``.
 
     With no ``base_dir``, that's the current directory: an installed tool has no folder of its own.
+    Output that can't be written doesn't change the run or its exit code (DEC-62).
     """
+    try:
+        return _main(argv, base_dir)
+    finally:
+        finish_output()
+
+
+def _main(argv: list[str] | None, base_dir: Path | None) -> int:
     parser = _build_parser(json_errors=_asks_for_json(sys.argv[1:] if argv is None else argv))
     try:
         args = parser.parse_args(argv)
