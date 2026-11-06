@@ -3,6 +3,7 @@
 import ctypes
 import logging
 import os
+import re
 import sys
 from collections.abc import Mapping
 from pathlib import Path, PurePosixPath
@@ -10,7 +11,7 @@ from typing import TextIO
 
 from beck.errors import BeckError
 from beck.models import SHARE_ROOT, LocalFile, MissingBios, RunResult, Unreadable
-from beck.output import distinct_targets, extension_warning
+from beck.output import distinct_targets, extension_warning, upload_status
 
 RESET = "\033[0m"
 RED = "\033[91m"
@@ -21,6 +22,18 @@ MAGENTA = "\033[35m"
 CYAN = "\033[36m"
 
 LOGGER_NAME = "beck"
+
+# How Python holds a byte of a file name that isn't valid UTF-8: 0xff becomes the character U+DCFF.
+UNDECODABLE_BYTE = re.compile("[\udc80-\udcff]")
+
+# What people read for each status of an upload. "planned" depends on more, so it isn't here.
+OUTCOMES = {
+    "uploaded": "copied",
+    "replaced": "replaced",
+    "kept": "already on the device, kept",
+    "failed": "failed",
+    "skipped": "skipped",
+}
 
 # DEC-56: the risk of --clean-unmatched, wherever it's about to delete something.
 UNMATCHED_WARNING = (
@@ -65,6 +78,17 @@ def wants_color(stream: TextIO, environ: Mapping[str, str]) -> bool:
     return stream.isatty() and enable_windows_ansi()
 
 
+def _write_line(stream: TextIO, line: str) -> None:
+    """Print a line, escaping what the stream can't encode, so that a name can't crash a run.
+
+    A name can be anything, and this runs after the uploads and deletions: a crash here would report
+    a failure for work that's done. ``--json`` has the exact name, if someone needs it.
+    """
+    readable = UNDECODABLE_BYTE.sub(lambda byte: f"\\x{ord(byte[0]) - 0xDC00:02x}", line)
+    encoding = stream.encoding or "utf-8"  # a StringIO has none
+    print(readable.encode(encoding, "backslashreplace").decode(encoding), file=stream)
+
+
 def _deletes_unmatched(result: RunResult) -> bool:
     return any(file in result.plan.unmatched for file in result.deleted)
 
@@ -90,7 +114,7 @@ class ConsoleRenderer:
         return f"{color}{text}{RESET}" if self.color else str(text)
 
     def _print(self, line: str) -> None:
-        print(line, file=self.stream)
+        _write_line(self.stream, line)
 
     def missing_count(self, count: int) -> None:
         self._print(f"There are {self._paint(count, MAGENTA)} missing bios in your RECALBOX")
@@ -124,7 +148,7 @@ class ConsoleRenderer:
     def confirm_deletion(self, preview: RunResult) -> bool:
         """List what would be deleted, and ask. On stderr, so that stdout stays the result."""
         for file in preview.deleted:
-            print(f"  {file.relative.as_posix()}", file=sys.stderr)
+            _write_line(sys.stderr, f"  {file.relative.as_posix()}")
         if _deletes_unmatched(preview):
             print(UNMATCHED_WARNING, file=sys.stderr)
         print(f"Delete {len(preview.deleted)} files? [y/N] ", end="", file=sys.stderr, flush=True)
@@ -180,10 +204,6 @@ class ConsoleRenderer:
 
     def _file_lines(self, result: RunResult) -> list[str]:
         plan = result.plan
-        completed = {upload.target for upload in result.completed}
-        failed = {error.item for error in result.errors}
-        kept = {upload.target for upload in result.kept}
-        replaced = {upload.target for upload in result.replaced}
         gone = "would be deleted" if result.dry_run else "deleted"
         duplicate_of = {duplicate.file: duplicate.of for duplicate in plan.duplicates}
         lines = []
@@ -207,18 +227,11 @@ class ConsoleRenderer:
                 else:
                     lines.append(f"{path}: no match, kept")
             for upload in uploads:
-                if upload.target in kept:
-                    outcome = "already on the device, kept"
-                elif result.dry_run:
-                    outcome = "would replace" if upload.target in replaced else "would copy"
-                elif upload.target in replaced and upload.target in completed:
-                    outcome = "replaced"
-                elif upload.target in completed:
-                    outcome = "copied"
-                elif upload.target.as_posix() in failed:
-                    outcome = "failed"
+                status = upload_status(upload, result)
+                if status == "planned":
+                    outcome = "would replace" if upload in result.replaced else "would copy"
                 else:
-                    outcome = "skipped"
+                    outcome = OUTCOMES[status]
                 lines.append(f"{path}: {outcome} -> {upload.target}")
                 if upload in result.extension_changes:
                     label = self._paint("Warning", YELLOW)

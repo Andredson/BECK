@@ -17,12 +17,11 @@ from beck.models import (
     LocalFile,
     MissingBios,
     Plan,
-    PlannedUpload,
     RunResult,
     ScanResult,
     Unreadable,
 )
-from beck.output import distinct_targets, extension_warning
+from beck.output import distinct_targets, extension_warning, upload_errors, upload_status
 
 SCHEMA_VERSION = 1
 INTERNAL_ERROR = {
@@ -101,28 +100,16 @@ def _error_items(errors: Iterable[ItemError]) -> list[dict[str, str]]:
     return [{"code": error.code, "message": error.message, "item": error.item} for error in errors]
 
 
-def _upload_status(upload: PlannedUpload, result: RunResult, failed: set[str]) -> str:
-    if upload in result.kept:
-        return "kept"
-    if upload in result.completed:
-        return "replaced" if upload in result.replaced else "uploaded"
-    if upload.target.as_posix() in failed:
-        return "failed"
-    return "planned" if result.dry_run else "skipped"
-
-
 def _upload_items(result: RunResult) -> list[dict[str, Any]]:
-    # A failed delete names a local file, which can have the same name as a target.
-    remote = {e.item: e.message for e in result.errors if e.code != "delete_failed"}
-    failed = set(remote)
+    errors = upload_errors(result)
     return [
         {
             "source": upload.source.relative.as_posix(),
             "target": upload.target.as_posix(),
             "md5": upload.source.md5,
-            "status": _upload_status(upload, result, failed),
+            "status": upload_status(upload, result),
             "replaces": upload in result.replaced,
-            "error": remote.get(upload.target.as_posix()),
+            "error": errors.get(upload.target.as_posix()),
             "warning": (extension_warning(upload) if upload in result.extension_changes else None),
         }
         for upload in result.plan.uploads

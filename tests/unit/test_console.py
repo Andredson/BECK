@@ -3,6 +3,7 @@
 import ctypes
 import io
 import logging
+import os
 import sys
 from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
@@ -10,8 +11,16 @@ from typing import Any
 
 import pytest
 
-from beck.models import Duplicate, ItemError, LocalFile, Plan, PlannedUpload, RunResult
-from beck.output import console
+from beck.models import (
+    Duplicate,
+    ItemError,
+    LocalFile,
+    Plan,
+    PlannedUpload,
+    RunResult,
+    Unreadable,
+)
+from beck.output import console, upload_status
 from beck.output.console import ConsoleRenderer, configure_logging, enable_windows_ansi, wants_color
 from tests.factories import make_local_file, make_missing
 
@@ -481,3 +490,182 @@ def test_the_extension_warning_is_yellow_when_colored() -> None:
     assert f"\033[93mWarning\033[0m{EXTENSION_WARNING.removeprefix('Warning')}" in rendered(
         result, color=True
     )
+
+
+# What a stream can't encode (D18), and failed checks in a dry run (D19)
+
+BAD_NAME = os.fsdecode(b"bad-\xff.bin")
+BAD_NAME_SHOWN = "bad-\\xff.bin"
+
+
+def strict_stream(encoding: str) -> tuple[io.TextIOWrapper, io.BytesIO]:
+    """A stream like a real stdout: it raises UnicodeEncodeError on what it can't encode."""
+    raw = io.BytesIO()
+    return io.TextIOWrapper(raw, encoding=encoding, errors="strict", newline="\n"), raw
+
+
+def rendered_on(encoding: str, result: RunResult) -> str:
+    stream, raw = strict_stream(encoding)
+    ConsoleRenderer(stream, {}).result(result)
+    stream.flush()
+    return raw.getvalue().decode(encoding)
+
+
+def unmatched_file_run(name: str) -> RunResult:
+    return RunResult(plan=Plan(unmatched=(make_local_file(name, A),)))
+
+
+def test_a_name_that_is_not_valid_utf8_is_shown_escaped() -> None:
+    output = rendered_on("utf-8", unmatched_file_run(BAD_NAME))
+
+    assert f"{BAD_NAME_SHOWN}: no match, kept\n" in output
+    assert "Final result:" in output
+
+
+def test_a_name_that_is_not_valid_utf8_is_escaped_with_no_encoding_too() -> None:
+    assert rendered(unmatched_file_run(BAD_NAME))[0] == f"{BAD_NAME_SHOWN}: no match, kept"
+
+
+@pytest.mark.parametrize(
+    ("encoding", "name", "shown"),
+    [
+        ("ascii", "é.bin", "\\xe9.bin"),
+        ("ascii", "日本.bin", "\\u65e5\\u672c.bin"),
+        ("ascii", BAD_NAME, BAD_NAME_SHOWN),
+        ("utf-8", os.fsdecode(b"low-\x80.bin"), "low-\\x80.bin"),
+        ("latin-1", "é.bin", "é.bin"),
+        ("latin-1", "日本.bin", "\\u65e5\\u672c.bin"),
+        ("cp1252", "é.bin", "é.bin"),
+        ("utf-8", "é.bin", "é.bin"),
+        ("utf-8", "日本.bin", "日本.bin"),
+        ("utf-8", "a\ud800.bin", "a\\ud800.bin"),
+    ],
+)
+def test_a_stream_shows_what_it_can_encode_and_escapes_the_rest(
+    encoding: str, name: str, shown: str
+) -> None:
+    assert f"{shown}: no match, kept\n" in rendered_on(encoding, unmatched_file_run(name))
+
+
+def test_a_real_backslash_in_a_name_is_left_as_it_is() -> None:
+    assert "a\\xff.bin: no match, kept\n" in rendered_on("utf-8", unmatched_file_run("a\\xff.bin"))
+
+
+def test_every_kind_of_line_survives_a_stream_that_cannot_encode() -> None:
+    name, other = "é.bin", "ñ.bin"
+    moved = make_local_file(name, A)
+    upload_one = PlannedUpload(moved, PurePosixPath("ü/ß.zip"), make_missing("ü/ß.zip", A))
+    plan = Plan(
+        uploads=(upload_one,),
+        duplicates=(Duplicate(make_local_file(other, A), moved),),
+        already_filled=(make_local_file("ç.bin", B),),
+        unmatched=(make_local_file("ø.bin", C),),
+        incorrect=(make_missing("ÿ.bin", C, incorrect=True, current_md5=D),),
+    )
+    result = RunResult(
+        plan=plan,
+        completed=(upload_one,),
+        errors=(ItemError(item="ü/ß.zip", message="couldn't copy é.bin"),),
+        deleted=(moved,),
+        extension_changes=(upload_one,),
+    )
+    stream, raw = strict_stream("ascii")
+    renderer = ConsoleRenderer(stream, {})
+
+    renderer.result(result)
+    renderer.error("the folder é doesn't exist")
+    renderer.no_files(Path("é"))
+    renderer.unreadable((Unreadable(PurePosixPath("é.bin"), "broken symlink"),))
+    renderer.incorrect([make_missing("é.bin", A, incorrect=True)])
+    renderer.report([make_missing("ü/é.bin", A)])
+
+    stream.flush()
+    output = raw.getvalue().decode("ascii")
+    assert "\\xe9.bin: copied -> \\xfc/\\xdf.zip" in output
+    assert "\\xf1.bin: duplicate of \\xe9.bin, kept" in output
+    assert "Warning: \\xe9.bin has a different extension from \\xfc/\\xdf.zip" in output
+    assert "\\xfc/\n  \\xe9.bin (required)" in output
+    assert "Final result:" in output
+
+
+@pytest.mark.parametrize(
+    ("encoding", "name", "shown"),
+    [("utf-8", BAD_NAME, BAD_NAME_SHOWN), ("ascii", "é.bin", "\\xe9.bin")],
+)
+def test_the_prompt_shows_a_name_it_cannot_encode(
+    encoding: str, name: str, shown: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stream, raw = strict_stream(encoding)
+    monkeypatch.setattr(sys, "stderr", stream)
+    monkeypatch.setattr(sys, "stdin", io.StringIO("y\n"))
+    preview = RunResult(plan=Plan(), deleted=(make_local_file(name, A),), dry_run=True)
+
+    assert ConsoleRenderer(io.StringIO(), {}).confirm_deletion(preview) is True
+
+    stream.flush()
+    assert f"  {shown}\n" in raw.getvalue().decode(encoding)
+
+
+def test_a_dry_run_with_a_failed_check_says_failed() -> None:
+    planned = upload(make_local_file("copy.bin", A), "a.bin")
+    failure = ItemError(item="a.bin", message="the network went away")
+    result = RunResult(plan=Plan(uploads=(planned,)), errors=(failure,), dry_run=True)
+
+    lines = rendered(result)
+
+    assert lines[0] == "copy.bin: failed -> a.bin"
+    assert not any("would" in line and "copy.bin" in line for line in lines)
+    assert "Error: the network went away" in lines
+
+
+@pytest.mark.parametrize(
+    ("status", "words", "fields"),
+    [
+        ("planned", "would copy", {"skipped": True, "dry_run": True}),
+        ("planned", "would replace", {"skipped": True, "replaced": True, "dry_run": True}),
+        ("uploaded", "copied", {"completed": True}),
+        ("replaced", "replaced", {"completed": True, "replaced": True}),
+        ("kept", "already on the device, kept", {"kept": True}),
+        ("kept", "already on the device, kept", {"kept": True, "dry_run": True}),
+        ("failed", "failed", {"errors": True}),
+        ("failed", "failed", {"errors": True, "dry_run": True}),
+        ("skipped", "skipped", {"skipped": True}),
+    ],
+)
+def test_people_and_machines_are_told_the_same_about_an_upload(
+    status: str, words: str, fields: dict[str, bool]
+) -> None:
+    """One function decides, so that D19 can't come back: the two outputs used to disagree."""
+    planned = upload(make_local_file("copy.bin", A), "a.bin")
+    planned_only = (planned,)
+    failure = ItemError(item="a.bin", message="it went wrong")
+    result = RunResult(
+        plan=Plan(uploads=planned_only),
+        completed=planned_only if fields.get("completed") else (),
+        skipped=planned_only if fields.get("skipped") else (),
+        kept=planned_only if fields.get("kept") else (),
+        replaced=planned_only if fields.get("replaced") else (),
+        errors=(failure,) if fields.get("errors") else (),
+        dry_run=fields.get("dry_run", False),
+    )
+
+    assert upload_status(planned, result) == status
+    assert f"copy.bin: {words} -> a.bin" in rendered(result)
+
+
+def test_a_size_mismatch_is_still_copied_with_an_error() -> None:
+    planned = upload(make_local_file("copy.bin", A), "a.bin")
+    failure = ItemError(item="a.bin", message="wrong size", code="size_mismatch")
+    result = RunResult(plan=Plan(uploads=(planned,)), completed=(planned,), errors=(failure,))
+
+    assert upload_status(planned, result) == "uploaded"
+    assert "copy.bin: copied -> a.bin" in rendered(result)
+
+
+def test_a_failed_delete_does_not_fail_an_upload_with_the_same_name() -> None:
+    waiting = upload(make_local_file("z.bin", A), "b/a.bin")
+    failure = ItemError(item="b/a.bin", message="can't delete", code="delete_failed")
+    result = RunResult(plan=Plan(uploads=(waiting,)), errors=(failure,))
+
+    assert upload_status(waiting, result) == "skipped"
+    assert "z.bin: skipped -> b/a.bin" in rendered(result)

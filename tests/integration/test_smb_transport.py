@@ -19,7 +19,7 @@ from beck.hashing import scan
 from beck.matcher import plan
 from beck.transports.smb import SmbTransport
 from tests.conftest import load_report
-from tests.factories import make_bios_file, make_missing, make_report_text, snapshot
+from tests.factories import make_bios_file, make_missing, make_report_text, md5_of, snapshot
 from tests.integration.conftest import ACCOUNT_CREDENTIAL, SEEDED_FILE, SEEDED_TEXT, Samba
 
 pytestmark = pytest.mark.integration
@@ -339,6 +339,27 @@ def test_end_to_end_with_a_target_url_and_no_config(
 
     with samba.guest() as transport:
         assert transport.read_bytes(target) == good.path.read_bytes()
+
+
+def test_end_to_end_a_name_that_is_not_valid_utf8_reaches_a_real_server(
+    samba: Samba,
+    app: Path,
+    folder: PurePosixPath,
+    put_report: PutReport,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    data = os.urandom(64)
+    (app / "bios" / os.fsdecode(b"bad-\xff.bin")).write_bytes(data)
+    target = folder / "a.bin"
+    put_report(make_report_text([make_missing(target.as_posix(), md5_of(data))]))
+
+    assert cli.main(["check"], base_dir=app) == 0
+
+    with samba.guest() as transport:
+        assert transport.read_bytes(target) == data
+    output = capsys.readouterr().out
+    assert f"bad-\\xff.bin: copied -> {target}" in output
+    assert "PLEASE SCAN" in output
 
 
 def test_end_to_end_json_on_a_real_server(

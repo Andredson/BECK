@@ -68,6 +68,9 @@ They work before or after the command.
 
 Colors follow `NO_COLOR`, then `FORCE_COLOR`, and otherwise appear only on a terminal. An empty value counts as not set.
 
+A file name that isn't valid UTF-8, or that your terminal can't show, appears escaped, like `x\xff.bin`, and BECK carries on. `--json`
+keeps the exact name.
+
 ### Choosing what BECK works on
 
 | Option | Commands | What it does |

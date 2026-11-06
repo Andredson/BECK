@@ -206,7 +206,7 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `feat(output): add versioned JSON output for all commands`
 
 ### 06.7a — Fix two bugs in the human output (D18, D19)
-- [ ] Done
+- [x] Done
 - **What:** Step 06.7's end-to-end runs found two bugs from before it. `--json` has neither.
   - **D18, a crash after the work is done:** a local file name that isn't valid UTF-8, common in old ROM sets, makes `print` raise
     `UnicodeEncodeError` while BECK shows the results, because the name holds a character stdout can't encode. Reproduced with
@@ -215,7 +215,9 @@ beck config  init | show | path                     # added in stage 07
     on, wherever it prints a path: results, unreadable files, errors and the deletion prompt.
   - **D19, a wrong line in a dry run:** when checking a target fails, the output says `a.bin: would copy -> a.bin` right above the error,
     although BECK doesn't know that. It must say `failed`, as the JSON's `status` does.
-- **Files:** `src/beck/output/console.py`, `tests/unit/test_console.py`, `tests/unit/test_cli.py`, `roadmap/00-assessment.md`
+- **Files:** `src/beck/output/__init__.py`, `src/beck/output/console.py`, `src/beck/output/json.py`, `tests/unit/test_console.py`,
+  `tests/unit/test_cli.py`, `tests/integration/test_smb_transport.py`, `docs/cli.md`, `docs/json-output.md`, `docs/ARCHITECTURE.md`,
+  `roadmap/00-assessment.md`
 - **Done when:** A full run with a name that isn't valid UTF-8 exits with 0, prints the summary and uploads the rest; a stdout that can
   only encode ASCII doesn't crash on a name like `é.bin`; the prompt shows such a name; and a dry run with a failed check prints `failed`,
   not `would copy`. D18 and D19 are marked as fixed.

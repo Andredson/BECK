@@ -127,6 +127,10 @@ An entry listed in several systems of the report is one item here, with all its 
 `false` if all say it's optional, and otherwise `null`, meaning the report doesn't say. Paths in `source` and `path` are relative to the
 source folder, and paths in `target` are relative to the target's BIOS folder.
 
+A local file name that isn't valid UTF-8 has its bad bytes as lone surrogates, so `bad-\xff.bin` on disk is `"bad-\udcff.bin"` here. In
+Python, `os.fsencode` gets the real name back. Other JSON parsers may replace or refuse them, so check yours if your files have such
+names.
+
 ### `uploads[]`
 
 | Field | Meaning |

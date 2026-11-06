@@ -9,7 +9,7 @@ import subprocess
 import sys
 import tempfile
 from collections.abc import Callable
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, NoReturn
 
 import pytest
@@ -17,7 +17,8 @@ from smb.smb_structs import OperationFailure
 
 import beck
 from beck import cli
-from beck.errors import ConfigError
+from beck.errors import ConfigError, TransportError
+from beck.transports.local import LocalTransport
 from tests.conftest import REAL_REPORT, load_report
 from tests.factories import md5_of, snapshot
 from tests.fakes import FakeSMBConnection, FakeSMBServer, install_fake_smb
@@ -1510,3 +1511,169 @@ def test_a_full_run_warns_when_an_upload_changes_the_extension(
     assert server.files[("bios", "neocdz.zip")] == data
     output = capsys.readouterr().out
     assert "neocd.bin: copied -> neocdz.zip\nWarning: neocd.bin has a different extension" in output
+
+
+# File names stdout can't show (D18), and failed checks in a dry run (D19)
+
+BAD_NAME = os.fsdecode(b"bad-\xff.bin")
+BAD_NAME_SHOWN = "bad-\\xff.bin"
+
+
+def test_a_run_with_a_name_that_is_not_valid_utf8_finishes(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    data = write(app / "bios" / "good.bin")
+    (app / "bios" / BAD_NAME).write_bytes(os.urandom(64))
+    report(server, block("good.bin", md5_of(data)))
+
+    assert run(app) == 0
+
+    assert server.files[("bios", "good.bin")] == data
+    output = capsys.readouterr().out
+    assert f"{BAD_NAME_SHOWN}: no match, kept" in output
+    assert "Final result: 1/1 missing entries satisfied, 2 files analysed" in output
+    assert "PLEASE SCAN" in output
+
+
+def test_a_move_with_a_name_that_is_not_valid_utf8_tells_what_it_deleted(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The run that found D18: the file went, then BECK crashed and exited with 1."""
+    data = write(app / "bios" / "good.bin")
+    (app / "bios" / BAD_NAME).write_bytes(os.urandom(64))
+    report(server, block("good.bin", md5_of(data)))
+
+    assert cli.main(["check", "--move", "--yes"], base_dir=app) == 0
+
+    assert not (app / "bios" / "good.bin").exists()
+    assert (app / "bios" / BAD_NAME).exists()
+    output = capsys.readouterr().out
+    assert "good.bin: deleted" in output
+    assert "Deleted 1 local files." in output
+    assert "PLEASE SCAN" in output
+
+
+def test_a_file_named_badly_in_utf8_can_still_be_uploaded(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    data = os.urandom(64)
+    (app / "bios" / BAD_NAME).write_bytes(data)
+    report(server, block("a.zip", md5_of(data)))
+
+    assert run(app) == 0
+
+    assert server.files[("bios", "a.zip")] == data
+    output = capsys.readouterr().out
+    assert f"{BAD_NAME_SHOWN}: copied -> a.zip" in output
+    assert f"Warning: {BAD_NAME_SHOWN} has a different extension from a.zip" in output
+
+
+def test_an_unreadable_name_that_is_not_valid_utf8_is_listed(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (app / "bios" / BAD_NAME).symlink_to(app / "bios" / "nowhere")
+    report(server, block("a.bin", "a" * 32))
+
+    assert run(app) == 0
+
+    assert f"{BAD_NAME_SHOWN}: can't be read, skipped" in capsys.readouterr().out
+
+
+def test_a_folder_named_badly_in_utf8_cannot_break_an_error_message(
+    app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    arguments = ["check", "--source", str(app / BAD_NAME)]
+
+    assert cli.main(arguments, base_dir=app) == 2
+
+    assert f"{BAD_NAME_SHOWN} doesn't exist" in capsys.readouterr().out
+
+
+def test_an_empty_folder_named_badly_in_utf8_cannot_break_the_message(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (app / BAD_NAME).mkdir()
+    report(server, block("a.bin", "a" * 32))
+
+    assert cli.main(["check", "--source", str(app / BAD_NAME)], base_dir=app) == 0
+
+    assert f"No BIOS files found in {app}/{BAD_NAME_SHOWN}" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("stdout_encoding", "name", "shown"),
+    [
+        ("utf-8:strict", BAD_NAME, BAD_NAME_SHOWN),
+        ("ascii:strict", "é.bin", "\\xe9.bin"),
+        ("ascii:strict", BAD_NAME, BAD_NAME_SHOWN),
+    ],
+    ids=["utf8", "encode-accent", "encode-bad-name"],
+)
+def test_a_real_process_finishes_with_a_stdout_that_cannot_encode_a_name(
+    tmp_path: Path, stdout_encoding: str, name: str, shown: str
+) -> None:
+    """A real stdout, in case pytest's capture hides or causes something."""
+    source, device = tmp_path / "source", tmp_path / "device"
+    good = write(source / "good.bin")
+    (source / name).write_bytes(os.urandom(64))
+    device.mkdir()
+    (device / "missing_bios_report.txt").write_text(block("good.bin", md5_of(good)))
+
+    result = subprocess.run(  # noqa: S603 - fixed arguments, no external input
+        [
+            sys.executable,
+            "-m",
+            "beck",
+            "check",
+            "--source",
+            str(source),
+            "--target-dir",
+            str(device),
+            "--move",
+            "--yes",
+        ],
+        capture_output=True,
+        check=False,
+        stdin=subprocess.DEVNULL,
+        env={**os.environ, "PYTHONIOENCODING": stdout_encoding},
+    )
+
+    output = result.stdout.decode("ascii" if "ascii" in stdout_encoding else "utf-8")
+    assert result.returncode == 0, result.stderr
+    assert f"{shown}: no match, kept" in output
+    assert "Deleted 1 local files." in output
+    assert (device / "good.bin").read_bytes() == good
+    assert not (source / "good.bin").exists()
+    assert (source / name).exists()
+
+
+def test_a_failed_check_in_a_dry_run_says_failed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source, device = tmp_path / "source", tmp_path / "device"
+    data = write(source / "a.bin")
+    device.mkdir()
+    report_file = tmp_path / "report.txt"
+    report_file.write_text(block("a.bin", md5_of(data)))
+
+    def exists(_self: LocalTransport, _path: PurePosixPath) -> bool:
+        raise TransportError("the network went away")
+
+    monkeypatch.setattr(LocalTransport, "exists", exists)
+    arguments = [
+        "check",
+        "--source",
+        str(source),
+        "--target-dir",
+        str(device),
+        "--report-file",
+        str(report_file),
+        "--dry-run",
+    ]
+
+    assert cli.main(arguments) == 3
+
+    output = capsys.readouterr().out
+    assert "a.bin: failed -> a.bin" in output
+    assert "would copy" not in output
+    assert "Dry run: 0/1 missing entries would be satisfied" in output

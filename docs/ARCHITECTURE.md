@@ -102,7 +102,8 @@ These are the boundaries to keep when changing the code:
 6. **Secrets don't leave the transport.** `Transport.describe()` is for messages and never includes a password. `Transport.url()` is for
    the JSON output and never includes a user name or a password.
 7. **Output goes to its own stream.** Human output or one JSON document goes to stdout, and logs from `logging.getLogger("beck")` go to
-   stderr. With `--json`, stdout has nothing else, whatever happens.
+   stderr. With `--json`, stdout has nothing else, whatever happens. A file name can't crash the output, because this runs after the
+   work is done: human output escapes what the stream can't encode. `upload_status` decides what happened to an upload for both outputs.
 
 ## Errors
 
