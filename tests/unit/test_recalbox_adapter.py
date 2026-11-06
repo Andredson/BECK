@@ -138,11 +138,6 @@ def test_report_with_nothing_missing_has_no_entries() -> None:
     [
         (block(path=""), "No Path line in report block: MISSING REQUIRED BIOS: scph5501.bin"),
         (block(hashes=""), "No MD5 value in report block: MISSING REQUIRED BIOS: scph5501.bin"),
-        (block("  MISSING REQUIRED BIOS:"), "No file name in report block: MISSING REQUIRED BIOS:"),
-        (
-            block(path="    Path: /etc/scph5501.bin\n"),
-            "Path is outside /recalbox/share/bios/: MISSING REQUIRED BIOS: scph5501.bin",
-        ),
     ],
 )
 def test_bad_blocks_raise_report_parse_error(text: str, message: str) -> None:
@@ -161,11 +156,11 @@ def test_bad_blocks_raise_report_parse_error(text: str, message: str) -> None:
         ("sub/a.bin", "/recalbox/share/bios/sub/a.bin"),
     ],
 )
-def test_unsafe_paths_are_a_parse_error_not_a_crash(heading_name: str, path: str) -> None:
+def test_unsafe_paths_are_refused_not_a_crash(heading_name: str, path: str) -> None:
     text = block(f"  MISSING REQUIRED BIOS: {heading_name}", f"    Path: {path}\n")
 
-    with pytest.raises(ReportParseError, match="Unsafe path in report block"):
-        adapter.parse_report(text)
+    assert adapter.parse_report(text) == []
+    assert [error.code for error in adapter.rejected_entries(text)] == ["unsafe_path"]
 
 
 def test_hyphens_in_a_name() -> None:
@@ -275,13 +270,14 @@ def test_bytes_that_arent_utf8_dont_crash_and_keep_the_entry() -> None:
     assert entry.name == "a.bin"
 
 
-def test_a_bad_byte_in_a_name_doesnt_crash() -> None:
+def test_a_bad_byte_in_a_name_is_refused_not_a_crash() -> None:
     raw = b"  MISSING REQUIRED BIOS: caf\xe9.bin\n    Path: /recalbox/share/bios/caf\xe9.bin\n"
     raw += f"    Possible MD5 List:\n      {HASH}\n".encode()
 
-    entry = adapter.parse_report(raw.decode("utf-8", errors="replace"))[0]
+    text = raw.decode("utf-8", errors="replace")
 
-    assert entry.name == "caf\ufffd.bin"
+    assert adapter.parse_report(text) == []
+    assert adapter.rejected_entries(text)[0].item == "caf\ufffd.bin"
 
 
 @pytest.mark.parametrize("text", ["", "\n", "\r\n\r\n", "   \n\t\n", "\ufeff"])

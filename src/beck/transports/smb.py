@@ -119,20 +119,28 @@ class SmbTransport:
             entries = self._conn.listPath(self.share, parent, timeout=self.timeout)
         return [e for e in entries if e.filename not in (".", "..")]
 
+    def _inside(self, path: PurePosixPath) -> PurePosixPath:
+        """The path under the root, or an error: what a report asks for could be anything.
+
+        Each of these could reach another folder, and SMB takes a backslash as a separator too.
+        """
+        if path.is_absolute() or ".." in path.parts or "\\" in path.as_posix():
+            raise TransportError(f"Path {path} is outside {self._where()}")
+        return self.root / path
+
     def read_bytes(self, path: PurePosixPath) -> bytes:
         _log.debug("Reading %s", path)
+        remote = self._inside(path).as_posix()
         buffer = io.BytesIO()  # in memory: no local or temporary file is written (D6)
         with _reporting(f"reading {path} from share {self.share}"):
-            self._conn.retrieveFile(
-                self.share, (self.root / path).as_posix(), buffer, timeout=self.timeout
-            )
+            self._conn.retrieveFile(self.share, remote, buffer, timeout=self.timeout)
         return buffer.getvalue()
 
     def exists(self, path: PurePosixPath) -> bool:
         # Walks down the listings, because pysmb raises the same exception for "not found" and for
         # a real failure such as "access denied". A failed listing stays an error here.
         parent = ""
-        for name in (self.root / path).parts:
+        for name in self._inside(path).parts:
             actual = _same_name(name, [e.filename for e in self._list(parent)])
             if actual is None:
                 return False
@@ -140,16 +148,15 @@ class SmbTransport:
         return True
 
     def size(self, path: PurePosixPath) -> int:
+        remote = self._inside(path).as_posix()
         with _reporting(f"getting the size of {path} on share {self.share}"):
-            attributes = self._conn.getAttributes(
-                self.share, (self.root / path).as_posix(), timeout=self.timeout
-            )
+            attributes = self._conn.getAttributes(self.share, remote, timeout=self.timeout)
             return int(attributes.file_size)
 
     def makedirs(self, path: PurePosixPath) -> None:
         # createDirectory isn't recursive, so each missing level is created in order (D4).
         parent = ""
-        for name in (self.root / path).parts:
+        for name in self._inside(path).parts:
             actual = _same_name(name, self._list_dirs(parent))
             if actual is None:
                 actual = name
@@ -159,16 +166,13 @@ class SmbTransport:
             parent = f"{parent}{actual}/"
 
     def upload(self, local: Path, remote: PurePosixPath) -> int:
+        inside = self._inside(remote).as_posix()
         with (
             _reporting(f"uploading {local} to {remote} on share {self.share}"),
             local.open("rb") as file,  # closed before this returns (D7)
         ):
             started = time.monotonic()
-            written = int(
-                self._conn.storeFile(
-                    self.share, (self.root / remote).as_posix(), file, timeout=self.timeout
-                )
-            )
+            written = int(self._conn.storeFile(self.share, inside, file, timeout=self.timeout))
             _log.debug(
                 "Uploaded %s: %d bytes in %.3f s", remote, written, time.monotonic() - started
             )

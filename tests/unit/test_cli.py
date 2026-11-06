@@ -1233,7 +1233,9 @@ def test_report_counts_a_file_as_required_when_the_report_does_not_say(
     ]
     monkeypatch.setattr(RecalboxAdapter, "parse_report", lambda _self, _text: entries)
 
-    assert cli.main(["report", "--report-file", local_report(tmp_path, "")]) == 0
+    file = local_report(tmp_path, "MISSING BIOS REPORT\n")
+
+    assert cli.main(["report", "--report-file", file]) == 0
 
     output = capsys.readouterr().out
     assert "  a.bin (required)" in output

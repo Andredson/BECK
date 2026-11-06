@@ -15,6 +15,7 @@ import pytest
 
 from beck import cli
 from beck.errors import TransportError
+from beck.frontends.recalbox import RecalboxAdapter
 from beck.models import (
     Duplicate,
     ItemError,
@@ -1348,6 +1349,14 @@ def colors(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("FORCE_COLOR", "1")
 
 
+def a_frontend_lets_through(
+    monkeypatch: pytest.MonkeyPatch, device: Path, *entries: MissingBios
+) -> None:
+    """Reports refuse these names since 07.6. Showing them safely stays a separate defense."""
+    put_report(device)
+    monkeypatch.setattr(RecalboxAdapter, "parse_report", lambda _self, _text: list(entries))
+
+
 def assert_safe(text: str) -> None:
     assert not UNSAFE.search(OWN_COLORS.sub("", text)), repr(text)
     assert "_Painted" not in text, "a colored part was put inside an f-string"
@@ -1429,12 +1438,16 @@ def test_check_shows_local_names_escaped_in_every_outcome(
 
 
 def test_check_shows_names_from_the_report_escaped(
-    folders: tuple[Path, Path], colors: None, capsys: pytest.CaptureFixture[str]
+    folders: tuple[Path, Path],
+    colors: None,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     source, device = folders
     file = make_bios_file(source, "good.bin")
     make_bios_file(device, "x")
-    put_report(
+    a_frontend_lets_through(
+        monkeypatch,
         device,
         make_missing(f"up-{HOSTILE}.bin", file.md5),
         make_missing(f"gone-{HOSTILE}.bin", A),
@@ -1450,11 +1463,14 @@ def test_check_shows_names_from_the_report_escaped(
 
 
 def test_a_real_upload_shows_the_name_from_the_report_escaped(
-    folders: tuple[Path, Path], colors: None, capsys: pytest.CaptureFixture[str]
+    folders: tuple[Path, Path],
+    colors: None,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     source, device = folders
     file = make_bios_file(source, "good.bin")
-    put_report(device, make_missing(f"up-{HOSTILE}.bin", file.md5))
+    a_frontend_lets_through(monkeypatch, device, make_missing(f"up-{HOSTILE}.bin", file.md5))
 
     assert cli.main(check(folders)) == 0
 
@@ -1487,11 +1503,15 @@ def test_a_deletion_shows_the_name_escaped(
 
 
 def test_quiet_shows_names_from_the_report_escaped(
-    folders: tuple[Path, Path], colors: None, capsys: pytest.CaptureFixture[str]
+    folders: tuple[Path, Path],
+    colors: None,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     device = folders[1]
     make_bios_file(folders[0], "junk.bin")
-    put_report(
+    a_frontend_lets_through(
+        monkeypatch,
         device,
         make_missing(f"gone-{HOSTILE}.bin", A),
         make_missing(f"bad-{HOSTILE}.bin", B, incorrect=True),
@@ -1505,10 +1525,14 @@ def test_quiet_shows_names_from_the_report_escaped(
 
 
 def test_report_shows_names_escaped(
-    folders: tuple[Path, Path], colors: None, capsys: pytest.CaptureFixture[str]
+    folders: tuple[Path, Path],
+    colors: None,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     device = folders[1]
-    put_report(
+    a_frontend_lets_through(
+        monkeypatch,
         device,
         make_missing(f"ps1-{HOSTILE}/gone-{HOSTILE}.bin", A),
         make_missing(f"bad-{HOSTILE}.bin", B, incorrect=True),
@@ -1561,7 +1585,7 @@ def test_an_error_about_one_item_shows_the_name_escaped(
 ) -> None:
     source, device = folders
     file = make_bios_file(source, "good.bin")
-    put_report(device, make_missing(f"up-{HOSTILE}.bin", file.md5))
+    a_frontend_lets_through(monkeypatch, device, make_missing(f"up-{HOSTILE}.bin", file.md5))
 
     def refuse(_self: LocalTransport, _local: Path, remote: PurePosixPath) -> int:
         raise TransportError(f"Can't write {remote}")
@@ -1597,11 +1621,14 @@ def test_a_rejected_command_line_shows_the_argument_escaped(
 
 
 def test_v_logs_show_names_escaped(
-    folders: tuple[Path, Path], colors: None, capsys: pytest.CaptureFixture[str]
+    folders: tuple[Path, Path],
+    colors: None,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     source, device = folders
     file = make_bios_file(source, f"{HOSTILE}.bin")
-    put_report(device, make_missing(f"up-{HOSTILE}.bin", file.md5))
+    a_frontend_lets_through(monkeypatch, device, make_missing(f"up-{HOSTILE}.bin", file.md5))
 
     assert cli.main(["-v", *check(folders)]) == 0
 
@@ -1660,12 +1687,15 @@ def test_a_prompt_cannot_list_a_file_as_if_it_were_two(
 
 
 def test_json_keeps_the_exact_name(
-    folders: tuple[Path, Path], colors: None, capsys: pytest.CaptureFixture[str]
+    folders: tuple[Path, Path],
+    colors: None,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     source, device = folders
     name = f"{HOSTILE}\n.bin"
     make_bios_file(source, name)
-    put_report(device, make_missing(f"gone-{HOSTILE}.bin", A))
+    a_frontend_lets_through(monkeypatch, device, make_missing(f"gone-{HOSTILE}.bin", A))
 
     assert cli.main(["--json", *check(folders)]) == 0
 

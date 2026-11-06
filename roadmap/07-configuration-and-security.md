@@ -132,7 +132,8 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 - **Commit message:** `fix(security): redact credentials in logs, errors and JSON output`
 
 ### 07.6 — Path safety for report-derived targets
-- [ ] Done
+- [x] Done (2026-11-06: until now some of these stopped the whole run, and others were uploaded. On the Samba test server, `folder\\file.bin` wrote into that folder. The choices it needed are in
+  [ADR-0007](../docs/adr/0007-cli-contract.md#details-settled-in-step-076). Beyond the list below: a new `unsafe_path` error code in the JSON output and its docs, `Plan.rejected`, and the renderers.)
 - **What:** Every target path built from the report must be relative and normalized. Reject absolute paths,
   `..` segments, empty names, and names with path separators *after* stripping the device BIOS root. Also reject a name or
   folder containing `\ufffd`: a byte that wasn't valid UTF-8 was replaced there, and uploading would leave a useless file on

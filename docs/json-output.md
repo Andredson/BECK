@@ -281,6 +281,7 @@ An error about **one item** doesn't stop the run. `item` names the target, folde
 | `report_parse` | 4 | Yes | BECK can't read the report. |
 | `size_mismatch` | 3 | No | With `--move`, the size on the target doesn't match, so the local file stays. |
 | `delete_failed` | 3 | No | A local file couldn't be deleted. |
+| `unsafe_path` | 3 | No | A report entry isn't safe to act on, so it was refused. `item` is its name. `beck --json report` can have it too. |
 | `internal` | 1 | Yes | A bug in BECK. The details are on stderr, and they aren't in the document because they could hold anything. Please report it. |
 
 A rejected command line is the one case with fewer fields, because no command ran:

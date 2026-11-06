@@ -124,6 +124,19 @@ The roadmap asks for one `redact()` helper. A probe with a sentinel password sha
 - **The warning for a file others can read is only a warning,** because the file can't hold a password, and it appears when the file is read, so `beck config path` doesn't give it.
 - **One limit:** a password with a literal `/` in a URL can't be told apart from a path, so that part stays. It isn't a valid URL, and BECK refuses it as a target.
 
+### Details settled in step 07.6
+The roadmap says a rejected entry is an error item. Before this step, some of those stopped the whole run, so building it raised these details, which the agent settled and reported to the owner:
+
+- **One bad entry no longer stops the rest.** A path that climbs, or a name with a slash, used to refuse the whole report with exit 4, so one damaged line blocked every upload. Now it's one failed item, as the roadmap
+  says. A report that can be read with one bad line in it isn't a report BECK can't read.
+- **A block with no `Path` line or no MD5 still stops everything,** with exit 4, because then BECK can't trust how it's reading the format.
+- **It exits with 3,** like every other item that failed while the run carried on, and it has its own code, `unsafe_path`.
+- **`--clean-unmatched` deletes nothing if an entry was refused,** because a file that seems to match nothing could be the one that entry asked for.
+- **A backslash is refused,** because SMB takes it as a separator. On the Samba test server, a report naming `folder\file.bin` wrote into that folder, while `..\` was refused by Samba itself.
+- **The controls for the direction of text are refused too,** along with control characters and U+FFFD, the same set 06.11a escapes, because they'd make a file whose name reads as something else.
+- **`a//b` and `./a` stay allowed.** They normalize to something safe, and refusing them would only risk refusing a real report.
+- **`SmbTransport` refuses these paths too,** as `LocalTransport` does, whoever calls it. A failure there is one failed item as well.
+
 ### Deleting is always explicit
 Nothing is deleted without `--move` or `--clean-unmatched`, and off a terminal not without `--yes` too. `--json` never prompts, so that
 a consumer can't hang on a question or confirm one by accident.

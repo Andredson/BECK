@@ -3,7 +3,7 @@
 from collections.abc import Sequence
 from pathlib import PurePosixPath
 
-from beck.models import Duplicate, LocalFile, MissingBios, Plan, PlannedUpload
+from beck.models import Duplicate, ItemError, LocalFile, MissingBios, Plan, PlannedUpload
 
 
 def _path(file: LocalFile) -> str:
@@ -17,7 +17,11 @@ def _entry_order(entry: MissingBios) -> tuple[str, str, str, list[str]]:
 
 
 def plan(
-    missing: Sequence[MissingBios], local: Sequence[LocalFile], *, replace_incorrect: bool = False
+    missing: Sequence[MissingBios],
+    local: Sequence[LocalFile],
+    *,
+    replace_incorrect: bool = False,
+    rejected: Sequence[ItemError] = (),
 ) -> Plan:
     """Build the plan for these report entries and local files. Input order doesn't matter.
 
@@ -29,7 +33,8 @@ def plan(
     A target that's incorrect on the device isn't uploaded to (DEC-54), even if another entry lists
     it as missing: it goes in ``Plan.incorrect``, and files that fit it stay unmatched. With
     ``replace_incorrect`` (DEC-61), those targets are filled like any other, and ``Plan.incorrect``
-    has only the ones with no valid local file.
+    has only the ones with no valid local file. ``rejected`` is what the report held that isn't safe
+    to act on: it's only carried along, so that the run reports it, as failed items.
     """
     ordered = sorted(missing, key=_entry_order)
     incorrect = [entry for entry in ordered if entry.incorrect]
@@ -75,4 +80,5 @@ def plan(
             if entry.target not in uploads and entry.target not in kept_targets
         ),
         incorrect=tuple(entry for entry in incorrect if entry.target not in uploads),
+        rejected=tuple(rejected),
     )

@@ -51,6 +51,11 @@ SCHEMA_OF_COMMAND = {
 A, B = "a" * 32, "b" * 32
 ACCOUNT = settings_text("smb://beck-test-server/bios", "beck-test-user")
 
+UNSAFE_REPORT = (
+    "MISSING BIOS REPORT\n  MISSING REQUIRED BIOS: ../evil.bin\n"
+    f"    Path: /recalbox/share/bios/evil.bin\n    Possible MD5 List:\n      {A}\n"
+)
+
 Json = dict[str, Any]
 Rules = dict[str, Json]
 Arrange = Callable[["World"], list[str]]
@@ -588,6 +593,26 @@ def check_dry_run_with_a_failed_check(world: World) -> list[str]:
     return world.check("--dry-run", "--report-file", report)
 
 
+# check: an entry in the report that isn't safe
+
+
+@scenario(CHECK, 3)
+def check_refuses_an_unsafe_entry_and_uploads_the_rest(world: World) -> list[str]:
+    file = make_bios_file(world.source, "a.bin")
+    report = make_report_text([make_missing("a.bin", file.md5)])
+    unsafe = "  MISSING REQUIRED BIOS: ..\\evil.bin\n    Path: /recalbox/share/bios/evil.bin\n"
+    (world.device / "missing_bios_report.txt").write_text(
+        f"{report}{unsafe}    Possible MD5 List:\n      {A}\n", encoding="utf-8"
+    )
+    return world.check()
+
+
+@scenario(CHECK, 3)
+def check_with_only_an_unsafe_entry(world: World) -> list[str]:
+    (world.device / "missing_bios_report.txt").write_text(UNSAFE_REPORT, encoding="utf-8")
+    return world.check()
+
+
 # check: --fail-if-missing
 
 
@@ -777,6 +802,12 @@ def report_from_a_target_in_the_environment(world: World) -> list[str]:
     world.report(make_missing("a.bin", A))
     world.monkeypatch.setenv("BECK_TARGET_DIR", str(world.device))
     return ["--json", "report"]
+
+
+@scenario(REPORT, 3)
+def report_with_an_unsafe_entry(world: World) -> list[str]:
+    (world.device / "missing_bios_report.txt").write_text(UNSAFE_REPORT, encoding="utf-8")
+    return ["--json", "report", "--target-dir", str(world.device)]
 
 
 @scenario(REPORT, 2)
@@ -1173,8 +1204,8 @@ def test_every_field_comes_up_in_every_form(name: str, outcomes: dict[str, Outco
 
     assert set(seen) == set(V1_FIELDS[name])
     for field, rule in V1_FIELDS[name].items():
-        # Only a check has errors about one item. The other schemas share the shape anyway.
-        only_stops = name != CHECK and field == "errors[].item"
+        # Only a check and a report have errors about one item. The others share the shape anyway.
+        only_stops = name not in (CHECK, REPORT) and field == "errors[].item"
         expected = {"null"} if only_stops else kinds_allowed(rule)
         assert seen[field] == (expected or seen[field]), field
 

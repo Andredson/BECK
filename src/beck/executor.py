@@ -93,7 +93,7 @@ def execute(
     ``deleted`` has what it would delete. An upload whose folder couldn't be created is skipped too.
     Only a TransportError counts as an item failure: anything else is a bug, and stops the run.
     """
-    errors: list[ItemError] = []
+    errors = list(plan.rejected)  # so ``clean_unmatched`` stops: the report wasn't fully read
     failed_folders: set[PurePosixPath] = set()
     if not dry_run:
         for folder in plan.directories:

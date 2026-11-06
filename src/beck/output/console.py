@@ -11,7 +11,15 @@ from typing import Any, TextIO
 
 from beck.config import ConfigLocation
 from beck.errors import BeckError
-from beck.models import SHARE_ROOT, LocalFile, MissingBios, RunResult, ScanResult, Unreadable
+from beck.models import (
+    SHARE_ROOT,
+    ItemError,
+    LocalFile,
+    MissingBios,
+    RunResult,
+    ScanResult,
+    Unreadable,
+)
 from beck.output import (
     LOGGER_NAME,
     distinct_targets,
@@ -243,6 +251,8 @@ class ConsoleRenderer:
 
     def ended_early(self, result: RunResult, failing: Sequence[MissingBios] = ()) -> None:
         """The lines before this one already said why there's nothing to upload."""
+        for error in result.errors:
+            self.error(error.message)
         self._failing_if_missing(failing, dry_run=result.dry_run)
 
     def can_ask(self) -> bool:
@@ -278,9 +288,9 @@ class ConsoleRenderer:
             label = self._paint("INCORRECT:", RED)
             self._detail(label, f" {target} is on the device with a wrong MD5, and was kept")
 
-    def report(self, entries: list[MissingBios]) -> None:
-        """What a report lists, grouped by folder. One line per target."""
-        if not entries:
+    def report(self, entries: list[MissingBios], rejected: Sequence[ItemError] = ()) -> None:
+        """What a report lists, grouped by folder. One line per target, then what it refused."""
+        if not entries and not rejected:
             self.nothing_missing()
             return
         incorrect = _required_by_target([entry for entry in entries if entry.incorrect])
@@ -297,6 +307,8 @@ class ConsoleRenderer:
             for target in sorted(by_target, key=PurePosixPath.as_posix):
                 if target.parent == folder:
                     self._print(f"  {target.name} ({_kind(by_target[target])})")
+        for error in rejected:
+            self.error(error.message)
 
     def scan(self, scanned: ScanResult, folder: Path) -> None:
         """Each local file, in the order of ``md5sum``: the name last, as it can be anything."""

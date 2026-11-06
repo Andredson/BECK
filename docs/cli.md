@@ -200,7 +200,7 @@ These are never deleted:
 - a file that's valid for a target listed as `INCORRECT`, because it's the fix for that file;
 - with `--move`, a file with a target that was already on the device and kept, because nothing proves that copy is good, or a file with
   any failed upload or a size that doesn't match;
-- with `--clean-unmatched`, anything at all if something failed in the run, or if the report lists nothing missing.
+- with `--clean-unmatched`, anything at all if something failed in the run, if a report entry was refused, or if the report lists nothing missing.
 
 BECK asks before uploading anything, so answering no leaves everything as it was, on both sides. Any answer but `y` or `yes` counts as
 no, and BECK exits with 2.
@@ -241,13 +241,15 @@ These are a stable contract (DEC-23), and scripts can rely on them.
 | 0 | The run completed. BIOS files may still be missing unless `--fail-if-missing` is used. |
 | 1 | Unexpected internal error (a bug, please report it). |
 | 2 | Usage or configuration error (bad flag, bad URL, invalid config, refused confirmation). |
-| 3 | Transport error: couldn't connect or authenticate, or at least one upload failed. |
+| 3 | Transport error: couldn't connect or authenticate, or at least one upload failed or report entry was refused. |
 | 4 | Report error: the missing-BIOS report wasn't found or couldn't be parsed. |
 | 5 | `--fail-if-missing` was given and required BIOS files are still missing after the run. |
 
 Some details:
 
 - A failed upload exits with 3 even though the other uploads finished.
+- A report entry that isn't safe to act on also exits with 3, while the others carry on: one whose target could leave the BIOS folder, or holds a
+  backslash, a control character or a byte that wasn't valid text. A report BECK can't read at all exits with 4, and nothing happens.
 - A local file or folder that can't be read, such as a broken symlink, is reported and skipped, and doesn't change the exit code.
 - `--fail-if-missing` counts entries that are required or whose status is unknown. A required file listed as `INCORRECT` counts too,
   because the device still can't use it. A file listed in several systems counts if any of them requires it.

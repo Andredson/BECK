@@ -28,7 +28,7 @@ from beck.frontends.base import FrontendAdapter
 from beck.hashing import scan
 from beck.legacy_config import migration_notice, read_legacy
 from beck.matcher import plan
-from beck.models import MissingBios, Plan, RunResult, ScanResult
+from beck.models import ItemError, MissingBios, Plan, RunResult, ScanResult
 from beck.output import LOGGER_NAME, escaped_for_terminal, finish_output
 from beck.output.console import ConsoleRenderer, configure_logging
 from beck.output.json import JsonRenderer, write_rejected_command
@@ -66,6 +66,7 @@ FAILED_IF_MISSING_EXIT_CODE = 5
 REPORT_FILE_HELP = "read this local copy of the report, not the one on the target"
 
 Renderer = ConsoleRenderer | JsonRenderer
+Entries = tuple[list[MissingBios], list[ItemError]]  # what a report asks for, and what it refused
 
 _log = logging.getLogger(__name__)
 
@@ -132,7 +133,7 @@ def _connect_to_target(settings: Settings, renderer: Renderer) -> Transport:
     return _open_target(settings, password)
 
 
-def _entries_from_file(adapter: FrontendAdapter, report_file: str) -> list[MissingBios]:
+def _entries_from_file(adapter: FrontendAdapter, report_file: str) -> Entries:
     """Parse a local copy of the report."""
     try:
         raw = Path(report_file).read_bytes()
@@ -141,7 +142,7 @@ def _entries_from_file(adapter: FrontendAdapter, report_file: str) -> list[Missi
     return _parsed_report(adapter, raw)
 
 
-def _entries_from_target(adapter: FrontendAdapter, transport: Transport) -> list[MissingBios]:
+def _entries_from_target(adapter: FrontendAdapter, transport: Transport) -> Entries:
     """Parse the report on the target."""
     if not transport.exists(adapter.report_path):
         raise ReportNotFoundError(
@@ -151,10 +152,13 @@ def _entries_from_target(adapter: FrontendAdapter, transport: Transport) -> list
     return _parsed_report(adapter, transport.read_bytes(adapter.report_path))
 
 
-def _parsed_report(adapter: FrontendAdapter, raw: bytes) -> list[MissingBios]:
-    entries = adapter.parse_report(raw.decode("utf-8", errors="replace"))
-    _log.debug("Report: %d entries, from %d bytes", len(entries), len(raw))
-    return entries
+def _parsed_report(adapter: FrontendAdapter, raw: bytes) -> Entries:
+    text = raw.decode("utf-8", errors="replace")
+    entries, rejected = adapter.parse_report(text), adapter.rejected_entries(text)
+    _log.debug(
+        "Report: %d entries, %d refused, from %d bytes", len(entries), len(rejected), len(raw)
+    )
+    return entries, rejected
 
 
 def _scan_with_progress(source: Path, renderer: Renderer) -> ScanResult:
@@ -237,36 +241,43 @@ def _failing_if_missing(args: argparse.Namespace, result: RunResult) -> list[Mis
     return [entry for entry in still_needed if entry.required is not False]
 
 
+def _exit_code(result: RunResult, failing: list[MissingBios]) -> int:
+    """A failed item wins, because the run didn't do all it could (DEC-59)."""
+    if result.errors:
+        return TransportError.exit_code
+    return FAILED_IF_MISSING_EXIT_CODE if failing else 0
+
+
 def _run_check(
     args: argparse.Namespace, settings: Settings, base_dir: Path, renderer: Renderer
 ) -> int:
     source = _source_folder(settings, base_dir)
     adapter = get_adapter(settings.frontend)
 
-    def ended_early(entries: list[MissingBios]) -> int:
-        """Nothing to upload. The plan still says what's missing and incorrect."""
-        result = RunResult(plan=plan(entries, []), dry_run=args.dry_run)
+    def ended_early(entries: list[MissingBios], rejected: list[ItemError]) -> int:
+        """Nothing to upload. The plan still says what's missing, incorrect and refused."""
+        built = plan(entries, [], rejected=rejected)
+        result = RunResult(plan=built, errors=built.rejected, dry_run=args.dry_run)
         failing = _failing_if_missing(args, result)
         renderer.ended_early(result, failing)
-        return FAILED_IF_MISSING_EXIT_CODE if failing else 0
+        return _exit_code(result, failing)
 
     transport = _connect_to_target(settings, renderer)
     renderer.opened(transport.url())
     _log.debug("Target: %s", transport.url())
     with transport:
         if args.report_file is not None:
-            entries = _entries_from_file(adapter, args.report_file)
+            entries, rejected = _entries_from_file(adapter, args.report_file)
         else:
-            entries = _entries_from_target(adapter, transport)
-        if not entries:
+            entries, rejected = _entries_from_target(adapter, transport)
+        if not entries and not rejected:
             renderer.nothing_missing()
-            return ended_early(entries)
         incorrect = [entry for entry in entries if entry.incorrect]
         if not args.overwrite:
             renderer.incorrect(incorrect)
         to_fill = {e.target for e in entries if args.overwrite or not e.incorrect}
         if not to_fill:
-            return ended_early(entries)
+            return ended_early(entries, rejected)
         renderer.missing_count(len(to_fill))
 
         scanned = _scan_with_progress(source, renderer)
@@ -275,10 +286,10 @@ def _run_check(
             if args.overwrite:
                 renderer.incorrect(incorrect)
             renderer.no_files(source)
-            return ended_early(entries)
+            return ended_early(entries, rejected)
         renderer.files_found(len(scanned.files))
 
-        built = plan(entries, scanned.files, replace_incorrect=args.overwrite)
+        built = plan(entries, scanned.files, replace_incorrect=args.overwrite, rejected=rejected)
         _log_plan(built)
         options = {
             "overwrite": args.overwrite,
@@ -301,9 +312,7 @@ def _run_check(
         renderer.incorrect(list(result.plan.incorrect))
     failing = _failing_if_missing(args, result)
     renderer.result(result, failing)
-    if result.errors:
-        return TransportError.exit_code
-    return FAILED_IF_MISSING_EXIT_CODE if failing else 0
+    return _exit_code(result, failing)
 
 
 def _run_report(
@@ -312,15 +321,15 @@ def _run_report(
     """List what the report says. It never writes anything, and a local copy needs no target."""
     adapter = get_adapter(settings.frontend)
     if args.report_file is not None:
-        entries = _entries_from_file(adapter, args.report_file)
+        entries, rejected = _entries_from_file(adapter, args.report_file)
     else:
         transport = _connect_to_target(settings, renderer)
         renderer.opened(transport.url())
         _log.debug("Target: %s", transport.url())
         with transport:
-            entries = _entries_from_target(adapter, transport)
-    renderer.report(entries)
-    return 0
+            entries, rejected = _entries_from_target(adapter, transport)
+    renderer.report(entries, rejected)
+    return TransportError.exit_code if rejected else 0
 
 
 def _run_scan(settings: Settings, base_dir: Path, renderer: Renderer) -> int:

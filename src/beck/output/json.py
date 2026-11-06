@@ -200,8 +200,8 @@ class JsonRenderer:
         errors = _error_items(result.errors)
         _write(self._check(result, errors, ok=not errors and not failing), self.stream)
 
-    def report(self, entries: list[MissingBios]) -> None:
-        _write(self._report(entries, []), self.stream)
+    def report(self, entries: list[MissingBios], rejected: Sequence[ItemError] = ()) -> None:
+        _write(self._report(entries, _error_items(rejected)), self.stream)
 
     def scan(self, scanned: ScanResult, folder: Path) -> None:
         _write(self._scan(scanned, []), self.stream)

@@ -3,7 +3,7 @@
 from pathlib import PurePosixPath
 from typing import Protocol
 
-from beck.models import MissingBios
+from beck.models import ItemError, MissingBios
 
 
 class FrontendAdapter(Protocol):
@@ -14,3 +14,6 @@ class FrontendAdapter(Protocol):
 
     def parse_report(self, text: str) -> list[MissingBios]:
         """Turn a report's text into entries, in report order. Raises ReportParseError."""
+
+    def rejected_entries(self, text: str) -> list[ItemError]:
+        """The entries left out because they aren't safe to act on, one failed item each."""

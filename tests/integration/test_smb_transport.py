@@ -509,6 +509,28 @@ def test_end_to_end_no_output_holds_the_password_on_a_real_server(
     assert "beck-test-password" not in out.out + out.err
 
 
+@pytest.mark.parametrize("name", ["{folder}\\sideways.bin", "..\\climbed.bin"], ids=["into", "out"])
+def test_end_to_end_a_backslash_can_not_reach_another_folder_on_a_real_server(
+    samba: Samba, tmp_path: Path, folder: PurePosixPath, name: str
+) -> None:
+    """Before 07.6, the first of these wrote into that folder: SMB takes it as a separator."""
+    good = make_bios_file(tmp_path / "bios", "a.bin")
+    report = tmp_path / "report.txt"
+    target = name.format(folder=folder)
+    report.write_text(
+        f"MISSING BIOS REPORT\n  MISSING REQUIRED BIOS: {target}\n"
+        f"    Path: /recalbox/share/bios/{target}\n    Possible MD5 List:\n      {good.md5}\n",
+        encoding="utf-8",
+    )
+    url = f"smb://{samba.host}:{samba.port}/bios"
+    arguments = ["check", "--target", url, "--report-file", str(report)]
+
+    assert cli.main(arguments, base_dir=tmp_path) == 3
+
+    with samba.guest() as transport:
+        assert not transport.exists(folder / "sideways.bin")
+
+
 def at_a_real_prompt(
     arguments: list[str], *, typed: bytes = b"", interrupted: bool = False
 ) -> tuple[int, bytes, bytes]:
