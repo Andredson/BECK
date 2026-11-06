@@ -10,7 +10,7 @@ BECK (BIOS checker for Recalbox) matches a user's BIOS files against the MD5 has
 report that Recalbox generates, then copies the matching files, under the expected names, into the right
 folders on the Recalbox over SMB.
 
-**Status (2026-11-06):** prototype, not published yet. The application is the `beck` package in `src/beck/`, with a pure
+**Status (2026-11-06, stage 07 closed):** prototype, not published yet. The application is the `beck` package in `src/beck/`, with a pure
 core and adapters around it ([design](docs/ARCHITECTURE.md)). Its [known defects are fixed](roadmap/00-assessment.md#defects),
 and it never renames local files, or deletes them unless `--move` or `--clean-unmatched` asks for it. The repository around it has tooling and
 CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against a real Samba server, commit-message, secret and dependency checks. It is being improved stage by stage following
@@ -27,7 +27,7 @@ CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against
 | `requirements.txt` | Runtime dependencies for pip users, **generated** from `uv.lock` (see [Commands](#commands)). Don't edit it by hand; CI fails if it drifts. |
 | `tests/` | pytest suite: `tests/unit/` has a test file per module, full runs through `cli.main` (`test_cli.py`), and the architecture rules checked on the source (`test_architecture.py`). `tests/` has the package and shim tests, the Markdown link checker, and tests for the hygiene guard and the workflow pins. `tests/factories.py` builds test data (always random bytes, and reports in the real format), and `tests/fakes.py` is the in-memory SMB server the application tests use. `tests/fixtures/reports/` holds real and derived Recalbox reports, with provenance in `tests/fixtures/README.md`; the real report keeps its CRLF line endings byte-exact. |
 | `tests/integration/samba/` | The Samba test server for integration tests, built with **Podman, never Docker** (DEC-55). See [its README](tests/integration/samba/README.md). |
-| `scripts/check_repo_hygiene.py` | Fails if git tracks BIOS/ROM-like files, files over 1 MiB, or config files (each allowed exception has a reason). |
+| `scripts/check_repo_hygiene.py` | Fails if git tracks BIOS/ROM-like files, files over 1 MiB, config files, or a TOML file with a password in it (each allowed exception has a reason). |
 | `.github/workflows/ci.yml` | CI on every PR and push to `main`: `quality`, the `tests` matrix (Linux × Python 3.11–3.14; Windows and macOS removed, DEC-49) summarized by `tests-passed`, `integration` (a real Samba server, with Podman), `commits`, `secrets`, `sca`. |
 | `.github/workflows/security.yml` | Weekly (Mondays 06:00 UTC): full-history secret scan and dependency scan. |
 | `.gitleaks.toml`, `.trivyignore` | gitleaks settings (fake `beck-test-*` values allowed only under `tests/`); accepted Trivy findings, each with a link and an expiry date. |
@@ -122,6 +122,9 @@ uv lock --check && uv run ruff check . && uv run ruff format --check . && uv run
 - **No real credentials or personal data.** Never write a real password anywhere in the repo, in logs or in test
   output. Reports used as fixtures must be anonymized. Fake test credentials must look obviously fake (e.g.
   `beck-test-password`).
+- **Never print, log or commit a password.** A password comes only from `BECK_SMB_PASSWORD` or the prompt, and stays in memory. It never goes in a settings
+  file, a URL or a command line, and a message never repeats a value that could be one. `redact` is a second defense, not a reason to print one: a new command
+  or output path goes in the scenarios of `tests/unit/test_redaction.py`, which also run with the mask off.
 - **Non-destructive by default (DEC-02).** Code you write must never delete or rename a user's local file
   unless an explicit opt-in flag asks for it, and only `executor.py` may delete (a test enforces this). Files on the device are kept unless `--overwrite` is passed (DEC-61).
 - **No real devices without explicit OK.** Don't connect to a real Recalbox or SMB server unless the human asks
@@ -212,7 +215,8 @@ skill below, **read its whole `SKILL.md` before acting** and follow it.
   `# pragma: no cover` doesn't work here. Integration tests don't count towards that.
 - **Never real BIOS bytes.** Test files are random bytes (`tests/factories.py`); MD5 values and file names are fine. Tests never
   touch the network, except the local Samba test server.
-- Color settings in your shell can't affect results: `tests/conftest.py` sets `NO_COLOR` for every test.
+- Your shell and your home folder can't affect results: `tests/conftest.py` sets `NO_COLOR` for every test, clears the `BECK_*` variables, and points the settings folder nowhere.
+- A settings file in a test should have mode `600`, or BECK warns on stderr, as it would for anyone. `settings_text` in `tests/factories.py` writes one.
 
 ## Commits and pull requests
 

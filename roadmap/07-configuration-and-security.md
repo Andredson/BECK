@@ -1,6 +1,6 @@
 # Stage 07 — Configuration & security
 
-**Status:** In progress · **Depends on:** 06 · **Branch:** `stage/07-config-security` · **Effort:** M
+**Status:** Done (2026-11-06) · **Depends on:** 06 · **Branch:** `stage/07-config-security` · **Effort:** M
 
 ## Goal
 Make configuration predictable and safe: one TOML file in the OS-correct folder, environment-variable
@@ -177,7 +177,8 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 - **Commit message:** `docs(security): add security policy and threat model`
 
 ### 07.9 — Close the stage
-- [ ] Done
+- [x] Done (2026-11-06: the acceptance criteria below hold. The stage scores 7/10, with a sum of 135, up from 128. The hygiene check stays, because the old file may still hold a password, and it now also
+  refuses a TOML file of any name with a password in it. Draft PR #8 already exists, so the owner marks it ready and merges it with a merge commit.)
 - **What:** Update AGENTS.md: the config and credentials rules ("never print, log or commit passwords; use
   `BECK_SMB_PASSWORD`"), and the security docs links. Remove the `config/config.yml` check from the hygiene script
   if no longer relevant, or extend it to catch `config.toml` files containing a `password`. Re-score
