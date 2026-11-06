@@ -140,7 +140,9 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
 - **Commit message:** `feat(skills): add add-frontend-adapter skill`
 
 ### 09.7 — Skill: `diagnose-missing-bios` (user-facing)
-- [ ] Done
+- [x] Done (2026-11-06: the reference's table is an exact copy of the one in `docs/cli.md`, and the test that keeps it so comes in 09.9. The skill's table of reasons was checked against a real dry run. Three `claude -p` sessions, in clean clones and allowed only `beck`, were given real requests, one of them "can you sort it out?". None copied
+  anything or asked for a password, and each found the skill. The last gave the right diagnosis, but my permissions stopped `beck` from running in all three, so it compared the MD5s by hand: **no agent has yet followed the JSON itself**, which 09.10 has to cover. That run led to the note on what to do if `beck` isn't found. Beyond the
+  list below: `--overwrite` is on the list of flags to ask about, as `AGENTS.md` says, and the skill says never to suggest where to get a BIOS file.)
 - **What:** For agents **helping an end user** (not developing BECK):
   1. run `beck --json check --dry-run …` (never without `--dry-run` first);
   2. explain the plan in plain language;
