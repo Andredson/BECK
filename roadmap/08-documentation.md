@@ -39,7 +39,9 @@ DEC-13, DEC-20, DEC-30, DEC-42, DEC-43.
 - **Commit message:** `docs(readme): rewrite for installation, quick start and safety`
 
 ### 08.2 — User guide: generating the report on Recalbox
-- [ ] Done
+- [x] Done (2026-11-06: the owner generated a report on the Recalbox 10.1.1 VM, as other sign-offs did (DEC-51, DEC-52), and the agent confirmed it over SSH, read-only, with the owner's OK: the file was at the path the guide gives, dated that
+  minute. The real-device run is still step 10.11. The owner's screen said 21 not found and 151 correct, and the report listed 81 entries, so the guide says to go by the report. All 81 parsed, with none refused by 07.6. Beyond the list
+  below: links from `README.md` and `AGENTS.md`.)
 - **What:** `docs/user-guide/generate-report.md`: the exact menu path to generate `missing_bios_report.txt`
   for each Recalbox version that has a fixture (DEC-09), where the file ends up, and how to check it's there
   (SMB share or local path). **The owner confirms the menu path** (it was recorded during 03.13). Add a

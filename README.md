@@ -36,7 +36,7 @@ network, with its SMB shares on, as they are on a fresh install.
 
 ## Quick start
 
-1. **On your Recalbox,** generate the report: main menu → **BIOS CHECKING** → **REPORT**.
+1. **On your Recalbox,** [generate the report](docs/user-guide/generate-report.md): main menu → **BIOS CHECKING** → **REPORT**.
 2. **On your computer,** create your settings:
 
    ```sh
@@ -90,7 +90,7 @@ BECK says what went wrong, and its [exit code](docs/cli.md#exit-codes) says what
 |---|---|
 | Exit code 3, and it can't connect to `recalbox.local` | Your computer may not find that name. Use your Recalbox's IP address in `url`. |
 | Exit code 3, and it refused the login | Check `user` and your password. Recalbox's default is no user at all. |
-| Exit code 4, and no report | Generate the report on your Recalbox first. |
+| Exit code 4, and no report | [Generate the report](docs/user-guide/generate-report.md) on your Recalbox first. |
 | Exit code 2, and the source folder doesn't exist | Create the folder, or change `dir` under `[source]` in your settings. |
 | A file says `no match, kept` | Its MD5 isn't one the report asks for. It may be a different version, or inside a zip. |
 | `already on the device, kept` | The report may be out of date, so generate it again. To replace the file, add `--overwrite`. |
