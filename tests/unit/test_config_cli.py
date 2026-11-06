@@ -311,14 +311,15 @@ def test_show_takes_the_user_from_the_url_and_leaves_it_out_of_the_target(
 
 
 def test_show_says_a_user_in_the_url_comes_from_where_the_url_does(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     settings = tmp_path / "settings.toml"
-    settings.write_text(settings_text("smb://url-user@host/bios"), encoding="utf-8")
+    settings.write_text(settings_text("smb://file-host/bios", "file-user"), encoding="utf-8")
+    monkeypatch.setenv("BECK_TARGET", "smb://url-user@host/bios")
 
     assert cli.main(["config", "show", "--config", str(settings)]) == 0
 
-    assert "smb_user: url-user (file)" in capsys.readouterr().out
+    assert "smb_user: url-user (environment)" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("mode", [[], ["--json"]], ids=["human", "json"])
