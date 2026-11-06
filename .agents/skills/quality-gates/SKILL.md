@@ -75,6 +75,7 @@ None. Ask before installing gitleaks or Trivy, or if a failure can only be fixed
 | `pytest`, in `test_docs_links.py` | A link or an anchor is broken. | Fix the link. |
 | `pytest`, in `test_troubleshooting.py` | A new error or exit code has no entry. | Add it to `docs/troubleshooting.md`. |
 | `pytest`, in `test_license_headers.py` | A Python file doesn't start with its SPDX line. | Add it. |
+| `pytest`, in `test_skills.py` | A skill breaks the format or isn't in the index, or a copied list no longer matches. If `ci.yml` changed, this skill and the line in `AGENTS.md` need the same change. | Change the copy to match. If it's a new CI command that only makes sense on a runner, add it to `CI_ONLY`. |
 | `pytest`, in `test_architecture.py` | The code breaks [a design rule](../../../docs/ARCHITECTURE.md). | Move the code. The rule isn't what's wrong. |
 | `pytest`, in `test_json_contract.py` | The `--json` output changed, which is [a public contract](../../../docs/json-output.md). | A new field goes in the output, the schema, the guide and `V1_FIELDS`. To change an existing one, ask the owner. |
 | `pytest`, in `test_redaction.py` | A password may reach the output. | Treat it as a security bug: find how it got there. |

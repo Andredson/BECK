@@ -171,7 +171,8 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
 - **Commit message:** `docs(agents): document using BECK with AI agents`
 
 ### 09.9 — Skill validation test
-- [ ] Done
+- [x] Done (2026-11-06: each rule was broken in the real files, 30 ways in all, and the test failed each time. It reuses the link check from `tests/test_docs_links.py`. The check on `ci.yml` goes both ways, so a new CI command fails until it's in the skill or on the list of steps only a CI runner needs. Beyond the list above: `AGENTS.md`'s pre-commit line
+  is checked too, which is the drift 09.3 found, and the folder may hold nothing but skills and its README. This also gives 09.3 its Verify and 09.7 its "done when". Beyond the list below: a row in the `quality-gates` table, and a mention in the `AGENTS.md` repository map. It checks the format, not whether a skill's advice is right.)
 - **What:** `tests/test_skills.py`, standard library only:
   - every folder in `.agents/skills/` (except `README.md`) has a `SKILL.md`;
   - the frontmatter, parsed as single-line `key: value` pairs between `---` lines, has a valid `name` equal to

@@ -34,7 +34,7 @@ CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against
 | `.editorconfig`, `.gitattributes` | Editor settings; LF line endings in the repository. |
 | `roadmap/` | The improvement plan: [index and decision log](roadmap/README.md), [assessment](roadmap/00-assessment.md), one file per stage. |
 | [`CHANGELOG.md`](CHANGELOG.md), `cliff.toml` | The changelog, **generated** from the commit messages by git-cliff (DEC-20). Don't edit it by hand; [the command](docs/maintenance.md#regenerating-the-changelog) is in the maintenance routine. |
-| `.agents/skills/` | [Agent Skills](.agents/skills/README.md): procedures for tasks that take several steps, listed in the [index](#skills) below (DEC-22). |
+| `.agents/skills/` | [Agent Skills](.agents/skills/README.md): procedures for tasks that take several steps, listed in the [index](#skills) below (DEC-22). `tests/test_skills.py` checks their format, links and index, and that what they copy still matches. |
 | `docs/agents.md` | Which AI agents were tested loading this file, and how to test another one. |
 | `docs/ARCHITECTURE.md` | [The design](docs/ARCHITECTURE.md): the core is pure and adapters do the I/O. Data flow, and the rules to keep, which `tests/unit/test_architecture.py` enforces. Read it before changing `src/beck/`. |
 | `docs/troubleshooting.md` | [Each message BECK prints](docs/troubleshooting.md), with why and what to do. A new error needs an entry here, which `tests/test_troubleshooting.py` checks for its code. |

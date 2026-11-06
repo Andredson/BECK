@@ -36,7 +36,7 @@ compatibility: Needs git, uv and Python 3.11+. No network access required.
 1. Check that a task really needs one: a single command belongs in [AGENTS.md](../../AGENTS.md#commands) instead.
 2. Create `.agents/skills/<name>/SKILL.md` in the format above.
 3. Add a row to [the index in AGENTS.md](../../AGENTS.md#skills).
-4. Check its links with `uv run pytest tests/test_docs_links.py -q`.
+4. Check it with `uv run pytest tests/test_skills.py -q`, which checks the format, its links and the index.
 5. Give the same short task to agents from two vendors, and record in [docs/agents.md](../../docs/agents.md) whether they found the skill, followed it and kept to the safety rules. Fix the wording where they went wrong, rather than adding a copy for one vendor.
 
 A skill never overrides [the hard rules in AGENTS.md](../../AGENTS.md#hard-rules).
