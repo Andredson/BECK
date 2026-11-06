@@ -129,6 +129,16 @@ BECK keeps them unless you pass `--overwrite` (DEC-61):
 `--overwrite` reports `replaced`, not `copied`, so you can see what it overwrote. BECK keeps no copy of the old file, and a failed
 upload can leave the old file damaged. Names that differ only in case count as the same file on SMB, as they do for Samba.
 
+## Uploads that change a file's extension
+
+BECK matches files by MD5, and uploads them under the name the report asks for. Sometimes that changes the extension: the real
+Recalbox 10.1.1 report lists the same MD5 for `neocd/neocd.bin` and `neocdz.zip`, so a raw `.bin` can go up as a `.zip`. The MD5 is
+valid, but an emulator may not be able to read the file.
+
+BECK uploads the file anyway and prints a warning, in a dry run too. A difference in case alone, like `.BIN` and `.bin`, gets no
+warning. Some targets have an unusual extension on purpose, like the Amiga `kick34005.A500`: there, a `.rom` file with the right MD5
+gets the warning but is probably fine.
+
 ## Exit codes
 
 These are a stable contract (DEC-23), and scripts can rely on them.

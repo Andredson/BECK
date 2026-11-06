@@ -1497,3 +1497,16 @@ def test_an_unexpected_error_returns_1_with_a_traceback_on_stderr(
     assert "RuntimeError: a bug in BECK" in captured.err
     assert "a bug in BECK" not in captured.out
     assert server.connections[0].closed
+
+
+def test_a_full_run_warns_when_an_upload_changes_the_extension(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    data = write(app / "bios" / "neocd.bin")
+    report(server, block("neocdz.zip", md5_of(data)))
+
+    assert cli.main(["check"], base_dir=app) == 0
+
+    assert server.files[("bios", "neocdz.zip")] == data
+    output = capsys.readouterr().out
+    assert "neocd.bin: copied -> neocdz.zip\nWarning: neocd.bin has a different extension" in output

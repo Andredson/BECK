@@ -169,7 +169,7 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `feat(cli): add dry-run and opt-in move/clean flags with confirmation`
 
 ### 06.6a — Warn when a file's extension differs from its target's
-- [ ] Done
+- [x] Done
 - **What:** Warn when a file is uploaded to a target with a different extension, without blocking the upload. Reason:
   in the real report from Recalbox 10.1.1, an MD5 on the `neocdz.zip` entry also belongs to `neocd.bin`, so BECK
   uploaded a raw `.bin` under a `.zip` name during the 03.13 VM run. The MD5 is valid, but an emulator may not be able
@@ -188,7 +188,7 @@ beck config  init | show | path                     # added in stage 07
   - Top-level fields: `schema_version` (1), `beck_version`, `command`, `ok` (bool), `dry_run`, `frontend`,
     `target` (URL **without** credentials), `summary` {`missing_entries`, `satisfied`, `still_missing`,
     `files_scanned`, `uploaded`, `duplicates`, `unmatched`, `deleted`, `errors`}, `uploads[]` {`source`,
-    `target`, `md5`, `status`: planned|uploaded|replaced|kept|failed|skipped, `error`}, `incorrect[]` {`name`, `target`, `current_md5`, `md5s`}, `still_missing[]` {`name`, `target`,
+    `target`, `md5`, `status`: planned|uploaded|replaced|kept|failed|skipped, `error`, `warning`}, `incorrect[]` {`name`, `target`, `current_md5`, `md5s`}, `still_missing[]` {`name`, `target`,
     `md5s`, `required`}, `duplicates[]`, `unmatched[]`, `deleted[]`, `errors[]` {`code`, `message`, `item`}.
   - Errors that stop a run (config, connection, report) still print a valid document with `ok: false` and the
     matching exit code.

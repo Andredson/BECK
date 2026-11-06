@@ -13,6 +13,7 @@ from beck.models import SHARE_ROOT, LocalFile, MissingBios, RunResult, Unreadabl
 RESET = "\033[0m"
 RED = "\033[91m"
 GREEN = "\033[92m"
+YELLOW = "\033[93m"
 BLUE = "\033[94m"
 MAGENTA = "\033[35m"
 CYAN = "\033[36m"
@@ -210,6 +211,12 @@ class ConsoleRenderer:
                 else:
                     outcome = "skipped"
                 lines.append(f"{path}: {outcome} -> {upload.target}")
+                if upload in result.extension_changes:
+                    label = self._paint("Warning", YELLOW)
+                    lines.append(
+                        f"{label}: {path} has a different extension from {upload.target}. The MD5 "
+                        "matches, but an emulator may not be able to read it."
+                    )
             if uploads and file in result.deleted:
                 lines.append(f"{path}: {gone}")
 

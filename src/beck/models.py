@@ -154,3 +154,4 @@ class RunResult:
     kept: tuple[PlannedUpload, ...] = ()  # already on the target, so not uploaded (DEC-61)
     replaced: tuple[PlannedUpload, ...] = ()  # uploads that overwrite a file on the target
     deleted: tuple[LocalFile, ...] = ()  # in a dry run, what it would delete
+    extension_changes: tuple[PlannedUpload, ...] = ()  # in a dry run, what it would upload

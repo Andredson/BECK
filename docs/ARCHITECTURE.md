@@ -84,6 +84,7 @@ flowchart LR
   unmatched. `--overwrite` makes these targets normal ones (DEC-61).
 - A file already on the target is kept, and `--overwrite` replaces it (DEC-61). The executor checks this, because the matcher does no I/O.
 - The plan doesn't depend on input order.
+- An upload that changes the file's extension still happens. The executor lists it, and the output warns about it.
 
 ## Rules
 

@@ -7,6 +7,11 @@ from beck.models import ItemError, LocalFile, Plan, PlannedUpload, RunResult
 from beck.transports.base import Transport
 
 
+def _changes_extension(upload: PlannedUpload) -> bool:
+    """Whether the file goes up under another extension. Case alone isn't a different format."""
+    return upload.source.relative.suffix.casefold() != upload.target.suffix.casefold()
+
+
 def _size_matches(upload: PlannedUpload, transport: Transport, errors: list[ItemError]) -> bool:
     """Whether the file on the target has the local file's size. A failure counts as no."""
     item = upload.target.as_posix()
@@ -79,6 +84,9 @@ def execute(
     matches. ``clean_unmatched`` deletes local files that matched nothing, but not after any failure
     in this run. Without these flags, nothing local is ever deleted or renamed (DEC-02).
 
+    An upload that changes the file's extension goes ahead, and is listed in ``extension_changes``:
+    the MD5 is valid, but an emulator may not be able to read the file.
+
     A dry run only checks what's on the target: every upload it would make counts as skipped, and
     ``deleted`` has what it would delete. An upload whose folder couldn't be created is skipped too.
     Only a TransportError counts as an item failure: anything else is a bug, and stops the run.
@@ -116,10 +124,10 @@ def execute(
         except TransportError as e:
             errors.append(ItemError(item=upload.target.as_posix(), message=str(e)))
 
+    done = skipped if dry_run else completed
     to_delete: list[LocalFile] = []
     if move:
-        done = set(skipped if dry_run else completed)
-        to_delete += _files_to_move(plan, transport, dry_run=dry_run, done=done, errors=errors)
+        to_delete += _files_to_move(plan, transport, dry_run=dry_run, done=set(done), errors=errors)
     if clean_unmatched and not errors:
         to_delete += _files_to_clean(plan)
     deleted = [file for file in to_delete if dry_run or _delete(file, errors)]
@@ -133,4 +141,5 @@ def execute(
         kept=tuple(kept),
         replaced=tuple(replaced),
         deleted=tuple(deleted),
+        extension_changes=tuple(upload for upload in done if _changes_extension(upload)),
     )

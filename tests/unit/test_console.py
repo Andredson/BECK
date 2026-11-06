@@ -436,3 +436,48 @@ def test_configuring_twice_does_not_repeat_each_line(
     configure_logging(logging.DEBUG).debug("once")
 
     assert capsys.readouterr().err.count("once") == 1
+
+
+EXTENSION_WARNING = (
+    "Warning: neocd.bin has a different extension from neocdz.zip. "
+    "The MD5 matches, but an emulator may not be able to read it."
+)
+
+
+def test_an_extension_change_is_warned_about_below_its_upload() -> None:
+    same = upload(make_local_file("neocd.bin", A), "neocd/neocd.bin")
+    changed = upload(make_local_file("neocd.bin", A), "neocdz.zip")
+    plan = Plan(uploads=(same, changed))
+    result = RunResult(plan=plan, completed=(same, changed), extension_changes=(changed,))
+
+    assert rendered(result)[2:5] == [
+        "neocd.bin: copied -> neocd/neocd.bin",
+        "neocd.bin: copied -> neocdz.zip",
+        EXTENSION_WARNING,
+    ]
+
+
+def test_a_dry_run_warns_about_an_extension_change_too() -> None:
+    changed = upload(make_local_file("neocd.bin", A), "neocdz.zip")
+    plan = Plan(uploads=(changed,))
+    result = RunResult(plan=plan, skipped=(changed,), extension_changes=(changed,), dry_run=True)
+
+    assert rendered(result)[:2] == ["neocd.bin: would copy -> neocdz.zip", EXTENSION_WARNING]
+
+
+def test_no_extension_warning_without_an_extension_change() -> None:
+    planned = upload(make_local_file("neocd.bin", A), "neocdz.zip")
+    result = RunResult(plan=Plan(uploads=(planned,)), completed=(planned,))
+
+    assert EXTENSION_WARNING not in rendered(result)
+
+
+def test_the_extension_warning_is_yellow_when_colored() -> None:
+    changed = upload(make_local_file("neocd.bin", A), "neocdz.zip")
+    result = RunResult(
+        plan=Plan(uploads=(changed,)), completed=(changed,), extension_changes=(changed,)
+    )
+
+    assert f"\033[93mWarning\033[0m{EXTENSION_WARNING.removeprefix('Warning')}" in rendered(
+        result, color=True
+    )
