@@ -17,7 +17,7 @@ executed **one step at a time**, by a human or an AI agent, in the order below. 
 | 03 | [Critical fixes & data safety](03-critical-fixes-and-data-safety.md) | 02 | `stage/03-critical-fixes` | M | Done (2026-11-04) |
 | 04 | [Architecture refactor](04-architecture-refactor.md) | 03 | `stage/04-architecture` | L | Done (2026-11-04) |
 | 05 | [Testing hardening](05-testing-hardening.md) | 04 | `stage/05-testing` | M | Done (2026-11-05) |
-| 06 | [CLI, UX & machine-readable output](06-cli-ux-and-machine-output.md) | 05 | `stage/06-cli` | M | In progress |
+| 06 | [CLI, UX & machine-readable output](06-cli-ux-and-machine-output.md) | 05 | `stage/06-cli` | M | Done (2026-11-06) |
 | 07 | [Configuration & security](07-configuration-and-security.md) | 06 | `stage/07-config-security` | M | Not started |
 | 08 | [Documentation](08-documentation.md) | 07 | `stage/08-docs` | M | Not started |
 | 09 | [Agent Skills & automation](09-agent-skills-and-automation.md) | 08 | `stage/09-agent-skills` | M | Not started |

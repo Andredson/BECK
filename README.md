@@ -4,8 +4,8 @@ A simple script that checks your BIOS files against the list of BIOS files your 
 matching ones over SMB to the right folders on the Recalbox.
 
 > [!NOTE]
-> BECK no longer deletes anything in your `bios` folder. It copies the matching files to the Recalbox and leaves
-> every local file as it was. Older copies of BECK did delete them, so run `git pull` first if your copy is old.
+> BECK copies the matching files to the Recalbox and leaves your local files as they were, unless you ask it to delete
+> them with `--move` or `--clean-unmatched`. Older copies of BECK always deleted them, so run `git pull` first if your copy is old.
 
 ## Prerequisites
 
@@ -62,13 +62,15 @@ If you never edited it, `git pull` removes it; create it again as described in [
 ## Usage
 
 1. Put your possible BIOS files in the **bios** folder.
-2. From the repository folder, run:
+2. From the repository folder, see what BECK would do, which changes nothing, and then do it:
 
    ```sh
-   uv run beck check                 # with pip: python check_bios.py
+   uv run beck check --dry-run
+   uv run beck check
    ```
 
-   `check_bios.py` still works and prints a notice that it's deprecated.
+   With pip, run `pip install .` once to get the `beck` command, and leave out `uv run`. `python check_bios.py` still works
+   in place of `beck check`, with the same options, and prints a notice that it's deprecated.
 
 3. BECK lists what happened to each file: copied to the Recalbox, or kept because it's a duplicate, matches nothing,
    or its target was already filled.
@@ -76,6 +78,17 @@ If you never edited it, `git pull` removes it; create it again as described in [
 
 BECK doesn't replace files already on the device. It lists them, including any that Recalbox says has the wrong hash (`INCORRECT`).
 To replace them, run `beck check --overwrite`. There's no backup of what it replaces.
+
+Other things you can do:
+
+```sh
+uv run beck scan                                # list your local files and their MD5s, with no network
+uv run beck report                              # list what your Recalbox is missing
+uv run beck check --target-dir /media/sdcard/bios   # use a mounted SD card or USB drive
+```
+
+[The `beck` command](docs/cli.md) has every option, the exit codes, and what gets deleted. Scripts and AI agents can add `--json`
+to get [one JSON document](docs/json-output.md) instead.
 
 ## Structure
 

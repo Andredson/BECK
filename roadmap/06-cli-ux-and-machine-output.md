@@ -1,6 +1,6 @@
 # Stage 06 — CLI, UX & machine-readable output
 
-**Status:** In progress · **Depends on:** 05 · **Branch:** `stage/06-cli` · **Effort:** M
+**Status:** Done (2026-11-06) · **Depends on:** 05 · **Branch:** `stage/06-cli` · **Effort:** M
 
 ## Goal
 Give BECK a real command-line interface (subcommands, flags, help) that is safe by default and pleasant for
@@ -362,7 +362,9 @@ beck config  init | show | path                     # added in stage 07
 - **Commit message:** `docs(agents): explain how agents should drive the beck CLI safely`
 
 ### 06.13 — Close the stage
-- [ ] Done
+- [x] Done (2026-11-06: the acceptance criteria below hold. The stage scores 7/10, with a sum of 128, up from 122. PR #6 was merged before this
+  commit, at `e8cd5ea` with a merge commit, so this one goes in a small PR of its own from the same branch. `AGENTS.md` changes too, as every
+  closing step's does, because it still said BECK never deletes local files.)
 - **What:** Update the README usage section briefly (the full rewrite is 08.1). Re-score
   [00-assessment](00-assessment.md#re-scoring-history): UX and AI-readiness should rise. Update the
   [README](README.md#stages) status. Push the closing commit (DEC-47). If the stage PR doesn't exist yet, print
