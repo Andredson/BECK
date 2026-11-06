@@ -1,6 +1,6 @@
 # Stage 07 — Configuration & security
 
-**Status:** Not started · **Depends on:** 06 · **Branch:** `stage/07-config-security` · **Effort:** M
+**Status:** In progress · **Depends on:** 06 · **Branch:** `stage/07-config-security` · **Effort:** M
 
 ## Goal
 Make configuration predictable and safe: one TOML file in the OS-correct folder, environment-variable
@@ -51,7 +51,11 @@ A legacy `./config/config.yml` triggers a migration message (07.3).
 ## Steps
 
 ### 07.1 — TOML loader, schema and validation
-- [ ] Done
+- [x] Done (2026-11-06: nothing reads this file yet, which is 07.2. Choices beyond the list below: `schema_version` is required; a relative
+  `dir` is refused, because it would mean something different from each folder, and the stage wants BECK to work from any folder; `passwd` and
+  any case of `password` are refused too, anywhere in the file; a message never repeats a value that could be a password, so it gives the kind of
+  value instead, except for `schema_version` and `smb.timeout`; and every problem is on one line, because a line break would show as `\x0a` since
+  06.11a. Beyond the list below: `docs/ARCHITECTURE.md` and `AGENTS.md` name the new module.)
 - **What:** `src/beck/config.py`:
   - A frozen `Config` dataclass.
   - `load(path) -> Config` using `tomllib`.

@@ -14,7 +14,8 @@ the outside world.
 src/beck/
 ├── __init__.py          # __version__ from importlib.metadata
 ├── __main__.py          # python -m beck
-├── cli.py               # argparse wiring and exit codes (minimal here, full in stage 06)
+├── cli.py               # argparse wiring and exit codes
+├── config.py            # the TOML settings file: read and checked, with no password in it
 ├── errors.py            # BeckError hierarchy, each with an exit code
 ├── models.py            # frozen dataclasses: MissingBios, LocalFile, PlannedUpload, Plan, RunResult
 ├── hashing.py           # chunked MD5, local folder scan
