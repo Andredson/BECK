@@ -84,16 +84,9 @@ agents, [`AGENTS.md`](AGENTS.md#using-beck-as-a-tool) has the rules for using BE
 
 ## Troubleshooting
 
-BECK says what went wrong, and its [exit code](docs/cli.md#exit-codes) says what kind of problem it is.
+BECK says what went wrong, and its [exit code](docs/cli.md#exit-codes) says what kind of problem it is. [The troubleshooting guide](docs/troubleshooting.md) goes through each message, with why it happens and what to do.
 
-| What you see | What to do |
-|---|---|
-| Exit code 3, and it can't connect to `recalbox.local` | Your computer may not find that name. Use your Recalbox's IP address in `url`. |
-| Exit code 3, and it refused the login | Check `user` and your password. Recalbox's default is no user at all. |
-| Exit code 4, and no report | [Generate the report](docs/user-guide/generate-report.md) on your Recalbox first. |
-| Exit code 2, and the source folder doesn't exist | Create the folder, or change `dir` under `[source]` in your settings. |
-| A file says `no match, kept` | Its MD5 isn't one the report asks for. It may be a different version, or inside a zip. |
-| `already on the device, kept` | The report may be out of date, so generate it again. To replace the file, add `--overwrite`. |
+The most common one is that your computer can't find `recalbox.local`: use your Recalbox's IP address in `url` instead.
 
 ## Project status
 

@@ -240,7 +240,7 @@ gets the warning but is probably fine.
 
 ## Exit codes
 
-These are a stable contract (DEC-23), and scripts can rely on them.
+These are a stable contract (DEC-23), and scripts can rely on them. [The troubleshooting guide](troubleshooting.md) goes through each message.
 
 | Code | Meaning |
 |---|---|

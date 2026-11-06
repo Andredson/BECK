@@ -35,6 +35,7 @@ CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against
 | `roadmap/` | The improvement plan: [index and decision log](roadmap/README.md), [assessment](roadmap/00-assessment.md), one file per stage. |
 | `docs/agents.md` | Which AI agents were tested loading this file, and how to test another one. |
 | `docs/ARCHITECTURE.md` | [The design](docs/ARCHITECTURE.md): the core is pure and adapters do the I/O. Data flow, and the rules to keep, which `tests/unit/test_architecture.py` enforces. Read it before changing `src/beck/`. |
+| `docs/troubleshooting.md` | [Each message BECK prints](docs/troubleshooting.md), with why and what to do. A new error needs an entry here, which `tests/test_troubleshooting.py` checks for its code. |
 | `docs/user-guide/` | Guides for people using BECK, such as [generating the report](docs/user-guide/generate-report.md). |
 | `docs/cli.md` | [The `beck` command](docs/cli.md): commands, flags, exit codes and what gets deleted. |
 | `docs/json-output.md`, `docs/schemas/` | [The `--json` output](docs/json-output.md) and its JSON Schema files: a **public contract** (DEC-23). Ask the owner before changing an existing field. `tests/unit/test_json_contract.py` checks every kind of document against the schemas, and its `V1_FIELDS` records what version 1 promises, so a new field goes in the output, the schema, the guide and that record. |

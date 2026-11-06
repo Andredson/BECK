@@ -52,7 +52,8 @@ DEC-13, DEC-20, DEC-30, DEC-42, DEC-43.
 - **Commit message:** `docs(guide): explain how to generate the missing BIOS report on Recalbox`
 
 ### 08.3 — Troubleshooting guide
-- [ ] Done
+- [x] Done (2026-11-06: the messages were captured from real runs against local folders and the Samba test server, which found a bug from 07.5: `redact` garbled BECK's own `smb://[user@]host` form, fixed in its own commit. The Windows
+  entries are general advice, because BECK isn't tested there. Beyond the list below: `tests/test_troubleshooting.py`, which fails if an exit code or error code has no entry, and links from `docs/cli.md` and `AGENTS.md`.)
 - **What:** `docs/troubleshooting.md`, organized by **symptom → cause → fix**, each tied to the exit code and
   message BECK prints. Cover at least:
   - `recalbox.local` doesn't resolve (mDNS on Windows; use the IP address);
