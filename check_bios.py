@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Deprecated: use the ``beck`` command. Kept so that ``python check_bios.py`` still works."""
 
 import sys

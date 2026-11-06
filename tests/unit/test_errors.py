@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Exit codes are a public promise (DEC-23), so each class's code is pinned here."""
 
 import inspect

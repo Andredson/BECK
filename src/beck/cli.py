@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """The ``beck`` command: connects the parts. Only this module turns errors into exit codes."""
 
 import argparse

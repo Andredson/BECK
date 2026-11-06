@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """The beck package and the check_bios.py shim: entry points, version, and where files are found."""
 
 import importlib.metadata

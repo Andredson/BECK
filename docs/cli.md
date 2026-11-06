@@ -1,6 +1,6 @@
 # The `beck` command
 
-The reference for using BECK from the command line.
+The guide to using BECK from the command line. [The command reference](cli-reference.md) has what each command's `--help` prints.
 
 
 ```text
@@ -240,7 +240,7 @@ gets the warning but is probably fine.
 
 ## Exit codes
 
-These are a stable contract (DEC-23), and scripts can rely on them.
+These are a stable contract (DEC-23), and scripts can rely on them. [The troubleshooting guide](troubleshooting.md) goes through each message.
 
 | Code | Meaning |
 |---|---|

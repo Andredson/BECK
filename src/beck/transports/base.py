@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """What a transport provides. Paths are relative to the target's BIOS root."""
 
 from pathlib import Path, PurePosixPath

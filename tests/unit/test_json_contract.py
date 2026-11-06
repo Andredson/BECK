@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """The --json contract: what each run writes, checked against docs/schemas/ (DEC-23).
 
 Each scenario below is a way a run can end. Between them they must write every kind of document, and

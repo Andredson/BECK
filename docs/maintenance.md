@@ -81,8 +81,9 @@ uv run python scripts/check_repo_hygiene.py
 | gitleaks | `GITLEAKS_VERSION`, `GITLEAKS_SHA256` | [4a](#4a-list-releases-with-their-age) on `gitleaks/gitleaks` | Three matching hashes ([4c](#4c-hash-a-release-binary)) |
 | Trivy | `TRIVY_VERSION`, `TRIVY_SHA256` | [4a](#4a-list-releases-with-their-age) on `aquasecurity/trivy`; must show `immutable=true` | Three matching hashes ([4c](#4c-hash-a-release-binary)), and Trivy's advisories |
 | commitizen | `COMMITIZEN_VERSION` | [4d](#4d-list-pypi-releases-with-their-age) | Release notes |
+| git-cliff | [The changelog command](#regenerating-the-changelog) | [4d](#4d-list-pypi-releases-with-their-age) | Release notes, then regenerate: only the expected lines should change |
 
-All of them are in the `env:` block or the `uses:` lines of **both** `.github/workflows/ci.yml` and
+All of them but git-cliff are in the `env:` block or the `uses:` lines of **both** `.github/workflows/ci.yml` and
 `.github/workflows/security.yml` (commitizen and `upload-artifact` only in `ci.yml`). Update the version, the hash
 or SHA, and the "pinned" date in the trailing comment.
 
@@ -215,6 +216,16 @@ green (DEC-39):
 ```sh
 git push -u origin deps/YYYY-MM && gh pr create --base main --title "build(deps): monthly dependency refresh (YYYY-MM)" --body "See the log in docs/maintenance.md."
 ```
+
+## Regenerating the changelog
+
+`CHANGELOG.md` is generated from the commit messages, by the rules in `cliff.toml` (DEC-20), so it's never edited by hand. It's regenerated for each release, so `Unreleased` falls behind between releases, and it can't include the commit that updates it. This version was pinned on 2026-11-06:
+
+```sh
+uvx --exclude-newer "14 days" git-cliff@2.14.2 -o CHANGELOG.md
+```
+
+A breaking change needs `!` in its commit message, which marks it in the file. If a pushed commit lacks one, add it to `commit_preprocessors` in `cliff.toml`, because a pushed commit can't be changed.
 
 ## Log
 

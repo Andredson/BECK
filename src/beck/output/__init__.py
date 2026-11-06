@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """How BECK shows results: for people in ``console``, and for machines in ``json``.
 
 Output can't change what a run does, or its exit code (DEC-62). So what's written to stdout or
@@ -81,8 +82,10 @@ def distinct_targets(plan: Plan) -> int:
 
 
 def upload_errors(result: RunResult) -> dict[str, str]:
-    """What went wrong on the target, by target. A failed delete is about a local file instead,
-    and that file can have the same name as a target. A rejected entry never got that far.
+    """What went wrong on the target, by target.
+
+    A failed delete is about a local file instead, and that file can have the same name as a
+    target. A rejected entry never got that far.
     """
     return {e.item: e.message for e in result.errors if e.code not in NOT_ABOUT_AN_UPLOAD}
 
@@ -102,6 +105,7 @@ def upload_status(upload: PlannedUpload, result: RunResult) -> str:
 
 
 def extension_warning(upload: PlannedUpload) -> str:
+    """The warning for an upload that changes an extension, for people and machines alike."""
     source = upload.source.relative.as_posix()
     return (
         f"{source} has a different extension from {upload.target}. The MD5 matches, but an "

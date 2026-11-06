@@ -1,6 +1,6 @@
 # Stage 08 — Documentation
 
-**Status:** Not started · **Depends on:** 07 · **Branch:** `stage/08-docs` · **Effort:** M
+**Status:** Done (2026-11-06) · **Depends on:** 07 · **Branch:** `stage/08-docs` · **Effort:** M
 
 ## Goal
 Make the documentation complete enough that a Recalbox user with no Python background can install and use BECK,
@@ -18,7 +18,9 @@ DEC-13, DEC-20, DEC-30, DEC-42, DEC-43.
 ## Steps
 
 ### 08.1 — Rewrite the README
-- [ ] Done
+- [x] Done (2026-11-06: followed literally from an empty home folder, with uv and with pipx, from `git+https://github.com/Andredson/BECK` to an upload on the Samba test server. The troubleshooting guide (08.3) and
+  `CONTRIBUTING.md` (12.1) don't exist yet, so for now the README has a short table of its own and points contributors to `AGENTS.md`. Only the CI badge, so no DEC was needed. Rough wording such as `1 files` is in the code, so it isn't
+  part of this step, despite what the stage 07 re-score says. Beyond the list below: `AGENTS.md`'s description of the README.)
 - **What:** Structure:
   1. One-line description, then badges. Use only the GitHub-native CI status badge. A PyPI or Python-version
      badge from shields.io is a third-party service: **ask the owner first** and record a DEC if accepted.
@@ -37,7 +39,9 @@ DEC-13, DEC-20, DEC-30, DEC-42, DEC-43.
 - **Commit message:** `docs(readme): rewrite for installation, quick start and safety`
 
 ### 08.2 — User guide: generating the report on Recalbox
-- [ ] Done
+- [x] Done (2026-11-06: the owner generated a report on the Recalbox 10.1.1 VM, as other sign-offs did (DEC-51, DEC-52), and the agent confirmed it over SSH, read-only, with the owner's OK: the file was at the path the guide gives, dated that
+  minute. The real-device run is still step 10.11. The owner's screen said 21 not found and 151 correct, and the report listed 81 entries, so the guide says to go by the report. All 81 parsed, with none refused by 07.6. Beyond the list
+  below: links from `README.md` and `AGENTS.md`.)
 - **What:** `docs/user-guide/generate-report.md`: the exact menu path to generate `missing_bios_report.txt`
   for each Recalbox version that has a fixture (DEC-09), where the file ends up, and how to check it's there
   (SMB share or local path). **The owner confirms the menu path** (it was recorded during 03.13). Add a
@@ -48,7 +52,8 @@ DEC-13, DEC-20, DEC-30, DEC-42, DEC-43.
 - **Commit message:** `docs(guide): explain how to generate the missing BIOS report on Recalbox`
 
 ### 08.3 — Troubleshooting guide
-- [ ] Done
+- [x] Done (2026-11-06: the messages were captured from real runs against local folders and the Samba test server, which found a bug from 07.5: `redact` garbled BECK's own `smb://[user@]host` form, fixed in its own commit. The Windows
+  entries are general advice, because BECK isn't tested there. Beyond the list below: `tests/test_troubleshooting.py`, which fails if an exit code or error code has no entry, and links from `docs/cli.md` and `AGENTS.md`.)
 - **What:** `docs/troubleshooting.md`, organized by **symptom → cause → fix**, each tied to the exit code and
   message BECK prints. Cover at least:
   - `recalbox.local` doesn't resolve (mDNS on Windows; use the IP address);
@@ -59,13 +64,14 @@ DEC-13, DEC-20, DEC-30, DEC-42, DEC-43.
   - a file "not matched" (wrong dump, zipped file, wrong region);
   - permission denied on the target;
   - a Windows path or long-path issue.
-- **Files:** `docs/troubleshooting.md`
+- **Files:** `docs/troubleshooting.md`, `README.md` (replace its short table with a link)
 - **Done when:** Every `BeckError` subclass and exit code appears in at least one entry.
 - **Verify:** `uv run pytest tests/test_docs_links.py -q`
 - **Commit message:** `docs: add troubleshooting guide keyed by error message`
 
 ### 08.4 — Generated CLI reference with a sync test
-- [ ] Done
+- [x] Done (2026-11-06: `argparse` wraps one usage line differently on Python 3.13 and later, so the script re-wraps the usage block itself, and the file is byte-identical on 3.11–3.14, which was run on each. Standard library only, plus
+  `beck`'s own parser, and it reads two private `argparse` names to find the subcommands. Changing a real flag's help made the test fail, and regenerating fixed it. Beyond the list below: `docs/cli.md`, `AGENTS.md`.)
 - **What:** `scripts/gen_cli_reference.py` renders `beck --help` and every subcommand's `--help` into
   `docs/cli-reference.md` (standard library only, with a fixed terminal width via the `COLUMNS` env var so the
   output is stable). Add `tests/test_cli_reference.py`, which fails if the file is out of date. The
@@ -76,7 +82,8 @@ DEC-13, DEC-20, DEC-30, DEC-42, DEC-43.
 - **Commit message:** `docs(cli): generate the command reference from argparse`
 
 ### 08.5 — Docstrings
-- [ ] Done
+- [x] Done (2026-11-06: 49 places, and `__init__` and magic methods got docstrings rather than an exemption. Only docstrings changed: each file's syntax tree, with them removed, is the same as before. `"!src/**"` keeps the rules out of
+  everything else. Beyond the list below: `AGENTS.md`'s code style.)
 - **What:** Enable ruff's `D` rules with the Google convention for `src/` (not for tests). Write docstrings for
   every public module, class and function, explaining *why* where it isn't obvious, not restating the
   signature.
@@ -86,7 +93,9 @@ DEC-13, DEC-20, DEC-30, DEC-42, DEC-43.
 - **Commit message:** `docs(code): add docstrings to the public API`
 
 ### 08.6 — Changelog with git-cliff (DEC-20)
-- [ ] Done
+- [x] Done (2026-11-06: git-cliff 2.14.2, run with `uvx` and pinned in `docs/maintenance.md`. docs, test, ci, build, chore and style commits are hidden, unless breaking. Every commit is accounted for: 22 Added, 4 Changed, 20 Fixed, 11 under Earlier
+  history, 74 hidden and 8 PR merges. `40856f1` is marked breaking from `cliff.toml`, because its message has no `!`. There's no tag yet, so a release was tried with `--tag`, which only shows one release; the release notes from `--latest` will
+  also carry the Earlier history entry, for 10.6 to decide on. Nothing checks that the file is current, which would need git-cliff in the test run. Beyond the list below: `AGENTS.md`, the release steps in stage 10.)
 - **What:**
   - `cliff.toml`: Keep a Changelog layout; sections mapped from Conventional Commit types (feat → Added,
     fix → Fixed, refactor/perf → Changed, `!` → a **Breaking** marker, docs/test/ci/build/chore hidden or
@@ -101,7 +110,8 @@ DEC-13, DEC-20, DEC-30, DEC-42, DEC-43.
 - **Commit message:** `docs(changelog): generate CHANGELOG.md with git-cliff`
 
 ### 08.7 — License notices (DEC-13)
-- [ ] Done
+- [x] Done (2026-11-06: 67 files, including `check_bios.py`, which the step's test covers though the list above doesn't name it, and three empty `__init__.py` files. The header is the only change: each file's syntax tree is the same as before. The
+  test also looks at new files that aren't tracked yet, so one fails before it's committed. The README and `LICENSE` needed no change. Beyond the list below: `AGENTS.md`'s code style.)
 - **What:** Add `# SPDX-License-Identifier: GPL-3.0-only` as the first comment line of every Python file in
   `src/`, `scripts/` and `tests/`. Add `tests/test_license_headers.py`, which fails if any tracked `.py` file
   lacks it. State "GPL-3.0-only" in the README's License section, and keep `LICENSE` unchanged.
@@ -111,7 +121,8 @@ DEC-13, DEC-20, DEC-30, DEC-42, DEC-43.
 - **Commit message:** `chore(license): add SPDX identifiers to source files`
 
 ### 08.8 — Close the stage
-- [ ] Done
+- [x] Done (2026-11-06: the acceptance criteria below hold. Every document can be reached from the README by following links, and `CHANGELOG.md`, which couldn't be, now has a link there. The stage scores 7/10, with a sum of 137, up from 135. Draft
+  PR #9 already exists, so the owner marks it ready and merges it with a merge commit. The owner hasn't yet said outright that 08.2's check counts as their sign-off. Beyond the list below: that line in `README.md`.)
 - **What:** Update AGENTS.md: docs map, "regenerate the CLI reference and changelog when you change flags or
   release". Re-score [00-assessment](00-assessment.md#re-scoring-history) and mark D13 fully fixed. Update the
   [README](README.md#stages) status. Push the closing commit (DEC-47). If the stage PR doesn't exist yet, print

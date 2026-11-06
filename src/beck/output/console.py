@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Human output on stdout, with colors when the terminal wants them. Logs go to stderr."""
 
 import ctypes
@@ -176,6 +177,7 @@ class ConsoleRenderer:
         quiet: bool = False,
         progress: bool = True,
     ) -> None:
+        """Choose where to print. By default, stdout, and the real environment decides on color."""
         self.stream = sys.stdout if stream is None else stream
         settings = os.environ if environ is None else environ
         self.color = self.stream is not None and wants_color(self.stream, settings)
@@ -212,6 +214,7 @@ class ConsoleRenderer:
             self.progress = False
 
     def hashing(self, count: int) -> None:
+        """Update the counter, if there's a terminal to show it on."""
         if self.progress:
             self._counter = f"Hashing files: {count}"
             self._show_counter(f"\r{self._counter}")
@@ -222,12 +225,15 @@ class ConsoleRenderer:
             self._show_counter(f"\r{' ' * len(self._counter)}\r")
 
     def missing_count(self, count: int) -> None:
+        """How many files are missing. ``quiet`` hides this."""
         self._detail("There are ", self._paint(count, MAGENTA), " missing bios in your RECALBOX")
 
     def nothing_missing(self) -> None:
+        """Say that nothing is missing. ``quiet`` keeps this: it's how the run ended."""
         self._print(self._paint("No missing bios were found in your RECALBOX!", CYAN))
 
     def files_found(self, count: int) -> None:
+        """How many local files were found. ``quiet`` hides this."""
         self._detail(
             "There are ",
             self._paint(count, MAGENTA),
@@ -235,9 +241,11 @@ class ConsoleRenderer:
         )
 
     def no_files(self, folder: Path) -> None:
+        """Say that the folder has no BIOS files. ``quiet`` keeps this: it's how the run ended."""
         self._print(self._paint(f"No BIOS files found in {folder}", CYAN))
 
     def error(self, message: BeckError | str) -> None:
+        """Print an error. ``quiet`` keeps this."""
         self._print(self._paint("Error", RED), f": {message}")
 
     def unexpected_error(self) -> None:
@@ -331,6 +339,7 @@ class ConsoleRenderer:
             self._print("It doesn't exist yet. To create it, run beck config init.")
 
     def config_created(self, location: ConfigLocation, exists: bool) -> None:
+        """Say where the new settings file is."""
         self._print(f"Wrote {location.path}, which only you can read. Edit it to suit you.")
 
     def config_file(self, location: ConfigLocation, exists: bool) -> None:
@@ -339,6 +348,7 @@ class ConsoleRenderer:
     def config_settings(
         self, location: ConfigLocation, exists: bool, settings: dict[str, dict[str, Any]]
     ) -> None:
+        """The settings file, then each setting, with its value and where that came from."""
         state = "" if exists else ", which doesn't exist"
         self._print(f"Settings file: {location.path} ({WHY_THIS_FILE[location.source]}{state})")
         for name, setting in settings.items():

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """SmbTransport: from the stage 03 SmbSession tests (D4, D6, D7, D11, D16), with fake SMB server."""
 
 import os

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """The matcher: ported from the stage 03 matching tests (D3, step 03.12a), now with plain data."""
 
 import itertools

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Full runs through cli.main with a fake SMB server: every stage 03 behavior, end to end.
 
 D1-D14 regression tests that need a whole run live here; the rest are next to each module.

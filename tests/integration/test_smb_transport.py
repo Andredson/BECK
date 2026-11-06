@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """BECK against a real Samba server: what the fake SMB server can only assume (DEC-33).
 
 Run with BECK_TEST_SMB_HOST=127.0.0.1 BECK_TEST_SMB_PORT=4450 uv run pytest -m integration

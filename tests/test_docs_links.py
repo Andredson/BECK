@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Relative links and anchors between the repository's Markdown files must resolve (DEC-42).
 
 Standard library only; external URLs are not checked. Anchors follow GitHub's heading-slug rule.

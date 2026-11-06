@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Shared test helpers: load the report fixtures in tests/fixtures/reports/."""
 
 import json

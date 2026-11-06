@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Apply a Plan through a Transport. Only this module deletes local files, and only on request."""
 
 from pathlib import PurePosixPath

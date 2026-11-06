@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """``--json``: one document on stdout for each run. A public contract, see docs/json-output.md.
 
 Within ``schema_version`` 1, fields are only added. Don't rename or remove one, or change what one
@@ -143,6 +144,10 @@ class JsonRenderer:
         stream: TextIO | None = None,
         action: str | None = None,
     ) -> None:
+        """Prepare one document. ``action`` is the ``beck config`` subcommand, if it's one.
+
+        ``frontend`` is masked, because it's whatever a flag or the settings said.
+        """
         self.command = command
         self.action = action
         self.frontend = redact(frontend)
@@ -162,9 +167,11 @@ class JsonRenderer:
         return False
 
     def opened(self, target: str) -> None:
+        """Keep the target for the document."""
         self.target = target
 
     def uses_frontend(self, name: str) -> None:
+        """Keep the frontend for the document, masked as in ``__init__``."""
         self.frontend = redact(name)
 
     def missing_count(self, count: int) -> None:
@@ -174,6 +181,7 @@ class JsonRenderer:
         """Nothing yet: the document has it at the end."""
 
     def files_found(self, count: int) -> None:
+        """Keep the count for ``summary.files_scanned``."""
         self.files_scanned = count
 
     def no_files(self, folder: Path) -> None:
@@ -186,6 +194,7 @@ class JsonRenderer:
         """Nothing: a counter is for people."""
 
     def unreadable(self, items: tuple[Unreadable, ...]) -> None:
+        """Keep them for the ``unreadable`` list."""
         self.unreadable_items = items
 
     def incorrect(self, entries: list[MissingBios]) -> None:
@@ -201,25 +210,31 @@ class JsonRenderer:
         _write(self._check(result, errors, ok=not errors and not failing), self.stream)
 
     def report(self, entries: list[MissingBios], rejected: Sequence[ItemError] = ()) -> None:
+        """Write the document for ``beck report``."""
         _write(self._report(entries, _error_items(rejected)), self.stream)
 
     def scan(self, scanned: ScanResult, folder: Path) -> None:
+        """Write the document for ``beck scan``. ``folder`` is for people, so it isn't in it."""
         _write(self._scan(scanned, []), self.stream)
 
     def config_file(self, location: ConfigLocation, exists: bool) -> None:
+        """Keep the settings file's details, so that even a document about an error has them."""
         self.file = {"path": str(location.path), "source": location.source, "exists": exists}
 
     def config_path(self, location: ConfigLocation, exists: bool) -> None:
+        """Write the document for ``beck config path``."""
         self.config_file(location, exists)
         _write(self._config([]), self.stream)
 
     def config_created(self, location: ConfigLocation, exists: bool) -> None:
+        """Write the document for ``beck config init``."""
         self.config_file(location, exists)
         _write(self._config([], created=True), self.stream)
 
     def config_settings(
         self, location: ConfigLocation, exists: bool, settings: dict[str, dict[str, Any]]
     ) -> None:
+        """Write the document for ``beck config show``."""
         self.config_file(location, exists)
         _write(self._config([], settings=settings), self.stream)
 

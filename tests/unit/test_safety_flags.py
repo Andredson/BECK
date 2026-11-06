@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """--dry-run, --move, --clean-unmatched and --yes: nothing goes unless asked for and proven."""
 
 import io

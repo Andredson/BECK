@@ -1,0 +1,70 @@
+# CHANGELOG.md is generated from the commit messages (DEC-20). To regenerate it, see
+# docs/maintenance.md. Its only input is the first line of each commit, never an author's details.
+
+[changelog]
+header = """
+# Changelog
+
+Notable changes to BECK, in the layout of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+This file is generated from the commit messages by [git-cliff](https://git-cliff.org/), so don't edit it by hand.
+Changes to the documentation, tests and tooling aren't listed.
+
+"""
+# The commits from before the roadmap can't be sorted by type, so they get one entry of their own,
+# with the first version number and the dates they span. They're older than any release, so that
+# entry stays last in the file, whichever tag they end up under.
+body = """
+{%- macro line(commit) -%}
+- {% if commit.breaking %}**Breaking:** {% endif %}{% if commit.scope %}{{ commit.scope }}: {% endif %}\
+{{ commit.message | split(pat="\n") | first | upper_first }}
+{%- endmacro line -%}
+{% if version -%}
+## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{%- else -%}
+## [Unreleased]
+{%- endif %}
+{% for group in ["Added", "Changed", "Fixed"] %}
+{%- set listed = commits | filter(attribute="group", value=group) -%}
+{% if listed %}
+### {{ group }}
+
+{% for commit in listed -%}
+{{ self::line(commit=commit) }}
+{% endfor %}{% endif %}
+{%- endfor %}
+{%- set earlier = commits | filter(attribute="group", value="Earlier history") -%}
+{% if earlier %}
+## [0.1.0] - 2023-12-31 to 2025-07-21
+
+### Earlier history
+
+{% for commit in earlier -%}
+{{ self::line(commit=commit) }}
+{% endfor %}{% endif %}
+"""
+trim = true
+
+[git]
+conventional_commits = true
+filter_unconventional = false
+filter_merge_commits = false
+split_commits = false
+tag_pattern = "v[0-9].*"
+sort_commits = "oldest"
+commit_preprocessors = [
+    # This commit broke exit codes and where `beck` finds files, but its message has no `!` (step
+    # 04.13), and a pushed commit can't be changed.
+    { pattern = '^refactor\(cli\): route all behavior', replace = 'refactor(cli)!: route all behavior' },
+]
+# The first match wins. A breaking change is listed even if its type is one this file hides.
+commit_parsers = [
+    { message = "^Merge pull request", skip = true },
+    { message = '^feat(\(.+\))?!?:', group = "Added" },
+    { message = '^fix(\(.+\))?!?:', group = "Fixed" },
+    { message = '^(refactor|perf)(\(.+\))?!?:', group = "Changed" },
+    { message = '^(docs|test|ci|build|chore|style)(\(.+\))?!:', group = "Changed" },
+    { footer = '^BREAKING[ -]CHANGE', group = "Changed" },
+    { message = '^(docs|test|ci|build|chore|style)(\(.+\))?:', skip = true },
+    { message = ".*", group = "Earlier history" },
+]

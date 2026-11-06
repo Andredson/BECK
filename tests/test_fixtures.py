@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """The report fixtures stay complete and byte-exact (step 03.4, DEC-09)."""
 
 import re

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """The domain models: frozen, typed, and impossible to build in an invalid state."""
 
 import dataclasses

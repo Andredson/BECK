@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Build test data. A "BIOS" here is always random bytes, never real BIOS content."""
 
 import hashlib

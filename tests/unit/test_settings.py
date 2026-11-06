@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Which file BECK reads, and which source wins: flags, then the environment, then the file."""
 
 import json

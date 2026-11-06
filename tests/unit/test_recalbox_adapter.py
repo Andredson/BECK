@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """The Recalbox adapter, from the stage 03 parser tests (D2, D10, DEC-50), and the registry."""
 
 from collections import Counter

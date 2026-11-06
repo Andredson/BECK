@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """--json: every way a run can end gives exactly one valid document on stdout, and no secrets."""
 
 import json

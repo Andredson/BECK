@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """The frontend adapters BECK knows, by name."""
 
 from collections.abc import Callable
@@ -10,6 +11,7 @@ _ADAPTERS: dict[str, Callable[[], FrontendAdapter]] = {"recalbox": RecalboxAdapt
 
 
 def known_frontends() -> list[str]:
+    """The names ``--frontend`` accepts, sorted for messages."""
     return sorted(_ADAPTERS)
 
 

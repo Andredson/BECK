@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Keeps credentials out of whatever BECK shows: logs, error messages, the JSON output.
 
 BECK doesn't print a password on purpose, so this is for what repeats one by accident: a URL typed
@@ -10,7 +11,8 @@ import re
 MASK = "***"
 # A password can hold an @, so this runs to the last one before the path. One with a slash in it
 # isn't a valid URL, and can't be told apart from a path.
-URL_CREDENTIALS = re.compile(r"\b([a-zA-Z][a-zA-Z0-9+.-]*://)[^/\s]*@")
+# The lookahead is for BECK's own way of writing a target, smb://[user@]host, in its messages.
+URL_CREDENTIALS = re.compile(r"\b([a-zA-Z][a-zA-Z0-9+.-]*://)(?!\[user@\])[^/\s]*@")
 
 _secrets: set[str] = set()
 
@@ -22,6 +24,7 @@ def add_secret(value: str) -> None:
 
 
 def forget_secrets() -> None:
+    """Start with nothing to mask: ``cli.main`` can run more than once in a process."""
     _secrets.clear()
 
 

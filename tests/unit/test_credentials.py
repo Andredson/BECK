@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Where an SMB password comes from: the environment or a prompt, and nowhere else (DEC-10)."""
 
 import getpass

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """The executor: normal runs, dry runs, failures that don't stop the run, and no local changes."""
 
 import os

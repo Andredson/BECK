@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """The shared factories: they must produce what the real code and the real reports do."""
 
 import hashlib

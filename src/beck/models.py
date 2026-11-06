@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """The data passed between BECK's modules. No I/O here.
 
 Remote paths are always relative to the target's BIOS root. Breaking an invariant raises ValueError,
@@ -36,6 +37,7 @@ class MissingBios:
     current_md5: str | None = None  # the hash of the file on the device, if the report gives it
 
     def __post_init__(self) -> None:
+        """Refuse an impossible entry, so that a bug in a parser can't reach the device."""
         _check_relative_file(self.target)
         if self.current_md5 is not None:
             if not self.incorrect:
@@ -59,6 +61,7 @@ class LocalFile:
     size: int
 
     def __post_init__(self) -> None:
+        """Refuse an unsafe path, a malformed MD5 or a negative size."""
         _check_relative_file(self.relative)
         _check_md5(self.md5)
         if self.size < 0:
@@ -90,6 +93,7 @@ class PlannedUpload:
     entry: MissingBios
 
     def __post_init__(self) -> None:
+        """Refuse an upload that doesn't fill its entry: another target, or an unlisted MD5."""
         _check_relative_file(self.target)
         if self.target != self.entry.target:
             raise ValueError(f"Target {self.target} isn't the entry's {self.entry.target}")
@@ -131,6 +135,7 @@ class Plan:
     rejected: tuple[ItemError, ...] = ()  # entries of the report that aren't safe to act on
 
     def __post_init__(self) -> None:
+        """Sort every list into a tuple, so that the same input always gives the same plan."""
         fields: dict[str, list[Any]] = {
             "uploads": sorted(self.uploads, key=lambda u: (u.target, u.source.relative.as_posix())),
             "directories": sorted(self.directories),

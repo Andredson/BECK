@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """The rules in docs/ARCHITECTURE.md, checked on the source. Also: importing has no side effects."""
 
 import ast

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """In-memory stand-in for pysmb's SMBConnection, so that no test touches a network or a Recalbox.
 
 Install it with ``install_fake_smb(monkeypatch)``. Every ``SMBConnection(...)`` that

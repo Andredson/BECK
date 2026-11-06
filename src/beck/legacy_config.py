@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """The old ``config/config.yml``: read only to say what to write instead, with no YAML library.
 
 It reads the simple ``key: value`` lines of the old example file (DEC-24). It keeps nothing of the

@@ -10,7 +10,7 @@ BECK (BIOS checker for Recalbox) matches a user's BIOS files against the MD5 has
 report that Recalbox generates, then copies the matching files, under the expected names, into the right
 folders on the Recalbox over SMB.
 
-**Status (2026-11-06, stage 07 closed):** prototype, not published yet. The application is the `beck` package in `src/beck/`, with a pure
+**Status (2026-11-06, stage 08 closed):** prototype, not published yet. The application is the `beck` package in `src/beck/`, with a pure
 core and adapters around it ([design](docs/ARCHITECTURE.md)). Its [known defects are fixed](roadmap/00-assessment.md#defects),
 and it never renames local files, or deletes them unless `--move` or `--clean-unmatched` asks for it. The repository around it has tooling and
 CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against a real Samba server, commit-message, secret and dependency checks. It is being improved stage by stage following
@@ -33,16 +33,20 @@ CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against
 | `.gitleaks.toml`, `.trivyignore` | gitleaks settings (fake `beck-test-*` values allowed only under `tests/`); accepted Trivy findings, each with a link and an expiry date. |
 | `.editorconfig`, `.gitattributes` | Editor settings; LF line endings in the repository. |
 | `roadmap/` | The improvement plan: [index and decision log](roadmap/README.md), [assessment](roadmap/00-assessment.md), one file per stage. |
+| [`CHANGELOG.md`](CHANGELOG.md), `cliff.toml` | The changelog, **generated** from the commit messages by git-cliff (DEC-20). Don't edit it by hand; [the command](docs/maintenance.md#regenerating-the-changelog) is in the maintenance routine. |
 | `docs/agents.md` | Which AI agents were tested loading this file, and how to test another one. |
 | `docs/ARCHITECTURE.md` | [The design](docs/ARCHITECTURE.md): the core is pure and adapters do the I/O. Data flow, and the rules to keep, which `tests/unit/test_architecture.py` enforces. Read it before changing `src/beck/`. |
+| `docs/troubleshooting.md` | [Each message BECK prints](docs/troubleshooting.md), with why and what to do. A new error needs an entry here, which `tests/test_troubleshooting.py` checks for its code. |
+| `docs/user-guide/` | Guides for people using BECK, such as [generating the report](docs/user-guide/generate-report.md). |
 | `docs/cli.md` | [The `beck` command](docs/cli.md): commands, flags, exit codes and what gets deleted. |
+| `docs/cli-reference.md`, `scripts/gen_cli_reference.py` | [What each `--help` prints](docs/cli-reference.md), **generated** by that script. Don't edit it by hand; `tests/test_cli_reference.py` fails if it's out of date. |
 | `docs/json-output.md`, `docs/schemas/` | [The `--json` output](docs/json-output.md) and its JSON Schema files: a **public contract** (DEC-23). Ask the owner before changing an existing field. `tests/unit/test_json_contract.py` checks every kind of document against the schemas, and its `V1_FIELDS` records what version 1 promises, so a new field goes in the output, the schema, the guide and that record. |
 | `SECURITY.md`, `docs/threat-model.md` | [How to report a vulnerability](SECURITY.md), and [what BECK protects and the risks it accepts](docs/threat-model.md). Update the threat model when a change alters a defense it names. |
 | `docs/spikes/` | Results of technical experiments, such as [`smbprotocol` vs `pysmb`](docs/spikes/smbprotocol.md). |
 | `docs/maintenance.md` | [Monthly maintenance routine](docs/maintenance.md): dependency upgrades, pin refreshes, security review (replaces an update bot, DEC-29). Follow it when asked to update dependencies, or when the weekly *Security* run or an expired `.trivyignore` entry fails. |
 | `.github/pull_request_template.md` | PR description template with the roadmap checklist. Fill it in when preparing a PR description for the human. |
 | `docs/adr/` | [Architecture Decision Records](docs/adr/README.md): the reasoning and rejected alternatives behind every DEC. Read the relevant ADR before proposing to change a decision. |
-| `README.md` | User-facing readme: install with pip or uv, configure, run, the legal notice. It says BECK deletes local files only when asked. The full rewrite is step 08.1. Development commands are in [Commands](#commands) below. |
+| `README.md` | User-facing readme: what BECK does, the legal notice, install, quick start, safety and project status. Development commands are in [Commands](#commands) below. |
 | `LICENSE` | GNU GPL v3 text. Package metadata uses `GPL-3.0-only` (DEC-13). |
 
 ## Commands
@@ -73,6 +77,8 @@ Before committing, this must pass; it's what the `quality` and `tests` CI jobs r
 uv lock --check && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run pytest && uv run python scripts/check_repo_hygiene.py
 ```
 
+- **After changing a flag or its help**, regenerate the reference: `uv run python scripts/gen_cli_reference.py`.
+- **When releasing**, regenerate the changelog with [the pinned command](docs/maintenance.md#regenerating-the-changelog). Never edit `CHANGELOG.md` by hand.
 - **After any change to dependencies**, regenerate the pip file: `uv export --no-dev --no-hashes --no-emit-project -o requirements.txt`.
   Adding a dependency needs a DEC first (see [Hard rules](#hard-rules)); `uv add` and `uv lock` respect the cooldown.
 - **The other CI checks**, if you have the tools installed (the pinned versions are in the `env:` block of
@@ -193,9 +199,10 @@ skill below, **read its whole `SKILL.md` before acting** and follow it.
 ## Code style
 
 - Keep changes minimal and focused on the current step.
-- Enforced by CI: `ruff format` and `ruff check` (including the `S` security rules), and `mypy` strict for new
-  code. Also expected: type hints everywhere, `pathlib` for paths, no bare `except:`, and `sys.exit` only at the CLI
+- Enforced by CI: `ruff format` and `ruff check` (including the `S` security rules, and for `src/` the `D` docstring
+  rules, Google convention), and `mypy` strict for new code. A docstring says why where it isn't obvious, and doesn't restate the signature. Also expected: type hints everywhere, `pathlib` for paths, no bare `except:`, and `sys.exit` only at the CLI
   boundary. There are no ruff or mypy exemptions for BECK's own code, only the mypy import override for `pysmb`. Don't add new ones.
+- Every Python file starts with `# SPDX-License-Identifier: GPL-3.0-only` (DEC-13), which `tests/test_license_headers.py` checks.
 - Pure core (`models`, `hashing`, `matcher`) with device and network I/O only in adapters (`frontends/`,
   `transports/`, `output/`). See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design and its rules.
 - MD5 is used to **identify** files, not for security: `hashlib.md5(..., usedforsecurity=False)`.

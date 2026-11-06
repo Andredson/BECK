@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Allows ``python -m beck``."""
 
 from beck.cli import main

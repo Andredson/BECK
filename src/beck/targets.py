@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Where to find the device: parsing ``--target`` URLs. No I/O."""
 
 from dataclasses import dataclass
@@ -49,7 +50,7 @@ def parse_smb_url(url: str) -> SmbTarget:
     if ":" in parts.netloc.rpartition("@")[0]:
         raise UsageError(
             "The target can't contain a password: anyone can read a command line. "
-            f"Use {URL_FORM}. Passwords for targets arrive in a later version."
+            f"Use {URL_FORM}, and BECK asks for the password, or set BECK_SMB_PASSWORD."
         )
     if parts.query or parts.fragment:
         raise UsageError(f"The target can't have a query or fragment. Use {URL_FORM}")

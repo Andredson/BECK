@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-only
 """Hash files and scan the user's BIOS folder. It reads the local disk and prints nothing."""
 
 import hashlib
