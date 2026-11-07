@@ -6,7 +6,7 @@ agents. Where both cover something, it has the exact commands, so this file link
 
 ## Ways to help
 
-- **Report a bug.** [Open an issue](https://github.com/Andredson/BECK/issues/new) with:
+- **Report a bug.** [Open an issue](https://github.com/Andredson/BECK/issues/new/choose) with the *Bug report* form. It asks for:
   - what `beck --version` prints, your operating system, and your Recalbox version;
   - the command you ran, without any password;
   - its `--json` output, which keeps passwords out, or its output with `-v`;
@@ -20,8 +20,8 @@ agents. Where both cover something, it has the exact commands, so this file link
   saw, an issue or a PR helps the next person.
 - **Write code.** [The roadmap](roadmap/README.md#stages) lists the planned work, step by step. For anything that isn't on it, open an
   issue first, so that we can agree on it before you spend time.
-- **Help support another system,** such as Batocera or RetroBat. Open an issue saying how that system reports missing BIOS files, with an
-  anonymized example of what it produces. [The `add-frontend-adapter` skill](.agents/skills/add-frontend-adapter/SKILL.md) is how the
+- **Help support another system,** such as Batocera or RetroBat. Open an issue with the *Support another system* form, saying how that
+  system reports missing BIOS files, with an anonymized example of what it produces. [The `add-frontend-adapter` skill](.agents/skills/add-frontend-adapter/SKILL.md) is how the
   code then gets written.
 
 ## Setting up
@@ -137,8 +137,9 @@ These rules apply wherever BECK is discussed: issues, pull requests, reviews and
 
 The maintainer may edit or remove comments, and block people who break these rules.
 
-**To report a problem,** open an issue that says only that you'd like to report a conduct problem, and asks for a private way to do it.
-Leave out names and details, because issues are public. The maintainer will reply with a private way to tell them.
+**To report a problem,** open an issue with the [*Ask for a private contact*](https://github.com/Andredson/BECK/issues/new?template=private-contact.yml)
+form, which says only that you'd like to report a conduct problem. Leave out names and details, because issues are public. The
+maintainer will reply with a private way to tell them.
 
 ## Legal
 

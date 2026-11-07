@@ -1,0 +1,68 @@
+name: Bug report
+description: BECK did something wrong, or stopped with an error.
+labels: ["type: bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting it. **Never paste a password, and never attach a BIOS file.** For a security problem, follow
+        [the security policy](https://github.com/Andredson/BECK/blob/main/SECURITY.md) instead. Each message BECK prints is in
+        [the troubleshooting guide](https://github.com/Andredson/BECK/blob/main/docs/troubleshooting.md), which may already have the answer.
+  - type: input
+    id: version
+    attributes:
+      label: BECK version
+      description: What `beck --version` prints.
+      placeholder: beck 0.5.0
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Your computer's operating system
+      placeholder: Ubuntu 24.04, Windows 11, macOS 15
+    validations:
+      required: true
+  - type: input
+    id: recalbox
+    attributes:
+      label: Recalbox version and device
+      description: Leave it empty if the problem doesn't involve your Recalbox.
+      placeholder: Recalbox 10.1.1 on a Raspberry Pi 4
+  - type: textarea
+    id: command
+    attributes:
+      label: The command you ran
+      description: BECK refuses a password on the command line, so there shouldn't be one here.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: json
+    attributes:
+      label: Output with --json
+      description: |
+        Run the same command with `--json` after `beck`, such as `beck --json check --dry-run`, and paste what it prints.
+        It never holds a password or a user name, but it does hold your Recalbox's address and your folders' paths,
+        so replace anything you'd rather not share. Leave it empty if BECK didn't get that far.
+      render: json
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead
+      description: Paste any error message, or the traceback for exit code 1.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safe
+    attributes:
+      label: Before you send it
+      options:
+        - label: There's no password here, and I'm not attaching a BIOS file.
+          required: true

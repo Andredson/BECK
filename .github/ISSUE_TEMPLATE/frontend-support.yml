@@ -1,0 +1,41 @@
+name: Support another system
+description: Help BECK work with a system other than Recalbox, such as Batocera or RetroBat.
+labels: ["type: feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        BECK checks BIOS files against what the system says is missing, so it needs to know how that system says it.
+        **Never attach a BIOS file.** A report or a list of file names and MD5 values is all it needs.
+  - type: input
+    id: frontend
+    attributes:
+      label: System and version
+      placeholder: Batocera 41
+    validations:
+      required: true
+  - type: textarea
+    id: reporting
+    attributes:
+      label: How it reports missing BIOS files
+      description: |
+        Where it shows them, such as a menu, a file or a command, and where it expects BIOS files to go.
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: An example report or listing
+      description: |
+        Attach the file it produces, rather than pasting it, so that it stays exact. Anonymize it first, as
+        [the contributing guide](https://github.com/Andredson/BECK/blob/main/CONTRIBUTING.md#sharing-a-report-safely) says:
+        replace host names, user names and addresses, and keep file names and MD5 values.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safe
+    attributes:
+      label: Before you send it
+      options:
+        - label: I'm not attaching a BIOS file, and I've anonymized the example.
+          required: true

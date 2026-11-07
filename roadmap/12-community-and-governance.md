@@ -62,7 +62,9 @@ DEC-12, DEC-14, DEC-16, DEC-31, DEC-38, DEC-39, DEC-43.
 - **Commit message:** `docs(contributing): add AI-assisted contribution policy`
 
 ### 12.4 — Issue forms
-- [ ] Done
+- [x] Done (2026-11-07: with blank issues off, the private routes in `CONTRIBUTING.md` (12.2) and `SECURITY.md`, which start with an issue asking only for a private contact, had no way in. The owner chose a **fourth form**, `private-contact.yml`: a preset title, a choice between a conduct and a security problem, and a box confirming there are no names or details. The other choices offered were keeping blank issues on, or using the bug form for it. Both
+  documents now link to that form, and `CONTRIBUTING.md` names the forms. The forms ask for the labels `type: bug` and `type: feature`, which GitHub skips until they exist (12.5). The bug form says `--json` output holds no password or user name, but does hold the Recalbox's address and folder paths. A one-off script, kept out of the repository and using the system's PyYAML, checked the five files against the rules in GitHub's docs, such as allowed keys, unique ids and name length, and caught a deliberately broken copy.
+  Every link in them points at a real file and heading. Not checked yet: GitHub's own validation and the *New issue* page, which only use the forms once they're on `main`. The owner checks those after the merge, as Verify says.)
 - **What:** `.github/ISSUE_TEMPLATE/`:
   - `bug.yml`: BECK version (`beck --version`), OS, Recalbox version, the command run, **redacted** `--json`
     output, and expected vs actual result. Include a warning not to paste passwords or BIOS files.
