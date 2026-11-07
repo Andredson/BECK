@@ -23,7 +23,7 @@ executed **one step at a time**, by a human or an AI agent, in the order below. 
 | 09 | [Agent Skills & automation](09-agent-skills-and-automation.md) | 08 | `stage/09-skills` | M | Done (2026-11-06) |
 | 10 | [Packaging & release](10-packaging-and-release.md) | 09 | `stage/10-release` | M | In progress |
 | 11 | [Feature expansion](11-feature-expansion.md) | 10 | one branch per feature | L | Not started |
-| 12 | [Community & governance](12-community-and-governance.md) | 02 (can run in parallel with 03–11) | `stage/12-community` | S | Not started |
+| 12 | [Community & governance](12-community-and-governance.md) | 02 (can run in parallel with 03–11) | `stage/12-community` | S | In progress |
 
 Why this order: make the repository agent-ready first, because agents will execute most of the remaining work →
 put tooling and CI in place so every later step is gated → fix the data-loss bugs with regression tests → refactor

@@ -1,6 +1,6 @@
 # Stage 12 — Community & governance
 
-**Status:** Not started · **Depends on:** 02 (can run in parallel with 03–11) · **Branch:** `stage/12-community` · **Effort:** S
+**Status:** In progress · **Depends on:** 02 (can run in parallel with 03–11) · **Branch:** `stage/12-community` · **Effort:** S
 
 ## Goal
 Make it easy and safe for outside contributors, human or AI-assisted, to help (DEC-12). Make the project's
@@ -18,7 +18,8 @@ DEC-12, DEC-14, DEC-16, DEC-31, DEC-38, DEC-39, DEC-43.
 ## Steps
 
 ### 12.1 — `CONTRIBUTING.md`
-- [ ] Done
+- [x] Done (2026-11-07: the check commands are linked to `AGENTS.md`, not copied, and so is the list of required checks, so each has one copy. In a fresh clone with empty uv caches, following its setup section, `uv sync` and the check line passed: 2222 tests, 99.95% coverage, with the integration tests skipped. The link checker covers the new file, and caught a deliberately broken anchor in it. It's written for a fork, since outside contributors can't push branches here, and says a
+  first PR's CI waits for the maintainer's approval, which is the repository's setting (`first_time_contributors`). It says a contributor may fix a rejected commit message on their own PR branch, for example with `git commit --amend`. Agents still never do that. Bug reports go to a plain issue until 12.4's forms exist. The code of conduct and the AI policy are 12.2 and 12.3. Not tested: whether a first-time contributor, a person or an agent with no context, can open a correct PR from it alone.)
 - **What:** Sections:
   1. Ways to help: reports, fixtures, docs, code, new frontend data.
   2. Development setup with uv, plus the exact check commands, linked to AGENTS.md so there's one source of truth.
