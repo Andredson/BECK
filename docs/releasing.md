@@ -105,7 +105,7 @@ trivy fs --format cyclonedx --skip-dirs .venv --skip-files requirements.txt --ou
 
 6. **Check the result.** *(Anyone)*
    - **The project's page** on [PyPI](https://pypi.org/project/beck-bios/) or [TestPyPI](https://test.pypi.org/project/beck-bios/): the version, the description, its links, and that the files show attestations.
-   - **That it installs:** in a new environment, `pipx install beck-bios==X.Y.Z` or `uv tool install beck-bios==X.Y.Z`, then `beck --version`. A release candidate installs from TestPyPI, with its dependencies from PyPI: `uvx --index https://test.pypi.org/simple/ --index-strategy unsafe-best-match --from "beck-bios==X.Y.Z" beck --version`.
+   - **That it installs:** in a new environment, `pipx install beck-bios==X.Y.Z` or `uv tool install beck-bios==X.Y.Z`, then `beck --version`. A release candidate installs from TestPyPI, with its dependencies from PyPI: `uvx --index https://pypi.org/simple/ --default-index https://test.pypi.org/simple/ --from "beck-bios==X.Y.Z" beck --version`. uv takes each package from the first index that has it, PyPI here, so only `beck-bios` comes from TestPyPI, where anyone can upload under a name that's free there. Don't add `--index-strategy unsafe-best-match`, which would let a dependency come from TestPyPI.
    - **The [GitHub Release](https://github.com/Andredson/BECK/releases):** it has the notes, the wheel, the source archive and the SBOM, and a release candidate is marked as a pre-release. Commit messages are short, so if a `Breaking` line doesn't say enough, add to the notes with `gh release edit vX.Y.Z --notes-file <file>`.
 
 ### If something goes wrong

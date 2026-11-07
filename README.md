@@ -25,7 +25,7 @@ version of Python for you:
 uv tool install git+https://github.com/Andredson/BECK
 ```
 
-Or with [pipx](https://pipx.pypa.io/stable/installation/), and Python 3.11 or newer:
+Or with [pipx](https://pipx.pypa.io/stable/how-to/install-pipx.html), and Python 3.11 or newer:
 
 ```sh
 pipx install git+https://github.com/Andredson/BECK

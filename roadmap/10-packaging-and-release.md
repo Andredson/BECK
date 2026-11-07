@@ -33,6 +33,7 @@ flowchart LR
 ### 10.1 — Check the PyPI name and set up trusted publishing (human-only)
 - [ ] Done
 > BLOCKED (2026-11-06): the owner's accounts are needed for the publishers and the environments. `beck-bios` is free on PyPI and TestPyPI today (both return 404), and GitHub lists no environments yet.
+> Still BLOCKED (2026-11-07): TestPyPI's publisher works (10.9), and `beck-bios` is now taken there by this project. GitHub created the `testpypi` environment when the tag first used it, with no rules, so it isn't yet limited to `v*` tags. The `pypi` environment doesn't exist, and whether PyPI's publisher does, or matches, can only be seen when `0.5.0` is tagged. Create `pypi`, with the owner as required reviewer, before any final tag, or GitHub creates it with no approval.
 - **What:** The owner:
   1. Checks that `beck-bios` is free on PyPI and TestPyPI. If it's taken, **stop**: choose another name with the
      agent and record a DEC superseding DEC-15.
@@ -152,12 +153,13 @@ flowchart LR
 - **Commit message:** `feat(skills): add cut-release skill`
 
 ### 10.9 — Release-candidate rehearsal on TestPyPI
-- [ ] Done
-> BLOCKED (2026-11-06): needs 10.1, which is the owner's, and this stage's work merged, because the checklist tags `main`. The owner chose `0.5.0` (DEC-67) and absolute links in the README (DEC-68), which are done, and the TestPyPI page will show whether they work.
+- [x] Done (2026-11-07: the owner tagged `v0.5.0rc1` on `main`. The *Release* run's first three attempts failed at the token exchange with `invalid-publisher`, because there was no pending publisher on TestPyPI, which is a separate site from PyPI with its own accounts. Nothing was published. Once the owner added it, the failed jobs were re-run on the same tag, and attempt 4 passed: TestPyPI has the wheel and the source archive, both with attestations naming `Andredson/BECK`, `release.yml` and `testpypi`, and
+  the GitHub pre-release has the same two files, with the same SHA-256, plus the SBOM and generated notes. With uv 0.13.6, the command below installed it in a new environment with `beck-bios` alone from TestPyPI and its four dependencies from PyPI. `beck --version` printed `beck 0.5.0rc1`, and `beck --json scan` on an empty folder exited with 0. On the page, none of the README's 21 links is relative, but the pipx one was dead, since pipx moved its docs. It's fixed here, for 0.5.0's page, since the rc's
+  can't change. The example command used `--index-strategy unsafe-best-match`, which would let a dependency come from TestPyPI, where `pyasn1` exists, uploaded by whoever holds the name there. It's replaced, here and in `docs/releasing.md`. The SBOM lists the locked versions, such as `pyasn1 0.6.4`, not what an install picks, which was `0.6.5`. The pre-release's notes still say "ship config.example.yml", which 10.10's notes correct.)
 - **What:** **Ask the owner for the first public version number** (e.g. `0.5.0`, or `0.9.0` as a 1.0
   candidate). Bump to `<version>rc1` and follow the checklist. After the TestPyPI upload, install from it with
   dependencies coming from PyPI, for example:
-  `uvx --index https://test.pypi.org/simple/ --index-strategy unsafe-best-match --from "beck-bios==<version>rc1" beck --version`.
+  `uvx --index https://pypi.org/simple/ --default-index https://test.pypi.org/simple/ --from "beck-bios==<version>rc1" beck --version`.
   Check the exact flags for the installed uv version, and make sure only `beck-bios` comes from TestPyPI.
 - **Also check, on the TestPyPI page:** PyPI shows the README as the project's page, and doesn't resolve its relative links, such as `docs/cli.md`. A published release's page can't be edited. Absolute links are the fix (DEC-68), so check that they work there.
 - **Files:** `pyproject.toml`, `CHANGELOG.md`
@@ -168,6 +170,7 @@ flowchart LR
 ### 10.10 — First PyPI release
 - [ ] Done
 > BLOCKED (2026-11-06): follows 10.9.
+> Still BLOCKED (2026-11-07): 10.9 is done, but this needs 10.1's `pypi` environment and publisher, and should wait for `pyasn1` 0.6.5, which can be locked from 2026-11-10 06:33 UTC.
 - **What:** Bump to the final `<version>` and follow the checklist end to end. PyPI's page is the README as it is in this release and can't be edited afterwards, so first change what it says about installing and status ("isn't on PyPI yet", "no release yet"), so that its page doesn't say it isn't released.
 - **Files:** `pyproject.toml`, `CHANGELOG.md`
 - **Done when:** `pipx install beck-bios` and `uv tool install beck-bios` both work on a clean machine; PyPI shows
