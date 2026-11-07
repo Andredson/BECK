@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-02
-- **Decisions covered:** DEC-05, DEC-06, DEC-21, DEC-22, DEC-23, DEC-43, DEC-44, DEC-46
+- **Decisions covered:** DEC-05, DEC-06, DEC-21, DEC-22, DEC-23, DEC-43, DEC-44, DEC-46, DEC-69
 
 ## Context
 The owner asked for AI-agent support that is vendor-agnostic where possible. Two open standards cover most of
@@ -109,3 +109,17 @@ checked against vendor documentation and by testing on 2026-11-02:
     would have stayed blocked.
 - **Consequences:** Support for other agents is unverified. The matrix says so, and the AGENTS.md design doesn't
   depend on it, because it relies only on the open standard.
+
+## DEC-69 — PRs say whether AI helped
+- **Date:** 2026-11-07 (step 12.3).
+- **Context:** `CONTRIBUTING.md` welcomes AI-assisted contributions, and makes the contributor responsible for
+  understanding, testing and explaining every change. Step 12.3 asked the owner whether PRs must also disclose AI
+  assistance. Commits carry no attribution trailer (DEC-46), so a PR is the only place it could be said.
+- **Decision:** The PR template has a required item with two boxes, *No AI tools were used* and *AI tools helped
+  write this PR*, the second naming the tools. Ticking one is part of opening a PR.
+- **Alternatives considered:** *required, with a note on what the tool did* (more useful in review, but more to fill
+  in and harder to check), *optional* (less friction, but a blank wouldn't mean no AI) and *not asked* (the
+  contributor is responsible either way): not chosen. The owner gave no further reason.
+- **Consequences:** Nothing checks the item automatically, so a reviewer asks when it's left blank, and has to take
+  the answer on trust. A PR opened with `gh pr create --body`, as the stage PRs are, skips the template, so it
+  doesn't have the item unless it's added by hand.

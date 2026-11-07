@@ -46,7 +46,7 @@ DEC-12, DEC-14, DEC-16, DEC-31, DEC-38, DEC-39, DEC-43.
 - **Commit message:** `docs(contributing): add code of conduct section`
 
 ### 12.3 — AI-assisted contributions policy
-- [ ] Done
+- [x] Done (2026-11-07: the owner chose required disclosure with one item: a PR ticks *No AI tools were used* or *AI tools helped write this PR*, naming the tools (DEC-69). The other choices offered were required with a note on what the tool did, optional, and not asked. The template's comment for agents now tells them to tick the second box. Nothing enforces the item automatically; a reviewer checks it. A PR opened with `gh pr create --body`, as the stage PRs are, skips the template. The policy adds one line beyond the step: if an agent runs BECK for you, set `BECK_SMB_PASSWORD` yourself, as `AGENTS.md` already tells agents. Not tested: how the template renders on a new PR, since GitHub only uses it once it's on `main`.)
 - **What:** A section in `CONTRIBUTING.md`:
   - AI-assisted contributions are welcome.
   - The contributor is responsible for understanding, testing and being able to explain every change.

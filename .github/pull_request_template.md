@@ -2,8 +2,8 @@
 Thanks for contributing to BECK! Fill in the sections below and delete what doesn't apply.
 Roadmap protocol: roadmap/README.md. Agent rules: AGENTS.md.
 
-AI agents: you never open this PR yourself (DEC-43). Prepare this description and print the
-`gh pr create` command for the human to run.
+AI agents: you never open this PR yourself (DEC-43). Prepare this description, tick "AI tools helped
+write this PR" and name your tool under "AI assistance", and print the `gh pr create` command for the human to run.
 -->
 
 ## Summary
@@ -19,6 +19,14 @@ AI agents: you never open this PR yourself (DEC-43). Prepare this description an
 - [ ] Other:
 
 Related issue(s): <!-- e.g. Closes #12 -->
+
+## AI assistance
+
+<!-- Required: tick one (DEC-69). It doesn't count against the PR; it tells the reviewer where to look.
+See "AI-assisted contributions" in CONTRIBUTING.md. -->
+
+- [ ] No AI tools were used.
+- [ ] AI tools helped write this PR. Tools: <!-- e.g. Claude Code, opencode -->
 
 ## Roadmap steps covered
 

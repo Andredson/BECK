@@ -118,6 +118,7 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-46 | **Supersedes the commit part of DEC-43.** Agents may stage (`git add`, `git rm --cached`) and run `git commit` with the step's message, never adding a `Co-Authored-By` or other attribution trailer. Pushing, creating or switching branches, tags, PRs, merges and releases stay human-only; agents hand those over as one copy-paste line. *(2026-11-02, before step 02.8)* |
 | DEC-47 | **Supersedes the push part of DEC-43.** After committing a step, agents may push the **current stage branch** with a plain `git push`: never `--force` / `--force-with-lease`, never directly to `main`, never tags. Creating branches, PRs, merges, tags and releases stay human-only. *(2026-11-02, before step 02.10)* |
 | DEC-44 | The agent support matrix (`docs/agents.md`) covers only agents the owner actually uses (2026-11-02: Claude Code, opencode). Other agents are added when a contributor tests one. *(2026-11-02, step 01.3)* |
+| DEC-69 | A PR must say whether AI tools helped write it, by ticking one of two boxes in the PR template, and name the tools if they did. A reviewer checks it; nothing automatic enforces it. *(2026-11-07, step 12.3)* |
 
 ### Tooling
 

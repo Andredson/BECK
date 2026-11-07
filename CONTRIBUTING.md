@@ -67,8 +67,8 @@ cooldown (DEC-45), which `uv add` respects.
   `fix(parser): keep INCORRECT blocks apart`. Types include `feat`, `fix`, `docs`, `test`, `refactor`, `build`, `ci`, `chore` and
   `perf`. Add `!` after the type for a change that breaks something users rely on. CI's `commits` job checks every commit in a PR
   (DEC-38), and the messages become [the changelog](#docs-changelog-and-versions).
-- **Open the PR against `main`,** and fill in [the template](.github/pull_request_template.md). For a roadmap step, paste its Verify
-  output. Put anything you noticed but didn't change under *Notes for reviewers*, as a proposal, not in the diff.
+- **Open the PR against `main`,** and fill in [the template](.github/pull_request_template.md), including whether
+  [AI helped](#ai-assisted-contributions). For a roadmap step, paste its Verify output. Put anything you noticed but didn't change under *Notes for reviewers*, as a proposal, not in the diff.
 - **CI must pass.** `main` only takes changes through a PR, once [the required checks](AGENTS.md#commits-and-pull-requests) have
   passed, and nobody can bypass that. On your first PR, CI waits until the maintainer approves the run.
 - **PRs are merged with a merge commit** (DEC-39), so your commits stay as they are on `main`. If CI rejects a commit message, fix it
@@ -111,6 +111,21 @@ A report holds no BIOS content, so it's safe to share once it's anonymized. [The
   too (DEC-68).
 - **Never edit `CHANGELOG.md` by hand.** It's generated from the commit messages by git-cliff (DEC-20), when a release is prepared.
 - **Versions and tags** are described in [the release guide](docs/releasing.md). Only the owner tags and publishes releases.
+
+## AI-assisted contributions
+
+AI-assisted contributions are welcome, from an editor's suggestions to an agent working through a roadmap step.
+
+- **You're responsible for every change,** however it was written. Understand it, test it, and be able to explain it when a reviewer
+  asks.
+- **Agents follow [`AGENTS.md`](AGENTS.md)** and [the roadmap protocol](roadmap/README.md#how-to-execute-a-step-humans-and-agents).
+  Most agents read `AGENTS.md` by themselves; [docs/agents.md](docs/agents.md) lists the ones tested.
+- **Generated code passes the same checks** as any other: the same tests, coverage, lint, type checks and review.
+- **Never paste secrets or personal data into an AI tool** while working on BECK: no passwords or tokens, and no report, log or output
+  you haven't [anonymized](#sharing-a-report-safely). If an agent runs BECK for you, set `BECK_SMB_PASSWORD` yourself rather than
+  giving it the password.
+- **Say so in your PR.** [The template](.github/pull_request_template.md) asks whether AI tools helped write it, and which ones if they
+  did. Tick one of its two boxes (DEC-69). It doesn't count against the PR; it tells the reviewer where to look.
 
 ## Code of conduct
 
