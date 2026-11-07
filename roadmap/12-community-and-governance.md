@@ -35,7 +35,7 @@ DEC-12, DEC-14, DEC-16, DEC-31, DEC-38, DEC-39, DEC-43.
 - **Commit message:** `docs: add contributing guide`
 
 ### 12.2 — Code of conduct section (DEC-31)
-- [ ] Done
+- [x] Done (2026-11-07: the owner chose the contact: an issue that says only that someone would like to report a conduct problem and asks for a private way, as `SECURITY.md` does for vulnerabilities. The other choices offered were a separate project email address, GitHub's own reporting tool, or both. The owner gave no further reason. Their personal email isn't used, since it's never to be published. The section has the step's three rules and the maintainer's powers, and nothing else. The owner reviews its wording in the stage PR.)
 - **What:** A short **"Code of conduct"** section inside `CONTRIBUTING.md` (no separate file): be respectful and
   constructive; no harassment or personal attacks; keep discussions about the work; the maintainer may edit or
   remove comments and block participants who break these rules. **Ask the owner** for the contact channel for

@@ -1,7 +1,7 @@
 # Contributing to BECK
 
 Thanks for helping. BECK is open to outside contributors (DEC-12), whether you're fixing a typo or adding a new system. This file says
-how to set up, what to work on, and how to send it. [`AGENTS.md`](AGENTS.md) has the commands and the rules, for people and for AI
+how to set up, what to work on, how to send it, and [how we treat each other](#code-of-conduct). [`AGENTS.md`](AGENTS.md) has the commands and the rules, for people and for AI
 agents. Where both cover something, it has the exact commands, so this file links to them rather than copying them.
 
 ## Ways to help
@@ -111,6 +111,19 @@ A report holds no BIOS content, so it's safe to share once it's anonymized. [The
   too (DEC-68).
 - **Never edit `CHANGELOG.md` by hand.** It's generated from the commit messages by git-cliff (DEC-20), when a release is prepared.
 - **Versions and tags** are described in [the release guide](docs/releasing.md). Only the owner tags and publishes releases.
+
+## Code of conduct
+
+These rules apply wherever BECK is discussed: issues, pull requests, reviews and commit messages (DEC-31).
+
+- **Be respectful and constructive.** Criticize the work, not the person.
+- **No harassment or personal attacks.**
+- **Keep discussions about the work.**
+
+The maintainer may edit or remove comments, and block people who break these rules.
+
+**To report a problem,** open an issue that says only that you'd like to report a conduct problem, and asks for a private way to do it.
+Leave out names and details, because issues are public. The maintainer will reply with a private way to tell them.
 
 ## Legal
 
