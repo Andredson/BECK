@@ -99,6 +99,9 @@ you move it out of the way.
 
 ## Contributing
 
+Help is welcome: [the contributing guide](https://github.com/Andredson/BECK/blob/main/CONTRIBUTING.md) says how to set up, what to work on, how to send a
+change, and how to share a report safely.
+
 [`AGENTS.md`](https://github.com/Andredson/BECK/blob/main/AGENTS.md) has the commands and rules for working on BECK, for people and for AI agents. [The roadmap](https://github.com/Andredson/BECK/blob/main/roadmap/README.md) is the plan, and
 [the design](https://github.com/Andredson/BECK/blob/main/docs/ARCHITECTURE.md) explains how it fits together.
 

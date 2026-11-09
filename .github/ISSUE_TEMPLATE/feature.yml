@@ -1,0 +1,28 @@
+name: Feature request
+description: Suggest something BECK should do, or do differently.
+labels: ["type: feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        [The roadmap](https://github.com/Andredson/BECK/blob/main/roadmap/README.md) has the work already planned, so it's
+        worth a look first. To support another system, such as Batocera, use the *Support another system* form instead.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do, and what gets in the way?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you'd like
+      description: How BECK could solve it, such as a command, a flag or a change in what it prints.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: Other ways you've thought of or tried, and why they fall short.
