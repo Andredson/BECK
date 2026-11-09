@@ -23,7 +23,7 @@ executed **one step at a time**, by a human or an AI agent, in the order below. 
 | 09 | [Agent Skills & automation](09-agent-skills-and-automation.md) | 08 | `stage/09-skills` | M | Done (2026-11-06) |
 | 10 | [Packaging & release](10-packaging-and-release.md) | 09 | `stage/10-release` | M | In progress |
 | 11 | [Feature expansion](11-feature-expansion.md) | 10 | one branch per feature | L | Not started |
-| 12 | [Community & governance](12-community-and-governance.md) | 02 (can run in parallel with 03–11) | `stage/12-community` | S | Not started |
+| 12 | [Community & governance](12-community-and-governance.md) | 02 (can run in parallel with 03–11) | `stage/12-community` | S | Done (2026-11-09) |
 
 Why this order: make the repository agent-ready first, because agents will execute most of the remaining work →
 put tooling and CI in place so every later step is gated → fix the data-loss bugs with regression tests → refactor
@@ -85,6 +85,20 @@ Don't edit an existing row. Add a new row that says `Supersedes DEC-NN`, mark th
 - **Blocked by:** (only when gated) what must exist first.
 ```
 
+## Maintaining this roadmap
+
+- **Re-score at every stage close.** Each stage's closing step re-scores [00-assessment.md](00-assessment.md#re-scoring-history) and
+  adds a row to its history.
+- **New stages are new files,** `13-<slug>.md` and on, added to [the stage table](#stages). Copy an existing stage's layout: the
+  **Status** line (status, dependencies, branch, effort), then *Goal*, *Why*, *Decisions applied*, *Steps* in
+  [the step format](#step-format-used-in-every-stage-file) ending with a closing step, *Stage acceptance criteria*, *Out of scope* and
+  *Agent notes*. A stage may add a reference section before its steps, as 06 and 07 do.
+- **Completed stages stay** in this folder, as the history of what was done and why.
+- **A decision is never edited.** A change is a new DEC row that says *Supersedes DEC-NN*
+  ([how](#changing-a-decision)).
+- **There's no scheduled review of the whole roadmap,** by the owner's choice (2026-11-09). Python end-of-life dates are checked in
+  the [monthly maintenance routine](../docs/maintenance.md#6-python-versions).
+
 ## Decision log
 
 All decisions confirmed with the project owner. DEC-01 to DEC-43 were made on 2026-11-02 while planning;
@@ -118,6 +132,7 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-46 | **Supersedes the commit part of DEC-43.** Agents may stage (`git add`, `git rm --cached`) and run `git commit` with the step's message, never adding a `Co-Authored-By` or other attribution trailer. Pushing, creating or switching branches, tags, PRs, merges and releases stay human-only; agents hand those over as one copy-paste line. *(2026-11-02, before step 02.8)* |
 | DEC-47 | **Supersedes the push part of DEC-43.** After committing a step, agents may push the **current stage branch** with a plain `git push`: never `--force` / `--force-with-lease`, never directly to `main`, never tags. Creating branches, PRs, merges, tags and releases stay human-only. *(2026-11-02, before step 02.10)* |
 | DEC-44 | The agent support matrix (`docs/agents.md`) covers only agents the owner actually uses (2026-11-02: Claude Code, opencode). Other agents are added when a contributor tests one. *(2026-11-02, step 01.3)* |
+| DEC-69 | A PR must say whether AI tools helped write it, by ticking one of two boxes in the PR template, and name the tools if they did. A reviewer checks it; nothing automatic enforces it. *(2026-11-07, step 12.3)* |
 
 ### Tooling
 

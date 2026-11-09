@@ -10,7 +10,7 @@ BECK (BIOS checker for Recalbox) matches a user's BIOS files against the MD5 has
 report that Recalbox generates, then copies the matching files, under the expected names, into the right
 folders on the Recalbox over SMB.
 
-**Status (2026-11-06, stage 09 closed):** prototype, not published yet. The application is the `beck` package in `src/beck/`, with a pure
+**Status (2026-11-09, stage 12 closed; stage 10 in progress):** prototype, not published yet. The application is the `beck` package in `src/beck/`, with a pure
 core and adapters around it ([design](docs/ARCHITECTURE.md)). Its [known defects are fixed](roadmap/00-assessment.md#defects),
 and it never renames local files, or deletes them unless `--move` or `--clean-unmatched` asks for it. The repository around it has tooling and
 CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against a real Samba server, commit-message, secret and dependency checks. It is being improved stage by stage following
@@ -46,8 +46,10 @@ CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against
 | `SECURITY.md`, `docs/threat-model.md` | [How to report a vulnerability](SECURITY.md), and [what BECK protects and the risks it accepts](docs/threat-model.md). Update the threat model when a change alters a defense it names. |
 | `docs/spikes/` | Results of technical experiments, such as [`smbprotocol` vs `pysmb`](docs/spikes/smbprotocol.md). |
 | `docs/releasing.md` | [Versions, tags and the release checklist](docs/releasing.md): who does each step, and what to check. Agents stop before the push; the owner tags and approves. |
-| `docs/maintenance.md` | [Monthly maintenance routine](docs/maintenance.md): dependency upgrades, pin refreshes, security review (replaces an update bot, DEC-29). Follow it when asked to update dependencies, or when the weekly *Security* run or an expired `.trivyignore` entry fails. |
-| `.github/pull_request_template.md` | PR description template with the roadmap checklist. Fill it in when preparing a PR description for the human. |
+| `docs/maintenance.md` | [Monthly maintenance routine](docs/maintenance.md): dependency upgrades, pin refreshes, security review (replaces an update bot, DEC-29). Follow it when asked to update dependencies, or when the weekly *Security* run or an expired `.trivyignore` entry fails. It also lists [the issue labels](docs/maintenance.md#issue-labels), which must match GitHub's. |
+| `.github/pull_request_template.md` | PR description template with the roadmap checklist and a required *AI assistance* item (DEC-69). Fill it in when preparing a PR description for the human, and tick *AI tools helped write this PR*, naming your tool. |
+| `.github/ISSUE_TEMPLATE/` | Issue forms: bug report, feature request, support for another system, and a request for a private contact (for conduct or security problems). `config.yml` turns blank issues off. GitHub only uses them from `main`. |
+| `CONTRIBUTING.md` | [The contributing guide](CONTRIBUTING.md) for people: ways to help, setup, the roadmap, branches and PRs, sharing a report safely, [AI-assisted contributions](CONTRIBUTING.md#ai-assisted-contributions) and [the code of conduct](CONTRIBUTING.md#code-of-conduct). It links here for commands and rules rather than copying them, so keep it that way. |
 | `docs/adr/` | [Architecture Decision Records](docs/adr/README.md): the reasoning and rejected alternatives behind every DEC. Read the relevant ADR before proposing to change a decision. |
 | `README.md` | User-facing readme: what BECK does, the legal notice, install, quick start, safety and project status. Development commands are in [Commands](#commands) below. |
 | `LICENSE` | GNU GPL v3 text. Package metadata uses `GPL-3.0-only` (DEC-13). |
@@ -244,6 +246,8 @@ Agent Skills live in `.agents/skills/<name>/SKILL.md` (open agentskills.io forma
   `quality`, `tests-passed`, `integration`, `commits`, `secrets` and `sca` must pass. Nobody can bypass it.
 - Agents commit (DEC-46) and push the stage branch (DEC-47); the human creates branches, opens and merges PRs,
   and tags (DEC-43).
+- A PR says whether AI tools helped write it (DEC-69), and [CONTRIBUTING.md](CONTRIBUTING.md#ai-assisted-contributions) has the
+  rest of the policy for AI-assisted work: whoever submits a change answers for it, however it was written.
 
 ## Legal
 

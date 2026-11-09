@@ -1,0 +1,28 @@
+name: Ask for a private contact
+description: For a conduct problem, or a security problem when private reporting isn't available. No details here.
+title: Request for a private contact
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **This issue is public.** Don't write names, details or what happened, here or in the title. The maintainer will reply
+        with a private way to tell them.
+
+        For a security problem, first try **Security → Report a vulnerability** at the top of the repository, as
+        [the security policy](https://github.com/Andredson/BECK/blob/main/SECURITY.md) says. Use this form only if that option isn't there.
+  - type: dropdown
+    id: topic
+    attributes:
+      label: What it's about
+      options:
+        - A conduct problem
+        - A security problem
+    validations:
+      required: true
+  - type: checkboxes
+    id: no-details
+    attributes:
+      label: Before you send it
+      options:
+        - label: I've left out names and details.
+          required: true

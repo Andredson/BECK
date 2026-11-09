@@ -233,6 +233,37 @@ uvx --exclude-newer "14 days" git-cliff@2.14.2 -o CHANGELOG.md
 
 A breaking change needs `!` in its commit message, which marks it in the file. If a pushed commit lacks one, add it to `commit_preprocessors` in `cliff.toml`, because a pushed commit can't be changed.
 
+## Issue labels
+
+These are all the labels on GitHub, and GitHub should have no others. Give an issue one `type:` label, any `area:` and `frontend:`
+labels that fit, and the others when they apply. The [issue forms](../.github/ISSUE_TEMPLATE/) add the `type:` label by themselves.
+Labels are created by the owner (DEC-43), for example
+`gh label create "area: cli" -R Andredson/BECK --color c5def5 --description "The beck command: flags, output and exit codes"`.
+
+| Label | Color | Use it for |
+|---|---|---|
+| `type: bug` | `d73a4a` | BECK does something wrong. |
+| `type: feature` | `a2eeef` | Something new for BECK to do, including support for another system. |
+| `type: docs` | `0075ca` | A change to the documentation only. |
+| `area: parser` | `c5def5` | Reading missing-BIOS reports. |
+| `area: transport` | `c5def5` | Copying files to the target, over SMB or to a local folder. |
+| `area: cli` | `c5def5` | The `beck` command: flags, output and exit codes. |
+| `area: config` | `c5def5` | Settings, credentials and the settings file. |
+| `area: ci` | `c5def5` | CI, release and security workflows. |
+| `area: agents` | `c5def5` | `AGENTS.md`, the skills, and the JSON output agents read. |
+| `frontend: recalbox` | `f9d0c4` | Something specific to Recalbox. |
+| `frontend: batocera` | `f9d0c4` | Something specific to Batocera ([stage 11](../roadmap/11-feature-expansion.md)). |
+| `data-loss` | `b60205` | BECK can delete or overwrite files it should keep. Top priority: an open one blocks a release, and 1.0. |
+| `good first issue` | `7057ff` | Small, well-described, and a good start for a new contributor. |
+| `help wanted` | `008672` | The maintainer would welcome someone taking it. |
+| `blocked` | `e99695` | Waiting on something outside the issue, such as a decision, data or another fix. Say what in a comment. |
+
+GitHub's own default labels are kept, by the owner's choice: `bug`, `documentation`, `enhancement`, `duplicate`, `invalid`, `question`
+and `wontfix`. The first three mean the same as `type: bug`, `type: docs` and `type: feature`, so use those instead. The other four are
+for closing an issue, or asking for more information.
+
+Add a `frontend:` label when work on another system starts, and add it to this table in the same change.
+
 ## Log
 
 Add one row per run, newest first. It records the reasons for every cooldown exception and ignore (DEC-45).

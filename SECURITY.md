@@ -9,8 +9,8 @@ BECK hasn't had a release yet. Once it has, only the latest minor version gets s
 Please report it privately, not in a public issue. On GitHub, go to the repository's **Security** tab and choose **Report a
 vulnerability**.
 
-If that option isn't there, open an issue that says only that you'd like to report a security problem and asks for a private way to do it.
-Leave out the details.
+If that option isn't there, open an issue with the [*Ask for a private contact*](https://github.com/Andredson/BECK/issues/new?template=private-contact.yml)
+form, which asks only for a private way to report it. Leave out the details.
 
 A useful report says which version you used, what you ran, what happened, and what you expected. Please leave out your real passwords and
 your BIOS files. For the output of a run, `--json` and `-v` already keep passwords out.

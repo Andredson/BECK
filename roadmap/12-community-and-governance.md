@@ -1,6 +1,6 @@
 # Stage 12 — Community & governance
 
-**Status:** Not started · **Depends on:** 02 (can run in parallel with 03–11) · **Branch:** `stage/12-community` · **Effort:** S
+**Status:** Done (2026-11-09) · **Depends on:** 02 (can run in parallel with 03–11) · **Branch:** `stage/12-community` · **Effort:** S
 
 ## Goal
 Make it easy and safe for outside contributors, human or AI-assisted, to help (DEC-12). Make the project's
@@ -18,7 +18,8 @@ DEC-12, DEC-14, DEC-16, DEC-31, DEC-38, DEC-39, DEC-43.
 ## Steps
 
 ### 12.1 — `CONTRIBUTING.md`
-- [ ] Done
+- [x] Done (2026-11-07: the check commands are linked to `AGENTS.md`, not copied, and so is the list of required checks, so each has one copy. In a fresh clone with empty uv caches, following its setup section, `uv sync` and the check line passed: 2222 tests, 99.95% coverage, with the integration tests skipped. The link checker covers the new file, and caught a deliberately broken anchor in it. It's written for a fork, since outside contributors can't push branches here, and says a
+  first PR's CI waits for the maintainer's approval, which is the repository's setting (`first_time_contributors`). It says a contributor may fix a rejected commit message on their own PR branch, for example with `git commit --amend`. Agents still never do that. Bug reports go to a plain issue until 12.4's forms exist. The code of conduct and the AI policy are 12.2 and 12.3. Not tested: whether a first-time contributor, a person or an agent with no context, can open a correct PR from it alone.)
 - **What:** Sections:
   1. Ways to help: reports, fixtures, docs, code, new frontend data.
   2. Development setup with uv, plus the exact check commands, linked to AGENTS.md so there's one source of truth.
@@ -34,7 +35,7 @@ DEC-12, DEC-14, DEC-16, DEC-31, DEC-38, DEC-39, DEC-43.
 - **Commit message:** `docs: add contributing guide`
 
 ### 12.2 — Code of conduct section (DEC-31)
-- [ ] Done
+- [x] Done (2026-11-07: the owner chose the contact: an issue that says only that someone would like to report a conduct problem and asks for a private way, as `SECURITY.md` does for vulnerabilities. The other choices offered were a separate project email address, GitHub's own reporting tool, or both. The owner gave no further reason. Their personal email isn't used, since it's never to be published. The section has the step's three rules and the maintainer's powers, and nothing else. The owner reviews its wording in the stage PR.)
 - **What:** A short **"Code of conduct"** section inside `CONTRIBUTING.md` (no separate file): be respectful and
   constructive; no harassment or personal attacks; keep discussions about the work; the maintainer may edit or
   remove comments and block participants who break these rules. **Ask the owner** for the contact channel for
@@ -45,7 +46,7 @@ DEC-12, DEC-14, DEC-16, DEC-31, DEC-38, DEC-39, DEC-43.
 - **Commit message:** `docs(contributing): add code of conduct section`
 
 ### 12.3 — AI-assisted contributions policy
-- [ ] Done
+- [x] Done (2026-11-07: the owner chose required disclosure with one item: a PR ticks *No AI tools were used* or *AI tools helped write this PR*, naming the tools (DEC-69). The other choices offered were required with a note on what the tool did, optional, and not asked. The template's comment for agents now tells them to tick the second box. Nothing enforces the item automatically; a reviewer checks it. A PR opened with `gh pr create --body`, as the stage PRs are, skips the template. The policy adds one line beyond the step: if an agent runs BECK for you, set `BECK_SMB_PASSWORD` yourself, as `AGENTS.md` already tells agents. Not tested: how the template renders on a new PR, since GitHub only uses it once it's on `main`.)
 - **What:** A section in `CONTRIBUTING.md`:
   - AI-assisted contributions are welcome.
   - The contributor is responsible for understanding, testing and being able to explain every change.
@@ -61,7 +62,9 @@ DEC-12, DEC-14, DEC-16, DEC-31, DEC-38, DEC-39, DEC-43.
 - **Commit message:** `docs(contributing): add AI-assisted contribution policy`
 
 ### 12.4 — Issue forms
-- [ ] Done
+- [x] Done (2026-11-07: with blank issues off, the private routes in `CONTRIBUTING.md` (12.2) and `SECURITY.md`, which start with an issue asking only for a private contact, had no way in. The owner chose a **fourth form**, `private-contact.yml`: a preset title, a choice between a conduct and a security problem, and a box confirming there are no names or details. The other choices offered were keeping blank issues on, or using the bug form for it. Both
+  documents now link to that form, and `CONTRIBUTING.md` names the forms. The forms ask for the labels `type: bug` and `type: feature`, which GitHub skips until they exist (12.5). The bug form says `--json` output holds no password or user name, but does hold the Recalbox's address and folder paths. A one-off script, kept out of the repository and using the system's PyYAML, checked the five files against the rules in GitHub's docs, such as allowed keys, unique ids and name length, and caught a deliberately broken copy.
+  Every link in them points at a real file and heading. Not checked yet: GitHub's own validation and the *New issue* page, which only use the forms once they're on `main`. The owner checks those after the merge, as Verify says.)
 - **What:** `.github/ISSUE_TEMPLATE/`:
   - `bug.yml`: BECK version (`beck --version`), OS, Recalbox version, the command run, **redacted** `--json`
     output, and expected vs actual result. Include a warning not to paste passwords or BIOS files.
@@ -76,7 +79,7 @@ DEC-12, DEC-14, DEC-16, DEC-31, DEC-38, DEC-39, DEC-43.
 - **Commit message:** `chore(github): add issue forms for bugs, features and frontend support`
 
 ### 12.5 — Labels
-- [ ] Done
+- [x] Done (2026-11-09: the owner ran the printed commands, and `gh label list` then showed 22 labels, the same names as the document, with the documented colors. The owner chose to keep all of GitHub's defaults, so the document lists them too, and says to use the `type:` labels rather than `bug`, `documentation` and `enhancement`. The other choices offered were deleting those three, or all seven not in the set. The colors and descriptions are the agent's, shown to the owner before they ran the commands. `good first issue` and `help wanted` already existed, so they keep GitHub's colors and descriptions. Only `frontend: recalbox` and `frontend: batocera` exist; the document says to add one when work on another system starts.)
 - **What:** Define the label set in `docs/maintenance.md`:
   - `type: bug`, `type: feature`, `type: docs`;
   - `area: parser`, `area: transport`, `area: cli`, `area: config`, `area: ci`, `area: agents`;
@@ -91,7 +94,7 @@ DEC-12, DEC-14, DEC-16, DEC-31, DEC-38, DEC-39, DEC-43.
 - **Commit message:** `docs(maintenance): define issue labels`
 
 ### 12.6 — Repository settings (human-only)
-- [ ] Done
+- [x] Done (2026-11-09: the owner applied them, and read-only `gh` shows them. The description is "BIOS checker for Recalbox: matches your BIOS files by MD5 and copies them to the right folders over SMB.", the shorter of the two offered. It replaces "A simple script to validate and send verified bios files via smb to your RECALBOX system.". The topics are the six listed plus `python`, the owner's addition; `md5` was offered and not chosen. Private vulnerability reporting is on, so the button `SECURITY.md` points to now exists. Discussions stay off, by the owner's choice, so there's no new DEC. No social preview image. Committed as `docs(roadmap): record the repository settings`, since the step has no commit of its own.)
 - **What:** The owner, on GitHub:
   - sets the description and topics (`recalbox`, `bios`, `retrogaming`, `emulation`, `smb`, `cli`);
   - enables **private vulnerability reporting**, which `SECURITY.md` (07.8) points to;
@@ -103,7 +106,8 @@ DEC-12, DEC-14, DEC-16, DEC-31, DEC-38, DEC-39, DEC-43.
 - **Commit message:** none
 
 ### 12.7 — Roadmap maintenance cadence
-- [ ] Done
+- [x] Done (2026-11-09: **no quarterly review, by the owner's choice.** Asked for the first review's date, with the week of 2027-01-04, the week of 2027-02-01 or the close of stage 10 offered, the owner answered "do not set a review roadmap period". So the section says there's no scheduled review, and the Done-when's review date doesn't apply. Of what that review would have covered, Python end-of-life dates are already checked in the monthly routine, `docs/maintenance.md` section 6, which the section links to.
+  Stale steps and new risks have no regular check. The other four items are there as listed. "The same template" is described as the layout every stage file already shares, since there's no template file.)
 - **What:** Add a "Maintaining this roadmap" section to `roadmap/README.md`:
   - re-score `00-assessment.md` at every stage close;
   - review the whole roadmap quarterly (stale steps, new risks, Python end-of-life dates);
@@ -116,7 +120,7 @@ DEC-12, DEC-14, DEC-16, DEC-31, DEC-38, DEC-39, DEC-43.
 - **Commit message:** `docs(roadmap): define roadmap maintenance cadence`
 
 ### 12.8 — Close the stage
-- [ ] Done
+- [x] Done (2026-11-09: the acceptance criteria below hold, with two limits: the bug form only reaches people once it's on `main`, and nobody new has tried the guide. The stage scores 7/10, with a sum of 141, up from 138. Community goes 4 → 7, its target. Stage 10 is still open, so this row doesn't score its work. Draft PR #13 already exists, so the owner marks it ready and merges it with a merge commit, then checks the *New issue* page (12.4). Beyond the list below: the `AGENTS.md` map also gets `CONTRIBUTING.md`, the issue forms, the labels and the template's AI item.)
 - **What:** Update AGENTS.md (links to CONTRIBUTING and the AI policy). Re-score
   [00-assessment](00-assessment.md#re-scoring-history). Update the [README](README.md#stages) status. Push the
   closing commit (DEC-47). If the stage PR doesn't exist yet, print this command for the human (DEC-43):
