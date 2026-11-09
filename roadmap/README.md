@@ -85,6 +85,20 @@ Don't edit an existing row. Add a new row that says `Supersedes DEC-NN`, mark th
 - **Blocked by:** (only when gated) what must exist first.
 ```
 
+## Maintaining this roadmap
+
+- **Re-score at every stage close.** Each stage's closing step re-scores [00-assessment.md](00-assessment.md#re-scoring-history) and
+  adds a row to its history.
+- **New stages are new files,** `13-<slug>.md` and on, added to [the stage table](#stages). Copy an existing stage's layout: the
+  **Status** line (status, dependencies, branch, effort), then *Goal*, *Why*, *Decisions applied*, *Steps* in
+  [the step format](#step-format-used-in-every-stage-file) ending with a closing step, *Stage acceptance criteria*, *Out of scope* and
+  *Agent notes*. A stage may add a reference section before its steps, as 06 and 07 do.
+- **Completed stages stay** in this folder, as the history of what was done and why.
+- **A decision is never edited.** A change is a new DEC row that says *Supersedes DEC-NN*
+  ([how](#changing-a-decision)).
+- **There's no scheduled review of the whole roadmap,** by the owner's choice (2026-11-09). Python end-of-life dates are checked in
+  the [monthly maintenance routine](../docs/maintenance.md#6-python-versions).
+
 ## Decision log
 
 All decisions confirmed with the project owner. DEC-01 to DEC-43 were made on 2026-11-02 while planning;

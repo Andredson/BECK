@@ -106,7 +106,8 @@ DEC-12, DEC-14, DEC-16, DEC-31, DEC-38, DEC-39, DEC-43.
 - **Commit message:** none
 
 ### 12.7 — Roadmap maintenance cadence
-- [ ] Done
+- [x] Done (2026-11-09: **no quarterly review, by the owner's choice.** Asked for the first review's date, with the week of 2027-01-04, the week of 2027-02-01 or the close of stage 10 offered, the owner answered "do not set a review roadmap period". So the section says there's no scheduled review, and the Done-when's review date doesn't apply. Of what that review would have covered, Python end-of-life dates are already checked in the monthly routine, `docs/maintenance.md` section 6, which the section links to.
+  Stale steps and new risks have no regular check. The other four items are there as listed. "The same template" is described as the layout every stage file already shares, since there's no template file.)
 - **What:** Add a "Maintaining this roadmap" section to `roadmap/README.md`:
   - re-score `00-assessment.md` at every stage close;
   - review the whole roadmap quarterly (stale steps, new risks, Python end-of-life dates);
