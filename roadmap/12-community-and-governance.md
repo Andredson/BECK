@@ -1,6 +1,6 @@
 # Stage 12 — Community & governance
 
-**Status:** In progress · **Depends on:** 02 (can run in parallel with 03–11) · **Branch:** `stage/12-community` · **Effort:** S
+**Status:** Done (2026-11-09) · **Depends on:** 02 (can run in parallel with 03–11) · **Branch:** `stage/12-community` · **Effort:** S
 
 ## Goal
 Make it easy and safe for outside contributors, human or AI-assisted, to help (DEC-12). Make the project's
@@ -120,7 +120,7 @@ DEC-12, DEC-14, DEC-16, DEC-31, DEC-38, DEC-39, DEC-43.
 - **Commit message:** `docs(roadmap): define roadmap maintenance cadence`
 
 ### 12.8 — Close the stage
-- [ ] Done
+- [x] Done (2026-11-09: the acceptance criteria below hold, with two limits: the bug form only reaches people once it's on `main`, and nobody new has tried the guide. The stage scores 7/10, with a sum of 141, up from 138. Community goes 4 → 7, its target. Stage 10 is still open, so this row doesn't score its work. Draft PR #13 already exists, so the owner marks it ready and merges it with a merge commit, then checks the *New issue* page (12.4). Beyond the list below: the `AGENTS.md` map also gets `CONTRIBUTING.md`, the issue forms, the labels and the template's AI item.)
 - **What:** Update AGENTS.md (links to CONTRIBUTING and the AI policy). Re-score
   [00-assessment](00-assessment.md#re-scoring-history). Update the [README](README.md#stages) status. Push the
   closing commit (DEC-47). If the stage PR doesn't exist yet, print this command for the human (DEC-43):
