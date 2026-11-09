@@ -94,7 +94,7 @@ DEC-12, DEC-14, DEC-16, DEC-31, DEC-38, DEC-39, DEC-43.
 - **Commit message:** `docs(maintenance): define issue labels`
 
 ### 12.6 — Repository settings (human-only)
-- [ ] Done
+- [x] Done (2026-11-09: the owner applied them, and read-only `gh` shows them. The description is "BIOS checker for Recalbox: matches your BIOS files by MD5 and copies them to the right folders over SMB.", the shorter of the two offered. It replaces "A simple script to validate and send verified bios files via smb to your RECALBOX system.". The topics are the six listed plus `python`, the owner's addition; `md5` was offered and not chosen. Private vulnerability reporting is on, so the button `SECURITY.md` points to now exists. Discussions stay off, by the owner's choice, so there's no new DEC. No social preview image. Committed as `docs(roadmap): record the repository settings`, since the step has no commit of its own.)
 - **What:** The owner, on GitHub:
   - sets the description and topics (`recalbox`, `bios`, `retrogaming`, `emulation`, `smb`, `cli`);
   - enables **private vulnerability reporting**, which `SECURITY.md` (07.8) points to;
