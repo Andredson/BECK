@@ -31,7 +31,7 @@ flowchart LR
 ## Steps
 
 ### 10.1 — Check the PyPI name and set up trusted publishing (human-only)
-- [ ] Done
+- [x] Done (2026-11-09: TestPyPI's publisher was proven by 10.9's upload. The owner confirmed PyPI's, for environment `pypi`. That can't be seen from outside, so the first final tag is its test, and a mismatch publishes nothing and can be re-run once fixed. Read-only `gh` shows `pypi` with the owner as required reviewer, and both environments limited to tags matching `v*`. Beyond the list below: the owner also made `package` a required check, which `AGENTS.md` now lists. The ruleset lists it twice, which is harmless.)
 > BLOCKED (2026-11-06): the owner's accounts are needed for the publishers and the environments. `beck-bios` is free on PyPI and TestPyPI today (both return 404), and GitHub lists no environments yet.
 > Still BLOCKED (2026-11-07): TestPyPI's publisher works (10.9), and `beck-bios` is now taken there by this project. GitHub created the `testpypi` environment when the tag first used it, with no rules, so it isn't yet limited to `v*` tags. The `pypi` environment doesn't exist, and whether PyPI's publisher does, or matches, can only be seen when `0.5.0` is tagged. Create `pypi`, with the owner as required reviewer, before any final tag, or GitHub creates it with no approval.
 - **What:** The owner:
@@ -171,6 +171,7 @@ flowchart LR
 - [ ] Done
 > BLOCKED (2026-11-06): follows 10.9.
 > Still BLOCKED (2026-11-07): 10.9 is done, but this needs 10.1's `pypi` environment and publisher, and should wait for `pyasn1` 0.6.5, which can be locked from 2026-11-10 06:33 UTC.
+> Still BLOCKED (2026-11-09): 10.1 is done. This waits only for `pyasn1` 0.6.5, locked in its own maintenance PR from 2026-11-10 06:33 UTC.
 - **What:** Bump to the final `<version>` and follow the checklist end to end. PyPI's page is the README as it is in this release and can't be edited afterwards, so first change what it says about installing and status ("isn't on PyPI yet", "no release yet"), so that its page doesn't say it isn't released.
 - **Files:** `pyproject.toml`, `CHANGELOG.md`
 - **Done when:** `pipx install beck-bios` and `uv tool install beck-bios` both work on a clean machine; PyPI shows

@@ -243,7 +243,7 @@ Agent Skills live in `.agents/skills/<name>/SKILL.md` (open agentskills.io forma
 - One branch and one PR per stage (`stage/NN-slug`), one commit per step, merged with a merge commit (DEC-14,
   DEC-39).
 - `main` is protected by a ruleset: changes arrive only through a PR, merge commits only, and the checks
-  `quality`, `tests-passed`, `integration`, `commits`, `secrets` and `sca` must pass. Nobody can bypass it.
+  `quality`, `tests-passed`, `package`, `integration`, `commits`, `secrets` and `sca` must pass. Nobody can bypass it.
 - Agents commit (DEC-46) and push the stage branch (DEC-47); the human creates branches, opens and merges PRs,
   and tags (DEC-43).
 - A PR says whether AI tools helped write it (DEC-69), and [CONTRIBUTING.md](CONTRIBUTING.md#ai-assisted-contributions) has the
