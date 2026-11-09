@@ -79,7 +79,7 @@ DEC-12, DEC-14, DEC-16, DEC-31, DEC-38, DEC-39, DEC-43.
 - **Commit message:** `chore(github): add issue forms for bugs, features and frontend support`
 
 ### 12.5 — Labels
-- [ ] Done
+- [x] Done (2026-11-09: the owner ran the printed commands, and `gh label list` then showed 22 labels, the same names as the document, with the documented colors. The owner chose to keep all of GitHub's defaults, so the document lists them too, and says to use the `type:` labels rather than `bug`, `documentation` and `enhancement`. The other choices offered were deleting those three, or all seven not in the set. The colors and descriptions are the agent's, shown to the owner before they ran the commands. `good first issue` and `help wanted` already existed, so they keep GitHub's colors and descriptions. Only `frontend: recalbox` and `frontend: batocera` exist; the document says to add one when work on another system starts.)
 - **What:** Define the label set in `docs/maintenance.md`:
   - `type: bug`, `type: feature`, `type: docs`;
   - `area: parser`, `area: transport`, `area: cli`, `area: config`, `area: ci`, `area: agents`;
