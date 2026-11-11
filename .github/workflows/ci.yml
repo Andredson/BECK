@@ -44,8 +44,6 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run mypy
       - run: uv run python scripts/check_repo_hygiene.py
-      - name: requirements.txt matches uv.lock
-        run: uv export --no-dev --no-hashes --no-emit-project -o requirements.txt && git diff --exit-code -- requirements.txt
 
   tests:
     name: tests (${{ matrix.os }}, py${{ matrix.python }})
@@ -235,12 +233,11 @@ jobs:
           mkdir -p "$RUNNER_TEMP/bin"
           tar -xzf "$RUNNER_TEMP/trivy.tar.gz" -C "$RUNNER_TEMP/bin" trivy
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
-      # uv.lock, dev dependencies included. requirements.txt is skipped: it's generated from uv.lock (02.9), so
-      # it would only repeat the same findings. Accepted findings live in .trivyignore, each with an expiry date.
+      # uv.lock, dev dependencies included. Accepted findings live in .trivyignore, each with an expiry date.
       - name: Vulnerabilities (fail on fixable HIGH and CRITICAL)
         run: >-
           trivy fs --scanners vuln --include-dev-deps --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1
-          --show-suppressed --no-progress --skip-dirs .venv --skip-files requirements.txt .
+          --show-suppressed --no-progress --skip-dirs .venv .
       # Report only: a failing license policy needs an owner decision first (step 02.13).
       - name: Licenses of runtime dependencies (report only)
         if: ${{ !cancelled() }}

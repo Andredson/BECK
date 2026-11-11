@@ -18,7 +18,7 @@ in report order, with repeated entries kept. Each entry has:
 The `.txt` files are byte-exact (see `.gitattributes`): real reports use CRLF line endings. Load them with
 `load_report` and `load_expected` from `tests/conftest.py`.
 
-The expected files were written by a one-off line-based script that shares no code with `check_bios.py`, so they
+The expected files were written by a one-off line-based script that shares no code with the old `check_bios.py`, so they
 don't copy the parser's bugs. The tricky entries were then checked by hand and looked over by the owner.
 
 ## Provenance

@@ -46,7 +46,7 @@ def test_every_python_file_has_the_header() -> None:
 
 @pytest.mark.parametrize(
     "path",
-    ["check_bios.py", "scripts/__init__.py", "src/beck/cli.py", "tests/test_license_headers.py"],
+    ["scripts/__init__.py", "src/beck/cli.py", "tests/test_license_headers.py"],
 )
 def test_the_check_looks_at_every_part_of_the_repository(path: str) -> None:
     assert ROOT / path in python_files(ROOT)

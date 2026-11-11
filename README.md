@@ -93,7 +93,8 @@ The most common one is that your computer can't find `recalbox.local`: use your 
 BECK is in alpha: its first release is out, and later ones may still change how it works. It's been tested on Recalbox 10.1.1 in a virtual machine, but not yet on real hardware. Its automatic tests run on Linux only, so Windows and macOS
 are untested. [The changelog](https://github.com/Andredson/BECK/blob/main/CHANGELOG.md) lists what has changed.
 
-**If you used an older copy,** note that BECK no longer deletes every file it copies, and no longer reads `config/config.yml`. If you still have that file, BECK prints what to put in
+**If you used an older copy,** note that BECK no longer deletes every file it copies, and no longer reads `config/config.yml`. Since 1.0, `check_bios.py` is gone, and so is
+running `beck` with no command: install BECK as above, and run `beck check`. If you still have that file, BECK prints what to put in
 the new settings. Delete it afterwards, because it may hold your password in plain text. Older copies tracked it in git, so if you edited it, `git pull` refuses to update until
 you move it out of the way.
 

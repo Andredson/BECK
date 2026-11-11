@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 def test_clean_list_has_no_problems() -> None:
     entries = [
         ("bios/.keep", 0),
-        ("check_bios.py", 9_000),
+        ("src/beck/cli.py", 30_000),
         ("config/config.example.yml", 80),
         # GitHub's issue-form config is not a BECK config.
         (".github/ISSUE_TEMPLATE/config.yml", 200),

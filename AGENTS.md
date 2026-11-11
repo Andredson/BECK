@@ -20,12 +20,10 @@ CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against
 
 | Path | What it is |
 |---|---|
-| `check_bios.py` | A deprecated shim: it prints a notice and runs `beck.cli.main` with its own folder, importing from `src/` so that the pip route works. |
 | `src/beck/` | The application ([design](docs/ARCHITECTURE.md)): `cli`, `config`, `credentials`, `redact`, `models`, `hashing`, `matcher`, `executor`, `errors`, and `frontends/`, `transports/`, `output/`. `beck` finds its [settings](docs/cli.md#settings) from any folder, and `bios/` in the current one. |
 | `bios/` | Input folder for the user's BIOS files. Everything except `bios/.keep` is gitignored. |
 | `pyproject.toml`, `uv.lock`, `.python-version` | Project metadata, runtime and dev dependencies, tool settings (ruff, mypy, pytest, coverage, commitizen), the lockfile, and Python 3.11 for local work. Managed with uv; `exclude-newer` is the 14-day cooldown (DEC-45). The distribution is `beck-bios`, built with `uv_build` (DEC-18), and it installs the `beck` command. |
-| `requirements.txt` | Runtime dependencies for pip users, **generated** from `uv.lock` (see [Commands](#commands)). Don't edit it by hand; CI fails if it drifts. |
-| `tests/` | pytest suite: `tests/unit/` has a test file per module, full runs through `cli.main` (`test_cli.py`), and the architecture rules checked on the source (`test_architecture.py`). `tests/` has the package and shim tests, the Markdown link checker, and tests for the hygiene guard and the workflow pins. `tests/factories.py` builds test data (always random bytes, and reports in the real format), and `tests/fakes.py` is the in-memory SMB server the application tests use. `tests/fixtures/reports/` holds real and derived Recalbox reports, with provenance in `tests/fixtures/README.md`; the real report keeps its CRLF line endings byte-exact. |
+| `tests/` | pytest suite: `tests/unit/` has a test file per module, full runs through `cli.main` (`test_cli.py`), and the architecture rules checked on the source (`test_architecture.py`). `tests/` has the package tests, the Markdown link checker, and tests for the hygiene guard and the workflow pins. `tests/factories.py` builds test data (always random bytes, and reports in the real format), and `tests/fakes.py` is the in-memory SMB server the application tests use. `tests/fixtures/reports/` holds real and derived Recalbox reports, with provenance in `tests/fixtures/README.md`; the real report keeps its CRLF line endings byte-exact. |
 | `tests/integration/samba/` | The Samba test server for integration tests, built with **Podman, never Docker** (DEC-55). See [its README](tests/integration/samba/README.md). |
 | `scripts/check_repo_hygiene.py` | Fails if git tracks BIOS/ROM-like files, files over 1 MiB, config files, or a TOML file with a password in it (each allowed exception has a reason). |
 | `.github/workflows/ci.yml` | CI on every PR and push to `main`: `quality`, the `tests` matrix (Linux × Python 3.11–3.14; Windows and macOS removed, DEC-49) summarized by `tests-passed`, `package` (builds and smoke-installs the wheel), `integration` (a real Samba server, with Podman), `commits`, `secrets`, `sca`. |
@@ -79,25 +77,24 @@ BECK_TEST_SMB_HOST=127.0.0.1 BECK_TEST_SMB_PORT=4450 uv run pytest -m integratio
 Before committing, this must pass; it's what the `quality` and `tests` CI jobs run, and [the `quality-gates` skill](.agents/skills/quality-gates/SKILL.md) has the rest:
 
 ```sh
-uv sync --locked && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run python scripts/check_repo_hygiene.py && uv export --no-dev --no-hashes --no-emit-project -o requirements.txt && git diff --exit-code -- requirements.txt && uv run pytest --cov --cov-report=xml
+uv sync --locked && uv run ruff check . && uv run ruff format --check . && uv run mypy && uv run python scripts/check_repo_hygiene.py && uv run pytest --cov --cov-report=xml
 ```
 
 - **After changing a flag or its help**, regenerate the reference: `uv run python scripts/gen_cli_reference.py`.
 - **When releasing**, regenerate the changelog with [the pinned command](docs/maintenance.md#regenerating-the-changelog). Never edit `CHANGELOG.md` by hand.
-- **After any change to dependencies**, regenerate the pip file: `uv export --no-dev --no-hashes --no-emit-project -o requirements.txt`.
-  Adding a dependency needs a DEC first (see [Hard rules](#hard-rules)); `uv add` and `uv lock` respect the cooldown.
+- **Adding a dependency** needs a DEC first (see [Hard rules](#hard-rules)); `uv add` and `uv lock` respect the cooldown.
 - **The other CI checks**, if you have the tools installed (the pinned versions are in the `env:` block of
   `.github/workflows/ci.yml`; `X` below is `COMMITIZEN_VERSION`):
 
   ```sh
   uvx --exclude-newer "14 days" --from "commitizen==X" cz check --rev-range origin/main..HEAD
   gitleaks git --config .gitleaks.toml --redact --log-opts="origin/main..HEAD" .
-  trivy fs --scanners vuln --include-dev-deps --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --show-suppressed --skip-dirs .venv --skip-files requirements.txt .
+  trivy fs --scanners vuln --include-dev-deps --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --show-suppressed --skip-dirs .venv .
   VIRTUAL_ENV=.venv trivy fs --scanners license --skip-dirs .venv --skip-files uv.lock .
   ```
 
 - **Updating dependencies or pins** follows [docs/maintenance.md](docs/maintenance.md).
-- `uv run python check_bios.py`, `uv run beck` and `uv run beck check` connect to whatever target your settings name, which may be a **real Recalbox**, over SMB, and upload files to it. Don't run them unless the human explicitly asks you to in this session. `uv run beck config init` writes to your home folder.
+- `uv run beck check` connects to whatever target your settings name, which may be a **real Recalbox**, over SMB, and upload files to it. Don't run them unless the human explicitly asks you to in this session. `uv run beck config init` writes to your home folder.
 
 ## Working on the roadmap (protocol)
 

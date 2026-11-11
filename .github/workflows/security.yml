@@ -75,7 +75,7 @@ jobs:
       - name: Vulnerabilities (fail on fixable HIGH and CRITICAL)
         run: >-
           trivy fs --scanners vuln --include-dev-deps --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1
-          --show-suppressed --no-progress --skip-dirs .venv --skip-files requirements.txt .
+          --show-suppressed --no-progress --skip-dirs .venv .
       - name: Licenses of runtime dependencies (report only)
         if: ${{ !cancelled() }}
         env:

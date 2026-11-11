@@ -1077,17 +1077,6 @@ def test_q_still_asks_and_lists_what_it_would_delete(
     assert "Delete 1 files?" in err
 
 
-def test_q_hides_the_hint_about_running_with_no_command(
-    account: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    server = install_fake_smb(monkeypatch)
-    server.files[("bios", "missing_bios_report.txt")] = make_report_text([]).encode()
-
-    assert cli.main(["-q"], base_dir=account) == 0
-
-    assert capsys.readouterr().err == ""
-
-
 def test_q_does_not_change_a_json_document(
     folders: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1269,22 +1258,6 @@ def test_a_warning_without_v_is_only_its_message(capsys: pytest.CaptureFixture[s
     configure_logging().warning("a diagnostic")
 
     assert capsys.readouterr().err == "a diagnostic\n"
-
-
-def test_q_with_no_command_is_quiet_too(
-    account: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    server = install_fake_smb(monkeypatch)
-    make_bios_file(account / "bios", "junk.bin")
-    server.files[("bios", "missing_bios_report.txt")] = make_report_text(
-        [make_missing("gone.bin", A)]
-    ).encode()
-
-    assert cli.main(["-q"], base_dir=account) == 0
-
-    assert capsys.readouterr().out.splitlines() == [
-        "Final result: 0/1 missing entries satisfied, 1 files analysed"
-    ]
 
 
 def test_q_hides_what_is_neither_an_error_nor_the_summary(

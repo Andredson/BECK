@@ -33,7 +33,7 @@ git switch main && git pull && git switch -c deps/YYYY-MM
 ```
 
 The agent commits on this branch (DEC-46). DEC-47 lets agents push **stage** branches only, so the owner pushes
-this one (step 7).
+this one (step 6).
 
 ## 1. Python dependencies
 
@@ -51,15 +51,7 @@ uv sync --locked
 - New ruff or mypy releases can report new findings. Fix them in a separate commit on the same branch
   (`style: …` or `fix: …`). Never silence a rule to get past them without the owner's OK.
 
-## 2. requirements.txt
-
-```sh
-uv export --no-dev --no-hashes --no-emit-project -o requirements.txt
-```
-
-CI fails if this file doesn't match `uv.lock` ([step 02.9](../roadmap/02-foundation-tooling-and-ci.md#029--keep-requirementstxt-generated)).
-
-## 3. Run every check
+## 2. Run every check
 
 The same commands CI runs:
 
@@ -69,29 +61,28 @@ uv run ruff check .
 uv run ruff format --check .
 uv run mypy
 uv run python scripts/check_repo_hygiene.py
-uv export --no-dev --no-hashes --no-emit-project -o requirements.txt && git diff --exit-code -- requirements.txt
 uv run pytest --cov --cov-report=xml
 ```
 
-`git add` the files from step 2 first, because `git diff` compares with what's staged. [The `quality-gates` skill](../.agents/skills/quality-gates/SKILL.md) has the other jobs, and says how to read a failure.
+[The `quality-gates` skill](../.agents/skills/quality-gates/SKILL.md) has the other jobs, and says how to read a failure.
 
-## 4. Pinned Actions and tools
+## 3. Pinned Actions and tools
 
 | Pin | Where | Newest release ≥ 14 days old | Check before pinning |
 |---|---|---|---|
-| `actions/checkout`, `astral-sh/setup-uv`, `actions/upload-artifact`, `actions/download-artifact`, `pypa/gh-action-pypi-publish` | `uses:` lines | [4a](#4a-list-releases-with-their-age) | Resolve the tag to a commit SHA ([4b](#4b-resolve-an-action-tag-to-its-commit-sha)) |
-| uv | `UV_VERSION` | [4a](#4a-list-releases-with-their-age) on `astral-sh/uv` | Release notes |
-| gitleaks | `GITLEAKS_VERSION`, `GITLEAKS_SHA256` | [4a](#4a-list-releases-with-their-age) on `gitleaks/gitleaks` | Three matching hashes ([4c](#4c-hash-a-release-binary)) |
-| Trivy | `TRIVY_VERSION`, `TRIVY_SHA256` | [4a](#4a-list-releases-with-their-age) on `aquasecurity/trivy`; must show `immutable=true` | Three matching hashes ([4c](#4c-hash-a-release-binary)), and Trivy's advisories |
-| commitizen | `COMMITIZEN_VERSION` | [4d](#4d-list-pypi-releases-with-their-age) | Release notes |
-| twine | `TWINE_VERSION` | [4d](#4d-list-pypi-releases-with-their-age) | Release notes |
-| git-cliff | `GIT_CLIFF_VERSION` in `release.yml`, [the changelog command](#regenerating-the-changelog), and [the release checklist](releasing.md#the-release-checklist) | [4d](#4d-list-pypi-releases-with-their-age) | Release notes, then regenerate: only the expected lines should change |
+| `actions/checkout`, `astral-sh/setup-uv`, `actions/upload-artifact`, `actions/download-artifact`, `pypa/gh-action-pypi-publish` | `uses:` lines | [4a](#3a-list-releases-with-their-age) | Resolve the tag to a commit SHA ([4b](#3b-resolve-an-action-tag-to-its-commit-sha)) |
+| uv | `UV_VERSION` | [4a](#3a-list-releases-with-their-age) on `astral-sh/uv` | Release notes |
+| gitleaks | `GITLEAKS_VERSION`, `GITLEAKS_SHA256` | [4a](#3a-list-releases-with-their-age) on `gitleaks/gitleaks` | Three matching hashes ([4c](#3c-hash-a-release-binary)) |
+| Trivy | `TRIVY_VERSION`, `TRIVY_SHA256` | [4a](#3a-list-releases-with-their-age) on `aquasecurity/trivy`; must show `immutable=true` | Three matching hashes ([4c](#3c-hash-a-release-binary)), and Trivy's advisories |
+| commitizen | `COMMITIZEN_VERSION` | [4d](#3d-list-pypi-releases-with-their-age) | Release notes |
+| twine | `TWINE_VERSION` | [4d](#3d-list-pypi-releases-with-their-age) | Release notes |
+| git-cliff | `GIT_CLIFF_VERSION` in `release.yml`, [the changelog command](#regenerating-the-changelog), and [the release checklist](releasing.md#the-release-checklist) | [4d](#3d-list-pypi-releases-with-their-age) | Release notes, then regenerate: only the expected lines should change |
 
 All of them but git-cliff are in the `env:` block or the `uses:` lines of **both** `.github/workflows/ci.yml` and
 `.github/workflows/security.yml` (commitizen, twine and `upload-artifact` only in `ci.yml`). `.github/workflows/release.yml` repeats uv, twine, Trivy, checkout, setup-uv and `upload-artifact`, and has the only copy of `download-artifact` and `pypa/gh-action-pypi-publish`. Update the version, the hash
 or SHA, and the "pinned" date in the trailing comment.
 
-### 4a. List releases with their age
+### 3a. List releases with their age
 
 ```sh
 gh api 'repos/OWNER/REPO/releases?per_page=10' --jq '.[] | select(.prerelease | not) | "\(.tag_name)  \(.published_at[0:10])  \((now - (.published_at | fromdateiso8601)) / 86400 | floor) days  immutable=\(.immutable)"'
@@ -101,7 +92,7 @@ Pick the newest release that is at least 14 days old. Some projects publish seve
 day (`actions/checkout` does): stay on the current major version unless you've read the migration notes, and put
 a major upgrade in its own commit (`ci: …`).
 
-### 4b. Resolve an action tag to its commit SHA
+### 3b. Resolve an action tag to its commit SHA
 
 ```sh
 gh api repos/OWNER/REPO/commits/TAG --jq .sha
@@ -109,7 +100,7 @@ gh api repos/OWNER/REPO/commits/TAG --jq .sha
 
 Write it as `uses: OWNER/REPO@<40-character SHA> # TAG`.
 
-### 4c. Hash a release binary
+### 3c. Hash a release binary
 
 Three sources must agree: GitHub's asset digest, the release's checksums file, and the file you download.
 
@@ -127,7 +118,7 @@ For Trivy, also read the advisories that appeared since the last run:
 gh api repos/aquasecurity/trivy/security-advisories --jq '.[] | "\(.published_at[0:10])  \(.severity)  \(.summary)"'
 ```
 
-### 4d. List PyPI releases with their age
+### 3d. List PyPI releases with their age
 
 ```sh
 PKG=commitizen; curl -sSf "https://pypi.org/pypi/$PKG/json" | uv run python -c '
@@ -141,7 +132,7 @@ for uploaded, version in uploads[-5:]:
     print(f"{version:12} {uploaded[:10]}  {age:3} days  {verdict}")'
 ```
 
-### 4e. Check the new pins
+### 3e. Check the new pins
 
 ```sh
 uv run pytest tests/test_workflow_pins.py -q
@@ -163,12 +154,12 @@ curl -sS 'https://hub.docker.com/v2/repositories/library/debian/tags?page_size=1
 
 Update the tag and digest, then check that the integration tests still pass, with the commands in [AGENTS.md](../AGENTS.md#commands).
 
-## 5. Security review
+## 4. Security review
 
 1. **Weekly runs.** `gh run list --workflow security.yml --limit 5`, then `gh run view RUN_ID --log-failed` for any
    failure. Fix the cause, or treat it as an [urgent fix](#urgent-fixes-inside-the-cooldown).
 2. **`.trivyignore`.** For each entry, check whether its fix is now at least 14 days old. If it is, run
-   `uv lock --upgrade-package NAME`, regenerate `requirements.txt` and delete the entry. If the entry expires before
+   `uv lock --upgrade-package NAME` and delete the entry. If the entry expires before
    the fix passes the cooldown, ask the owner: extend the expiry (with the reason in the comment) or make a
    cooldown exception.
 
@@ -181,7 +172,7 @@ the choice goes in the [log](#log):
   `exp:YYYY-MM-DD`, set to the day **after** the fix becomes 14 days old (an entry expires at 00:00 UTC). This was
   used for pyasn1 in November 2026.
 - **Make a cooldown exception for that one package.** In `[tool.uv]`, add a cutoff just after the fix's upload
-  time, then run `uv lock --upgrade-package NAME` and regenerate `requirements.txt`:
+  time, then run `uv lock --upgrade-package NAME`:
 
   ```toml
   exclude-newer-package = { pyasn1 = "2026-10-28T00:00:00Z" }   # example: admits pyasn1 0.6.5
@@ -189,7 +180,7 @@ the choice goes in the [log](#log):
 
   Step 1 removes the exception once the release is 14 days old.
 
-## 6. Python versions
+## 5. Python versions
 
 ```sh
 curl -sSf https://peps.python.org/api/release-cycle.json | uv run python -c '
@@ -207,12 +198,12 @@ Compare with the `tests` matrix in `ci.yml` and with `requires-python` in `pypro
 - raising the floor when the oldest version is less than 3 months from end of life. That changes DEC-08, so it
   needs a new DEC.
 
-## 7. Commit and hand over
+## 6. Commit and hand over
 
 The agent commits (DEC-46), with no attribution trailer:
 
 ```sh
-git add uv.lock requirements.txt pyproject.toml .github/workflows .trivyignore docs/maintenance.md
+git add uv.lock pyproject.toml .github/workflows .trivyignore docs/maintenance.md
 git commit -m "build(deps): monthly dependency refresh (YYYY-MM)" -m "<upgraded packages, new pins, exceptions, ignores>"
 ```
 

@@ -37,7 +37,6 @@ ROOT = Path(__file__).resolve().parents[2]
 SOURCE_CODE = ROOT / "src" / "beck"
 SCHEMAS = ROOT / "docs" / "schemas"
 GUIDE = ROOT / "docs" / "json-output.md"
-SHIM = ROOT / "check_bios.py"
 
 CHECK, REPORT, SCAN, REJECTED = "check-result", "report-result", "scan-result", "rejected-command"
 CONFIG = "config-result"
@@ -358,13 +357,6 @@ def check_uploads_a_file(world: World) -> list[str]:
     file = make_bios_file(world.source, "ps1/copy.bin")
     world.report(make_missing("ps1/scph.bin", file.md5), make_missing("gone.bin", A))
     return world.check()
-
-
-@scenario(CHECK)
-def check_with_no_command_on_smb(world: World) -> list[str]:
-    data = make_bios_file(world.app / "bios", "a.bin")
-    world.on_smb(make_missing("a.bin", data.md5))
-    return ["--json"]
 
 
 @scenario(CHECK)
@@ -1086,10 +1078,8 @@ FOLDERS = ["--source", "{folder}", "--target-dir", "{folder}"]
         (["-m", "beck", "--json", "report", "--target-dir", "{folder}"], REPORT, 4),
         (["-m", "beck", "--json", "check", *FOLDERS], CHECK, 4),
         (["-m", "beck", "--json", "--no-such-flag"], REJECTED, 2),
-        ([str(SHIM), "--json", *FOLDERS], CHECK, 4),
-        ([str(SHIM), "--json", "--no-such-flag"], REJECTED, 2),
     ],
-    ids=["scan", "report", "check", "rejected", "shim", "shim-rejected"],
+    ids=["scan", "report", "check", "rejected"],
 )
 def test_a_real_process_writes_the_same_documents(
     command: list[str], schema: str, exit_code: int, tmp_path: Path

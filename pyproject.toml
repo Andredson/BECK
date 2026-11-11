@@ -69,7 +69,7 @@ convention = "google"
 [tool.mypy]
 python_version = "3.11"
 strict = true
-files = ["src", "check_bios.py", "tests", "scripts"]
+files = ["src", "tests", "scripts"]
 
 [[tool.mypy.overrides]]
 # pysmb ships no type hints; BECK keeps it (DEC-53).

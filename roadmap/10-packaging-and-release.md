@@ -182,6 +182,7 @@ flowchart LR
 ### 10.11 — Define and reach 1.0
 - [ ] Done
 > BLOCKED (2026-11-06): follows 10.10, and needs a run on a real device with the installed package, by the owner.
+> Still BLOCKED (2026-11-11): 10.10 is done. The step is three commits (DEC-71), and this is the first: it writes [the criteria](../docs/releasing.md#reaching-10), and removes `check_bios.py`, `requirements.txt` and its CI check, and bare `beck`, which is now a usage error (DEC-70). Next, `chore(release): 1.0.0rc1`, which the owner tags. Then the owner runs it on a real device, and `chore(release): 1.0.0` follows.
 - **What:** Write the 1.0 criteria in `docs/releasing.md` and check them off:
   - stages 01–10 done; D1–D16 fixed;
   - a real fixture exists for the current stable Recalbox, and an end-to-end run with the **installed** package on

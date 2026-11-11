@@ -30,7 +30,7 @@ beck check --target smb://recalbox.local/bios --source ~/my-bios
 beck check --target-dir /media/sdcard/bios    # a mounted SD card or USB drive
 ```
 
-Running `beck` with no command works as `beck check` for one more release, and prints a hint. Use `beck check` in scripts.
+Before 1.0, running `beck` with no command worked as `beck check`. Now it's a usage error, with exit code 2, and nothing runs (DEC-70).
 
 ### `beck scan`
 

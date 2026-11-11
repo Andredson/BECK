@@ -27,11 +27,10 @@ None. Ask before installing gitleaks or Trivy, or if a failure can only be fixed
    uv run ruff format --check .
    uv run mypy
    uv run python scripts/check_repo_hygiene.py
-   uv export --no-dev --no-hashes --no-emit-project -o requirements.txt && git diff --exit-code -- requirements.txt
    uv run pytest --cov --cov-report=xml
    ```
 
-   `pytest` also runs the link test and the other tests of the repository, so they have no command of their own. If you changed the dependencies, `git add requirements.txt` first, because `git diff` compares with what's staged.
+   `pytest` also runs the link test and the other tests of the repository, so they have no command of their own.
 
 2. **Run the `package` job.** It builds what a release would publish, then checks its metadata and README, and that the wheel installs and runs:
 
@@ -62,7 +61,7 @@ None. Ask before installing gitleaks or Trivy, or if a failure can only be fixed
    COMMITIZEN_VERSION=$(sed -n 's/.*COMMITIZEN_VERSION: "\([^"]*\)".*/\1/p' .github/workflows/ci.yml)
    uvx --exclude-newer "14 days" --from "commitizen==${COMMITIZEN_VERSION}" cz check --rev-range "origin/main..HEAD"
    gitleaks git --config .gitleaks.toml --redact --no-banner --verbose --log-opts="origin/main..HEAD" .
-   trivy fs --scanners vuln --include-dev-deps --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --show-suppressed --no-progress --skip-dirs .venv --skip-files requirements.txt .
+   trivy fs --scanners vuln --include-dev-deps --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --show-suppressed --no-progress --skip-dirs .venv .
    VIRTUAL_ENV=.venv trivy fs --scanners license --exit-code 0 --no-progress --skip-dirs .venv --skip-files uv.lock .
    ```
 
@@ -76,12 +75,11 @@ None. Ask before installing gitleaks or Trivy, or if a failure can only be fixed
 
 | What failed | What it means | What to do |
 |---|---|---|
-| `uv sync --locked` | `uv.lock` doesn't match `pyproject.toml`. | Run `uv lock`, then regenerate `requirements.txt`. The cooldown stays (DEC-45). |
+| `uv sync --locked` | `uv.lock` doesn't match `pyproject.toml`. | Run `uv lock`. The cooldown stays (DEC-45). |
 | `ruff check` | A rule, named by its code. `S` rules are about security, and `E501` means a line is over 100 columns. | Change the code. |
 | `ruff format --check` | Layout, including Python blocks in Markdown. | Run `uv run ruff format .`. |
 | `mypy` | Types, strict everywhere. | Fix the types. |
 | `check_repo_hygiene.py` | A tracked BIOS or ROM file, a file over 1 MiB, a config file, or a TOML file with a password. | Stop tracking it with `git rm --cached`. If it held a real password or a BIOS file, tell the human: it's in the history. |
-| `requirements.txt` | It doesn't match `uv.lock`. | Keep what `uv export` wrote, and `git add` it. Never edit it by hand. |
 | `pytest`, in `test_cli_reference.py` | A flag or its help changed. | Run `uv run python scripts/gen_cli_reference.py`. |
 | `pytest`, in `test_docs_links.py` | A link or an anchor is broken. | Fix the link. |
 | `pytest`, in `test_troubleshooting.py` | A new error or exit code has no entry. | Add it to `docs/troubleshooting.md`. |
