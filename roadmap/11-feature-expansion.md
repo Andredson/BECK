@@ -1,6 +1,6 @@
 # Stage 11 — Feature expansion
 
-**Status:** Not started · **Depends on:** 10 · **Branch:** one per feature, `feature/<slug>` · **Effort:** L (total)
+**Status:** In progress · **Depends on:** 10 · **Branch:** one per feature, `feature/<slug>` · **Effort:** L (total)
 
 ## Goal
 Grow BECK beyond a polished Recalbox tool: fewer manual steps for users, and smarter matching. Support for other retro-gaming
@@ -33,8 +33,19 @@ Steps 11.6 (hash cache), 11.10 (translations) and 11.11 (SSH/SFTP transport) wer
 moved to GitHub issues (DEC-77), listed under [Other systems](#other-systems). The other steps keep their numbers, because decisions and
 other files refer to them.
 
+**The order, chosen in step 11.1:**
+
+| Order | Step | Value | Cost |
+|---|---|---|---|
+| planned (1) | [11.12](#1112--export-copy-bios-files-from-the-target-to-this-machine) Export | Back up the BIOS files on a device, or move them to another one. Its design is decided (DEC-57, DEC-60). | M |
+| planned (2) | [11.4](#114--zip-aware-matching) Zip-aware matching | Matches the zip archives users keep. Recalbox hashes a `.zip` target by its contents (DEC-74), which BECK can do too. | M |
+| planned (3) | [11.2](#112--report-less-recalbox-mode) Report-less mode | Removes the one manual step on the device. On the 10.1.1 VM (2026-11-11), Recalbox's web manager API gave the same list as the report. | M |
+| planned (4) | [11.3](#113--per-system-summary) Per-system summary | Shows what's still missing for each system, for people and in `--json`. | S |
+| later | [11.5](#115--multiple-sources-and-filters) Multiple sources and filters | Saves gathering files into one folder first. | S |
+
 ### 11.1 — Prioritize with the owner
-- [ ] Done
+- [x] Done (2026-11-11: the owner chose the agent's suggested order, above. The owner had already dropped 11.6, 11.10 and 11.11
+  (DEC-75, DEC-76), and moved 11.7–11.9 to issues #21–#23 (DEC-77).)
 - **What:** Present the features below (11.2–11.5 and 11.12) with a one-line value and a cost estimate. Ask the
   owner to choose which ones to pursue and in what order, and to drop or add items. Record the order in this file, and
   remove dropped items from it: the decision log keeps the record (DEC-76).
@@ -45,6 +56,7 @@ other files refer to them.
 
 ### 11.2 — Report-less Recalbox mode
 - [ ] Done
+- **Priority:** planned (3)
 - **What:** Today the user must first generate `missing_bios_report.txt` on the device. Research whether
   Recalbox keeps its BIOS definitions (names, paths, MD5s) in a file BECK could read directly over SMB or a
   local path, for each supported version, and whether that file is reachable from the shares. If it is, add a
@@ -57,6 +69,7 @@ other files refer to them.
 
 ### 11.3 — Per-system summary
 - [ ] Done
+- **Priority:** planned (4)
 - **What:** In `beck report` and the `check` summary, group entries by system or folder, showing counts of
   satisfied, still missing (required) and still missing (optional). Add the same grouping to the JSON output as
   a **new field** (allowed within schema v1; see the 06.7 compatibility promise).
@@ -67,6 +80,7 @@ other files refer to them.
 
 ### 11.4 — Zip-aware matching
 - [ ] Done
+- **Priority:** planned (2)
 - **What:** Users often keep BIOS files inside `.zip` archives. When scanning, also hash the members of `.zip`
   files with the standard library `zipfile`.
   - If a **member** matches, extract that member to a temporary file and upload it under the target name.
@@ -80,6 +94,7 @@ other files refer to them.
 
 ### 11.5 — Multiple sources and filters
 - [ ] Done
+- **Priority:** later
 - **What:** `--source` can be repeated (and `source.dirs` becomes a list in the config). Add `--include` /
   `--exclude` glob filters. Duplicates across sources follow the existing duplicate rule.
 - **Files:** `src/beck/cli.py`, `src/beck/config.py`, `src/beck/hashing.py`, tests, docs
@@ -89,6 +104,7 @@ other files refer to them.
 
 ### 11.12 — Export: copy BIOS files from the target to this machine
 - [ ] Done
+- **Priority:** planned (1)
 - **Requested by the owner (2026-11-05):** a way to get the BIOS files on the target system and copy them to the machine running BECK,
   for example as a backup or to move to another device. It's the opposite direction to `check`. The owner decided how it works
   (DEC-57, DEC-60), so this feature's research and decision sub-steps are done.
