@@ -107,6 +107,27 @@ def _file_items(files: Iterable[LocalFile]) -> list[dict[str, Any]]:
     ]
 
 
+def _matched_items(files: Iterable[LocalFile]) -> list[dict[str, Any]]:
+    """Like ``_file_items``, for a list that can hold a member of a zip archive (DEC-78)."""
+    return [
+        {
+            "path": file.relative.as_posix(),
+            "member": file.member,
+            "md5": file.md5,
+            "size": file.size,
+        }
+        for file in files
+    ]
+
+
+def _scanned_items(files: Iterable[LocalFile]) -> list[dict[str, Any]]:
+    """What ``beck scan`` found: members of zip archives, and each archive's contents MD5."""
+    return [
+        {**item, "contents_md5": file.contents_md5}
+        for item, file in zip(_matched_items(files), files, strict=True)
+    ]
+
+
 def _error_items(errors: Iterable[ItemError]) -> list[dict[str, str]]:
     return [
         {"code": error.code, "message": redact(error.message), "item": error.item}
@@ -123,6 +144,7 @@ def _upload_items(result: RunResult) -> list[dict[str, Any]]:
     return [
         {
             "source": upload.source.relative.as_posix(),
+            "member": upload.source.member,
             "target": upload.target.as_posix(),
             "md5": upload.source.md5,
             "status": upload_status(upload, result),
@@ -299,18 +321,24 @@ class JsonRenderer:
             "incorrect": _incorrect_items(plan.incorrect),
             "still_missing": still_missing,
             "not_a_zip": [
-                {"path": upload.source.relative.as_posix(), "target": upload.target.as_posix()}
+                {
+                    "path": upload.source.relative.as_posix(),
+                    "member": upload.source.member,
+                    "target": upload.target.as_posix(),
+                }
                 for upload in plan.not_a_zip
             ],
             "duplicates": [
                 {
                     "path": duplicate.file.relative.as_posix(),
+                    "member": duplicate.file.member,
                     "of": duplicate.of.relative.as_posix(),
+                    "of_member": duplicate.of.member,
                     "md5": duplicate.file.md5,
                 }
                 for duplicate in plan.duplicates
             ],
-            "already_filled": _file_items(plan.already_filled),
+            "already_filled": _matched_items(plan.already_filled),
             "unmatched": _file_items(plan.unmatched),
             "unreadable": _unreadable_items(self.unreadable_items),
             "deleted": _file_items(result.deleted),
@@ -378,7 +406,7 @@ class JsonRenderer:
         return {
             **_header(self.command, ok=not errors),
             "summary": {"files": len(scanned.files), "unreadable": len(scanned.unreadable)},
-            "files": _file_items(scanned.files),
+            "files": _scanned_items(scanned.files),
             "unreadable": _unreadable_items(scanned.unreadable),
             "errors": errors,
         }

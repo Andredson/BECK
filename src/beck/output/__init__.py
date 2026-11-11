@@ -12,7 +12,7 @@ import re
 import sys
 from typing import TextIO
 
-from beck.models import ExportResult, Plan, PlannedUpload, RemoteFile, RunResult
+from beck.models import ExportResult, LocalFile, Plan, PlannedUpload, RemoteFile, RunResult
 
 LOGGER_NAME = "beck"
 NOT_ABOUT_AN_UPLOAD = {"delete_failed", "unsafe_path"}
@@ -118,9 +118,15 @@ def export_status(file: RemoteFile, result: ExportResult) -> str:
     return "failed"
 
 
+def local_name(file: LocalFile) -> str:
+    """How people see a local file: its path, or for a member of a zip, the member and archive."""
+    path = file.relative.as_posix()
+    return path if file.member is None else f"{file.member} (in {path})"
+
+
 def not_a_zip_warning(upload: PlannedUpload) -> str:
     """Why a file whose MD5 a ``.zip`` target lists wasn't copied there (see ``matcher.plan``)."""
-    source = upload.source.relative.as_posix()
+    source = local_name(upload.source)
     return (
         f"{source} has an MD5 listed for {upload.target}, but it isn't a zip archive, so it wasn't "
         "copied: Recalbox can only read a zip archive there."
@@ -129,7 +135,7 @@ def not_a_zip_warning(upload: PlannedUpload) -> str:
 
 def extension_warning(upload: PlannedUpload) -> str:
     """The warning for an upload that changes an extension, for people and machines alike."""
-    source = upload.source.relative.as_posix()
+    source = local_name(upload.source)
     return (
         f"{source} has a different extension from {upload.target}. The MD5 matches, but an "
         "emulator may not be able to read it."

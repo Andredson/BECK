@@ -176,6 +176,7 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-64 | An upload whose size, or with `--verify` whose MD5, doesn't match has the status `failed`, not `uploaded` with an `error`. *(2026-11-06, step 07.7)* |
 | DEC-70 | **From 1.0, `beck` needs a command.** With none, it's a usage error with exit code 2, and nothing runs; with `--json`, it prints the rejected-command document, with `command: null`. Until then it ran `check` and printed a hint. *(2026-11-11, step 10.11)* |
 | DEC-74 | **A file that isn't a zip archive never fills a `.zip` target** (a fix, in `1.0.1`): the target stays missing, and `beck --json check` lists the file in a new `not_a_zip` list, with `path` and `target`. Recalbox hashes a `.zip` target by the files inside it, so 1.0.0 could upload a single file, such as `neocd.bin`, as `neocdz.zip`, which Recalbox can't open. *(2026-11-11, fix after the 11.2 research on the VM)* |
+| DEC-78 | **Zip-aware matching (step 11.4).** A zip archive fills a `.zip` target when its contents MD5 is listed: the MD5 of its members' bytes in the order of their names, sorted byte by byte, as Recalbox computes it. A file inside a zip fills any other target by its own MD5, through a temporary copy. Fixed limits of 1,000 members and 512 MiB unpacked per archive, not configurable. `--json` gets a `member` field wherever a local file can be a member, and `beck scan` a `contents_md5`. *(2026-11-11, step 11.4)* |
 
 ### CI/CD, security, and release
 

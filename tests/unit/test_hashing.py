@@ -64,7 +64,8 @@ def test_a_zip_archive_is_known_by_its_content_not_its_name(tmp_path: Path) -> N
     write(tmp_path / "raw-named.zip", os.urandom(64))
     write(tmp_path / "raw.bin", os.urandom(64))
 
-    is_zip = {file.relative.as_posix(): file.is_zip for file in scan(tmp_path).files}
+    files = scan(tmp_path).files
+    is_zip = {file.relative.as_posix(): file.is_zip for file in files if file.member is None}
 
     assert is_zip == {"archive-named.bin": True, "raw-named.zip": False, "raw.bin": False}
 

@@ -79,7 +79,12 @@ other files refer to them.
 - **Commit message:** `feat(output): group results by system`
 
 ### 11.4 — Zip-aware matching
-- [ ] Done
+- [x] Done (2026-11-11, DEC-78: the owner chose to match both ways. A zip archive fills a `.zip` target by its contents MD5, worked out
+  as Recalbox's `Zip::Md5Composite` does: members' bytes in the order of their names, sorted byte by byte. A member fills any other
+  target, through a temporary copy. Differences from this step: the limits are fixed, 1,000 members and 512 MiB unpacked per archive,
+  not configurable, by the owner's choice; the archive's own MD5 still fills a `.zip` target as before; `--json` gets `member` fields and
+  `beck scan` a `contents_md5`; and `cli.py`, `output/`, the schemas and the docs changed too. Tested with unit tests and on the Samba test
+  server. Not tested: a real Recalbox scanning an archive BECK uploaded, and names in Info-ZIP's Unicode path field.)
 - **Priority:** planned (2)
 - **What:** Users often keep BIOS files inside `.zip` archives. When scanning, also hash the members of `.zip`
   files with the standard library `zipfile`.

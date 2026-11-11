@@ -74,7 +74,7 @@ renders.
 | `cli.py` | Connecting the parts; turning a `BeckError` into a message and an exit code | Contain matching or parsing logic |
 | `errors.py` | `BeckError` and its subclasses, each with a fixed exit code | Print anything |
 | `models.py` | Frozen, typed data passed between modules. Remote paths are relative to the BIOS root | Do I/O |
-| `hashing.py` | Chunked MD5, and a recursive, sorted scan that skips hidden files | Use the network |
+| `hashing.py` | Chunked MD5, and a recursive, sorted scan that skips hidden files. It reads each zip archive's members, within fixed limits (DEC-78) | Use the network |
 | `matcher.py` | Deciding which file fills which target (rules below) | Do any I/O |
 | `executor.py` | Creating folders and uploading through a `Transport`; recording a failed item and continuing | Delete local files, or know which transport it's using |
 | `exporter.py` | `beck export`: listing a `Transport`, reading its `.rom` and `.bin` files, and creating local copies that don't exist yet | Write to the target, replace or delete a local file, or follow a link in the destination |
@@ -95,8 +95,12 @@ renders.
 - A file already on the target is kept, and `--overwrite` replaces it (DEC-61). The executor checks this, because the matcher does no I/O.
 - The plan doesn't depend on input order.
 - An upload that changes the file's extension still happens. The executor lists it, and the output warns about it.
-- Only a zip archive fills a `.zip` target, because Recalbox hashes those by the files inside (DEC-74). Any other file with a listed MD5
-  goes in `Plan.not_a_zip`, and the target stays missing. The scan tells a zip archive by its content, so the matcher does no I/O.
+- Only a zip archive fills a `.zip` target, because Recalbox hashes those by the files inside (DEC-74): by its `contents_md5`, the MD5 of
+  its members in name order, or by its own MD5 (DEC-78). Any other file with a listed MD5 goes in `Plan.not_a_zip`, and the target stays
+  missing. The scan reads each zip archive, so the matcher does no I/O.
+- A member of a zip archive is a `LocalFile` with `member` set, and fills a target that isn't a zip like any file. A plain file wins over
+  an identical member. Members are never unmatched: an archive is, if neither it nor anything in it matched. The executor uploads a member
+  through a temporary copy, and `--move` deletes an archive only if the archive itself was uploaded.
 
 ## Rules
 

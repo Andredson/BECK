@@ -302,7 +302,8 @@ def _run_check(
                 renderer.incorrect(incorrect)
             renderer.no_files(source)
             return ended_early(entries, rejected)
-        renderer.files_found(len(scanned.files))
+        # Files on disk: a member of a zip isn't one, and files_scanned keeps its meaning (DEC-78).
+        renderer.files_found(sum(1 for file in scanned.files if file.member is None))
 
         built = plan(entries, scanned.files, replace_incorrect=args.overwrite, rejected=rejected)
         _log_plan(built)

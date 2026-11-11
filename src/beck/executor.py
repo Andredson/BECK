@@ -1,17 +1,44 @@
 # SPDX-License-Identifier: GPL-3.0-only
 """Apply a Plan through a Transport. Only this module deletes local files, and only on request."""
 
-from pathlib import PurePosixPath
+import tempfile
+import zipfile
+from pathlib import Path, PurePosixPath
 
 from beck.errors import TransportError
-from beck.hashing import md5_bytes
+from beck.hashing import ZIP_ERRORS, md5_bytes
 from beck.models import ItemError, LocalFile, Plan, PlannedUpload, RunResult
 from beck.transports.base import Transport
 
 
 def _changes_extension(upload: PlannedUpload) -> bool:
     """Whether the file goes up under another extension. Case alone isn't a different format."""
-    return upload.source.relative.suffix.casefold() != upload.target.suffix.casefold()
+    return PurePosixPath(upload.source.name).suffix.casefold() != upload.target.suffix.casefold()
+
+
+def _upload(transport: Transport, upload: PlannedUpload) -> None:
+    """Copy the file, or a member of a zip archive through a temporary copy (DEC-78).
+
+    The temporary folder goes away with the ``with``. A member is copied up to the size the scan
+    found, and one byte more, so that an archive changed since then can't fill the disk.
+    """
+    source = upload.source
+    if source.member is None:
+        transport.upload(source.path, upload.target)
+        return
+    shown = f"{source.member} in {source.relative}"
+    with tempfile.TemporaryDirectory(prefix="beck-") as folder:
+        extracted = Path(folder) / "member"
+        try:
+            with (
+                zipfile.ZipFile(source.path) as archive,
+                archive.open(source.member) as member,
+                extracted.open("wb") as out,
+            ):
+                out.write(member.read(source.size + 1))
+        except (*ZIP_ERRORS, KeyError) as e:  # KeyError: the member is gone since the scan
+            raise TransportError(f"Couldn't read {shown}: {e}") from e
+        transport.upload(extracted, upload.target)
 
 
 def _damage(upload: PlannedUpload, transport: Transport, *, verify: bool) -> ItemError | None:
@@ -40,18 +67,22 @@ def _damage(upload: PlannedUpload, transport: Transport, *, verify: bool) -> Ite
 
 def _files_to_move(plan: Plan, done: set[PlannedUpload]) -> list[LocalFile]:
     """Files uploaded to all their targets. What's done has already been checked on the target."""
-    files = dict.fromkeys(upload.source for upload in plan.uploads)
+    # A member is never deleted on its own, and its archive only once the archive itself was
+    # uploaded, and every upload from it, member or not, is done.
+    files = dict.fromkeys(upload.source for upload in plan.uploads if upload.source.member is None)
     return [
         file
         for file in files
-        if all(upload in done for upload in plan.uploads if upload.source == file)
+        if all(upload in done for upload in plan.uploads if upload.source.path == file.path)
     ]
 
 
 def _files_to_clean(plan: Plan) -> list[LocalFile]:
     """Files that matched nothing, except one that's valid for a target listed as incorrect."""
     valid_for_incorrect = {md5 for entry in plan.incorrect for md5 in entry.md5s}
-    return [file for file in plan.unmatched if file.md5 not in valid_for_incorrect]
+    return [
+        file for file in plan.unmatched if not {file.md5, file.contents_md5} & valid_for_incorrect
+    ]
 
 
 def _delete(file: LocalFile, errors: list[ItemError]) -> bool:
@@ -119,7 +150,7 @@ def execute(
             if dry_run:
                 skipped.append(upload)
             else:
-                transport.upload(upload.source.path, upload.target)
+                _upload(transport, upload)
                 damage = _damage(upload, transport, verify=verify)
                 if damage is not None:
                     errors.append(damage)

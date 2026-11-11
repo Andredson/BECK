@@ -119,8 +119,8 @@ Error: Refused <name>: <why>
 
 **Exit code 0:** it's not an error, and your file stays where it is.
 
-- **Cause:** its MD5 isn't one the report asks for. BECK doesn't look at names, only at what's inside. It may be a different dump or region, or a different version. It may also be inside a `.zip`, because BECK compares the file itself and doesn't look inside. The report may just not want it, because nothing asks for that file.
-- **Fix:** see what you have with `beck scan`, and what's wanted in the report's `Possible MD5 List`. Unzip it if the report wants the file inside. Some targets are zips themselves, such as `neogeo.zip`. For those, Recalbox lists the MD5 of the files inside the zip, not the zip's own, so BECK can't match a zip to them yet: copy it to your Recalbox yourself, and scan the BIOS files there to check it.
+- **Cause:** its MD5 isn't one the report asks for. BECK doesn't look at names, only at what's inside. It may be a different dump or region, or a different version. The report may just not want it, because nothing asks for that file. For a zip archive, BECK also looks inside it, and the archive is only listed here if nothing in it matched either.
+- **Fix:** see what you have with `beck scan`, and what's wanted in the report's `Possible MD5 List`. Some targets are zips themselves, such as `neogeo.zip`. For those, Recalbox lists the MD5 of the files inside the zip, in the order of their names, and `beck scan` shows that for each archive as its `(contents)` line. If yours differs, the archive holds other files, or other versions of them. Archives in other formats, such as `.7z`, aren't read: extract them first.
 
 ### A file is kept for another reason
 
@@ -174,8 +174,11 @@ Error: The source folder <folder> doesn't exist
 
 The first and last are **exit code 0**, and the second is **exit code 2,** `usage`.
 
-- **Cause:** the folder is empty or isn't there, or a file is unreadable or is a broken link. Hidden files and folders are skipped.
-- **Fix:** create the folder and put your files there, or change `dir` under `[source]`. `beck scan` shows what BECK finds.
+- **Cause:** the folder is empty or isn't there, or a file is unreadable or is a broken link. Hidden files and folders are skipped. For a zip
+  archive, the reason can be `its members weren't read, because ...`: the archive is damaged, or over BECK's limits of 1,000 members and 512
+  MiB unpacked, which protect against a "zip bomb". The archive itself can still match, by its own MD5, but nothing inside it is used.
+- **Fix:** create the folder and put your files there, or change `dir` under `[source]`. `beck scan` shows what BECK finds. For an archive
+  over the limits, extract the BIOS files you need from it.
 
 ### A name looks odd
 

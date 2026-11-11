@@ -144,7 +144,7 @@
       "type": "array",
       "description": "Local files that matched, but other files fill all their targets.",
       "items": {
-        "$ref": "#/$defs/file"
+        "$ref": "#/$defs/matched_file"
       }
     },
     "unmatched": {
@@ -181,6 +181,7 @@
       "type": "object",
       "required": [
         "source",
+        "member",
         "target",
         "md5",
         "status",
@@ -192,6 +193,13 @@
         "source": {
           "type": "string",
           "description": "The local file, relative to the source folder."
+        },
+        "member": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The name inside the zip archive at path, for a file found in one (added in 1.1.0); null for a plain file."
         },
         "target": {
           "type": "string",
@@ -305,15 +313,31 @@
       "type": "object",
       "required": [
         "path",
+        "member",
         "of",
+        "of_member",
         "md5"
       ],
       "properties": {
         "path": {
           "type": "string"
         },
+        "member": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The name inside the zip archive at path, for a file found in one (added in 1.1.0); null for a plain file."
+        },
         "of": {
           "type": "string"
+        },
+        "of_member": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The member name of the file in of, if it's in a zip archive (added in 1.1.0)."
         },
         "md5": {
           "$ref": "#/$defs/md5"
@@ -383,14 +407,50 @@
       "type": "object",
       "required": [
         "path",
+        "member",
         "target"
       ],
       "properties": {
         "path": {
           "type": "string"
         },
+        "member": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The name inside the zip archive at path, for a file found in one (added in 1.1.0); null for a plain file."
+        },
         "target": {
           "type": "string"
+        }
+      }
+    },
+    "matched_file": {
+      "type": "object",
+      "required": [
+        "path",
+        "member",
+        "md5",
+        "size"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "member": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The name inside the zip archive at path, for a file found in one (added in 1.1.0); null for a plain file."
+        },
+        "md5": {
+          "$ref": "#/$defs/md5"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
         }
       }
     }

@@ -41,7 +41,7 @@ A user asks why a BIOS file is missing, or asks you to check or copy their BIOS 
    | What you see | Likely reason | What to tell them |
    |---|---|---|
    | In `still_missing`, and a file with the same name in `unmatched` | Right name, wrong content: another dump, region or version. BECK goes by the MD5, not the name. | Compare its `md5` with the entry's `md5s`. Their file isn't the one Recalbox wants. |
-   | In `still_missing`, and a `.zip` in `unmatched` | It may be inside the zip. BECK compares the file itself, and doesn't look inside. | Unzip it and run again, unless the target is itself a zip. A `.zip` target needs the zip, which they can copy over themselves. |
+   | In `still_missing`, and a `.zip` in `unmatched` | BECK looked inside it too, and nothing in it matched. For a `.zip` target, its `contents_md5` in `beck --json scan` isn't on the list: it holds other files or versions. | Compare `beck --json scan` with the entry's `md5s`. An archive in `unreadable` wasn't opened: damaged, or over the limits. |
    | In `still_missing`, and in `not_a_zip` | The target is a `.zip`, and their file is one of the files inside it, on its own. Recalbox can't read it under the zip's name. | They need that BIOS as a zip archive. |
    | In `still_missing`, and another file in `unmatched` | The name may differ, but so does the content, so it isn't this file. | They don't have a file with this content in that folder. |
    | In `still_missing`, and nothing else fits | There's no copy in that folder. | Check the folder. `beck --json scan --source <folder>` lists what BECK sees, and hidden files are skipped. |
