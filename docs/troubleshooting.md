@@ -255,12 +255,13 @@ Error: <file> isn't valid TOML: <where>
 
 ```text
 beck: error: unrecognized arguments: <what you typed>
+beck: error: the following arguments are required: <command>
 Error: The target must start with smb://. Use smb://[user@]host[:port]/share[/sub/path]
 Error: The target can't contain a password: anyone can read a command line. Use smb://[user@]host[:port]/share[/sub/path], and BECK asks for the password, or set BECK_SMB_PASSWORD.
 Error: Unknown frontend '<name>'. Known frontends: recalbox
 ```
 
-**Exit code 2,** `usage`. Check the spelling, and [the guide to the command](cli.md). If you typed a password into a command, it may be in your shell's history, so change it.
+**Exit code 2,** `usage`. Check the spelling, and [the guide to the command](cli.md). The second means you ran `beck` with no command: since 1.0, it needs one, such as `beck check`, which is what plain `beck` used to run. If you typed a password into a command, it may be in your shell's history, so change it.
 
 ## Other exit codes
 

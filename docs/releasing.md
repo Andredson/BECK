@@ -66,10 +66,10 @@ Each GitHub Release has a software bill of materials: a [CycloneDX](https://cycl
 
 ```sh
 mkdir -p sbom
-trivy fs --format cyclonedx --skip-dirs .venv --skip-files requirements.txt --output "sbom/beck-bios-$(uv version --short).cdx.json" .
+trivy fs --format cyclonedx --skip-dirs .venv --output "sbom/beck-bios-$(uv version --short).cdx.json" .
 ```
 
-- **What's in it:** the runtime packages in `uv.lock`, with their exact versions, and `beck-bios` itself. That's the same list as `requirements.txt`, which it skips so as not to count it twice.
+- **What's in it:** the runtime packages in `uv.lock`, with their exact versions, and `beck-bios` itself.
 - **Dev dependencies are left out.** They never reach a user's computer, and Trivy has no way to label them as dev, so including them would make them look like part of BECK.
 - **It goes in `sbom/`, not `dist/`.** `twine check dist/*` fails on anything that isn't a package, and the upload to PyPI takes the whole folder.
 - **What it doesn't have:** licenses, because `uv.lock` doesn't hold them. Its top-level name is `.`, from the path Trivy was given, so the file's name and the `beck-bios` entry are what say what it describes.
@@ -114,3 +114,15 @@ trivy fs --format cyclonedx --skip-dirs .venv --skip-files requirements.txt --ou
 - **A publish job failed:** read why. If it's a setting, such as the trusted publisher or the environment, fix that and re-run the failed jobs.
 - **The GitHub Release failed, after publishing:** the package is out. Re-run that job.
 - **A published version is wrong:** you can't replace it. Publish a fix as a new version, and [yank the bad one](https://pypi.org/help/#yanked) on PyPI if it could harm someone.
+
+## Reaching 1.0
+
+`1.0.0` says BECK is stable: from then on, a breaking change needs a major version. It's released through [the checklist](#the-release-checklist), with a release candidate first, once every criterion below is met and the owner signs off ([step 10.11](../roadmap/10-packaging-and-release.md#1011--define-and-reach-10)). The status was checked on 2026-11-11.
+
+- [x] **Stages 01–09 are done, and 10.1–10.10.** Step 10.12 closes stage 10 after 1.0. Defects D1–D16 are fixed, as [the assessment](../roadmap/00-assessment.md#defects) records. D16 was only suspected, so the device run below is what confirms it.
+- [x] **A real report from the current stable Recalbox is a fixture.** `recalbox-10.1.1/default-install`, from 10.1.1 in a VM. Recalbox 10.1 has been the stable release since 2026-09-04. Check again before the final tag that no newer stable version is out.
+- [ ] **An end-to-end run with the installed package on a real device has passed.** The owner installs `1.0.0rc1` from TestPyPI, as in [step 6 of the checklist](#the-release-checklist), and runs `beck check --dry-run`, then `beck check`, on real Recalbox hardware.
+- [x] **The `--json` schema version 1 is frozen.** [The compatibility promise](json-output.md#the-compatibility-promise) only lets fields be added, and `V1_FIELDS` in `tests/unit/test_json_contract.py` records what version 1 holds.
+- [x] **No open issue is labelled `data-loss`.** Check again before the final tag: `gh issue list -R Andredson/BECK --label data-loss --state open`.
+- [x] **Removed:** `check_bios.py`, `requirements.txt` and its CI check, and running `beck` with no command, which is now a usage error with exit code 2 (DEC-70).
+- [x] **The message about the old `config/config.yml` stays,** in 1.0 and for one more minor version after it.

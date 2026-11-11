@@ -36,7 +36,6 @@ pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="needs sh and PO
 LOTS = 800
 LONG_NAME = "a-file-that-matches-nothing-".ljust(200, "x")
 GOOD = os.urandom(64)
-SHIM = Path(__file__).resolve().parents[2] / "check_bios.py"
 FULL_DISK = Path("/dev/full")
 
 MODES = {"human": (), "json": ("--json",)}
@@ -338,20 +337,6 @@ def test_a_failing_stderr_changes_nothing(stderr: str, source: Path, device: Pat
     assert b"Final result: 1/1" in good.stdout
     assert (device / "good.bin").read_bytes() == GOOD
     assert rejected.returncode == 2
-
-
-@pytest.mark.parametrize("stderr", ["full disk", "closed"])
-def test_the_shim_notice_cannot_change_the_run(stderr: str, source: Path, device: Path) -> None:
-    streams: dict[str, Any] = {"close": "2>&-"} if stderr == "closed" else {"stderr": "full disk"}
-
-    result = run_process(
-        [sys.executable, str(SHIM), "--json", "--source", str(source), "--target-dir", str(device)],
-        **streams,
-    )
-
-    assert result.returncode == 0
-    assert json.loads(result.stdout)["ok"] is True, "print(file=None) would write the notice here"
-    assert (device / "good.bin").read_bytes() == GOOD
 
 
 # A prompt that can't get an answer

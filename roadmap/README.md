@@ -97,7 +97,7 @@ Don't edit an existing row. Add a new row that says `Supersedes DEC-NN`, mark th
 - **A decision is never edited.** A change is a new DEC row that says *Supersedes DEC-NN*
   ([how](#changing-a-decision)).
 - **There's no scheduled review of the whole roadmap,** by the owner's choice (2026-11-09). Python end-of-life dates are checked in
-  the [monthly maintenance routine](../docs/maintenance.md#6-python-versions).
+  the [monthly maintenance routine](../docs/maintenance.md#5-python-versions).
 
 ## Decision log
 
@@ -170,6 +170,7 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-65 | The release workflow passes built files between jobs with `actions/download-artifact`, pinned by SHA, so what's published is exactly what was built and checked. *(2026-11-06, step 10.6)* |
 | DEC-66 | `actionlint` is run by hand with `uvx` when a workflow changes, and isn't in CI. *(2026-11-06, step 10.6)* |
 | DEC-64 | An upload whose size, or with `--verify` whose MD5, doesn't match has the status `failed`, not `uploaded` with an `error`. *(2026-11-06, step 07.7)* |
+| DEC-70 | **From 1.0, `beck` needs a command.** With none, it's a usage error with exit code 2, and nothing runs; with `--json`, it prints the rejected-command document, with `command: null`. Until then it ran `check` and printed a hint. *(2026-11-11, step 10.11)* |
 
 ### CI/CD, security, and release
 
@@ -198,6 +199,7 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-39 | Stage PRs are merged with a merge commit, so step commits stay on `main`. |
 | DEC-51 | Step 03.13 and stage 03's acceptance are signed off on a Recalbox 10.1.1 **VM**, not a real device. Later real-device checks (04.1, the stage 10 release check) still apply. *(2026-11-04, step 03.13)* |
 | DEC-52 | Step 04.1 runs on the Recalbox 10.1.1 **VM**, not a real device. The real-device run moves to the release check in step 10.11. *(2026-11-04, step 04.1)* |
+| DEC-71 | Step 10.11 is three commits, not one (an exception to DEC-14's one commit per step): the removals and the 1.0 criteria as `feat!:`, so the changelog names each removal, then `chore(release): 1.0.0rc1`, then `chore(release): 1.0.0` after the owner's run on a real device. *(2026-11-11, step 10.11)* |
 
 ## Verified facts behind some decisions (checked 2026-11-02)
 

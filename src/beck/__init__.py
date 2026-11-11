@@ -5,5 +5,5 @@ import importlib.metadata
 
 try:
     __version__ = importlib.metadata.version("beck-bios")
-except importlib.metadata.PackageNotFoundError:  # run from a clone by check_bios.py
+except importlib.metadata.PackageNotFoundError:  # run from src/ without being installed
     __version__ = "0+unknown"

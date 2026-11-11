@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-02
-- **Decisions covered:** DEC-14, DEC-16, DEC-20, DEC-30, DEC-31, DEC-39, DEC-51, DEC-52
+- **Decisions covered:** DEC-14, DEC-16, DEC-20, DEC-30, DEC-31, DEC-39, DEC-51, DEC-52, DEC-71
 
 ## Context
 The roadmap is executed one step at a time, often by AI agents. The process has to keep each change small and
@@ -73,3 +73,14 @@ leaves the machine (see DEC-43 in [ADR-0002](0002-ai-agent-support.md)).
   - *Wait until a device is available*: keeps stage 04 blocked. Not chosen.
 - **Consequences:** The transport's first real-hardware run is late, so a problem found in step 10.11 means reworking
   it close to release. The VM runs the same Recalbox software, so the main gap is real network conditions.
+
+## DEC-71 — Step 10.11 is three commits
+- **Date:** 2026-11-11 (step 10.11).
+- **Context:** Step 10.11 lists one commit, `chore(release)!: 1.0.0`. A final release needs a release candidate first, which needs its own release
+  commit, and the changelog would show the removals only as "Breaking: release: 1.0.0", because it's made from commit messages (DEC-20).
+- **Decision:** An exception to DEC-14's one commit per step, for this step only: `feat!: remove check_bios.py, requirements.txt and the bare beck
+  alias`, with the 1.0 criteria; then `chore(release): 1.0.0rc1`; then `chore(release): 1.0.0`, after the owner's run of the release candidate
+  on a real device.
+- **Alternatives considered:** *One commit, as the step says, with the release candidate done separately anyway:* the release notes would have to
+  explain the removals. Not chosen. The agent recommended three commits, and the owner gave no further reason.
+- **Consequences:** The step's box is ticked in the last of them, once `1.0.0` is on PyPI.

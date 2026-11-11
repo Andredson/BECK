@@ -1,7 +1,7 @@
 # Architecture
 
-**Status:** this is how BECK works since [step 04.13](../roadmap/04-architecture-refactor.md). `check_bios.py` is only a
-shim that runs `beck.cli.main`. [`tests/unit/test_architecture.py`](../tests/unit/test_architecture.py) checks the rules
+**Status:** this is how BECK works since [step 04.13](../roadmap/04-architecture-refactor.md).
+[`tests/unit/test_architecture.py`](../tests/unit/test_architecture.py) checks the rules
 below on the source. Why it's built this way: [ADR-0006](adr/0006-core-and-adapters.md).
 
 BECK reads the report of missing BIOS files from a device, hashes the user's local files, matches the two by MD5, and

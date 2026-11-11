@@ -642,7 +642,7 @@ def test_git_still_ignores_the_old_file_which_may_hold_a_password() -> None:
     assert result.returncode == 0, "config/config.yml must be listed in .gitignore"
 
 
-@pytest.mark.parametrize("name", ["pyproject.toml", "requirements.txt", "uv.lock"])
+@pytest.mark.parametrize("name", ["pyproject.toml", "uv.lock"])
 def test_pyyaml_is_gone(name: str) -> None:
     assert "pyyaml" not in (ROOT / name).read_text(encoding="utf-8").lower()
 

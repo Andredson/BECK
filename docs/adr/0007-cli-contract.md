@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-05
-- **Decisions covered:** DEC-59, DEC-62, DEC-64. The rest of the contract follows from DEC-02, DEC-05, DEC-17, DEC-23 and DEC-54 (rows in the
+- **Decisions covered:** DEC-59, DEC-62, DEC-64, DEC-70. The rest of the contract follows from DEC-02, DEC-05, DEC-17, DEC-23 and DEC-54 (rows in the
   [decision log](../../roadmap/README.md#decision-log)).
 
 ## Context
@@ -196,3 +196,18 @@ The one-document-on-stdout rule and the `--json` no-prompt rule came from the ro
 - **Alternatives considered:** *Keep `uploaded` with an `error`:* no change to the guide's wording, but a damaged file would count as satisfied, and human output would say `copied` next to an error. Not
   chosen. The agent recommended `failed`, and the owner gave no further reason.
 - **Consequences:** The damaged file stays on the device, because BECK has no way to delete there. A later run would keep it, so the message says to use `--overwrite`.
+
+## DEC-70 — `beck` needs a command
+- **Date:** 2026-11-11 (step 10.11).
+- **Context:** Before 1.0, `beck` with no command ran `check` and printed a hint that this was going away. Step 10.11 removes that for 1.0, which left
+  open what `beck` alone should do then.
+- **Decision:** `beck` with no command is a usage error: argparse says `the following arguments are required: <command>`, the exit code is 2, and
+  nothing runs. With `--json`, it prints the rejected-command document, with `command: null`, like any command line BECK can't parse.
+- **Alternatives considered:**
+  - *Print the help, and exit with 0:* friendlier for someone typing it, but a script that relied on bare `beck` running `check` would do nothing
+    and report success. Not chosen.
+  - *Print the help, and exit with 2:* shows more, and still fails. Not chosen.
+
+  The agent recommended the usage error, and the owner gave no further reason.
+- **Consequences:** A breaking change, in 1.0. A script that still runs bare `beck` fails loudly, and the troubleshooting guide says to use
+  `beck check`. No schema changes: the rejected-command document already existed.

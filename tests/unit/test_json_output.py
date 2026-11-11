@@ -812,16 +812,20 @@ def test_json_works_after_the_command_too(
     assert document(capsys)["command"] == "check"
 
 
-def test_no_command_counts_as_check_and_the_hint_stays_on_stderr(
+def test_no_command_is_a_usage_error_document(
     app: Path, server: FakeSMBServer, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    # Until 1.0, bare `beck --json` ran check (DEC-70).
     server.files[("bios", "missing_bios_report.txt")] = make_report_text([]).encode()
 
-    assert cli.main(["--json"], base_dir=app) == 0
+    assert cli.main(["--json"], base_dir=app) == 2
 
     out = capsys.readouterr()
-    assert json.loads(out.out)["command"] == "check"
-    assert "beck check" in out.err
+    document = json.loads(out.out)
+    assert document["command"] is None
+    assert document["ok"] is False
+    assert [error["code"] for error in document["errors"]] == ["usage"]
+    assert "<command>" in document["errors"][0]["message"]
 
 
 def test_colors_never_reach_the_document(

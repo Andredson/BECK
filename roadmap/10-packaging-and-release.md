@@ -168,7 +168,7 @@ flowchart LR
 - **Commit message:** `chore(release): <version>rc1`
 
 ### 10.10 — First PyPI release
-- [ ] Done
+- [x] Done (2026-11-11: `beck-bios` 0.5.0 is on [PyPI](https://pypi.org/project/beck-bios/), published by the owner's `v0.5.0` tag on `main` (`96e202e`). The *Release* run's first attempts failed at the token exchange with `invalid-publisher`, so PyPI's publisher didn't exist or didn't match after all, though 10.1 recorded it as confirmed. Nothing was published until the owner fixed it on pypi.org, and attempt 4 passed. PyPI's wheel and source archive each have an attestation naming `Andredson/BECK`, `release.yml` and `pypi`. Their SHA-256s match the GitHub Release's files, and the Release, a final one marked latest, has the generated notes and the CycloneDX SBOM, which lists `pyasn1` 0.6.5. In an empty home folder with a bare environment, `uv tool install beck-bios==0.5.0`, `pipx install beck-bios==0.5.0` and the Verify command each gave `beck 0.5.0`, and `--help` worked. pipx failed first on this machine, because Ubuntu's Python 3.14 lacks `ensurepip` (the `python3.14-venv` package), so it was given a uv-managed Python 3.11. That's this machine, not BECK, and pipx itself ran through `uvx` with the cooldown. PyPI's page shows the new install and status text. Beyond the list above: the README now installs from PyPI, and `cliff.toml` skips the merge commits that bring `main` into a stage branch, which the changelog listed under 2023–2025 history. Not tested: an install on Windows or macOS, or a run against a device.)
 > BLOCKED (2026-11-06): follows 10.9.
 > Still BLOCKED (2026-11-07): 10.9 is done, but this needs 10.1's `pypi` environment and publisher, and should wait for `pyasn1` 0.6.5, which can be locked from 2026-11-10 06:33 UTC.
 > Still BLOCKED (2026-11-09): 10.1 is done. This waits only for `pyasn1` 0.6.5, locked in its own maintenance PR from 2026-11-10 06:33 UTC.
@@ -182,6 +182,7 @@ flowchart LR
 ### 10.11 — Define and reach 1.0
 - [ ] Done
 > BLOCKED (2026-11-06): follows 10.10, and needs a run on a real device with the installed package, by the owner.
+> Still BLOCKED (2026-11-11): 10.10 is done. The step is three commits (DEC-71), and this is the first: it writes [the criteria](../docs/releasing.md#reaching-10), and removes `check_bios.py`, `requirements.txt` and its CI check, and bare `beck`, which is now a usage error (DEC-70). Next, `chore(release): 1.0.0rc1`, which the owner tags. Then the owner runs it on a real device, and `chore(release): 1.0.0` follows.
 - **What:** Write the 1.0 criteria in `docs/releasing.md` and check them off:
   - stages 01–10 done; D1–D16 fixed;
   - a real fixture exists for the current stable Recalbox, and an end-to-end run with the **installed** package on

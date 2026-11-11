@@ -675,18 +675,21 @@ def test_unknown_arguments_exit_2_and_run_nothing(
     assert server.connections == []
 
 
-def test_no_command_works_as_check_with_a_hint_on_stderr(
+def test_no_command_is_a_usage_error_and_changes_nothing(
     server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    # Until 1.0, bare `beck` ran check (DEC-70).
     data = write(app / "bios" / "copy.bin")
     report(server, block("a.bin", md5_of(data)))
 
-    assert cli.main([], base_dir=app) == 0
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main([], base_dir=app)
 
-    assert server.files[("bios", "a.bin")] == data
+    assert exit_info.value.code == 2
+    assert ("bios", "a.bin") not in server.files
     captured = capsys.readouterr()
-    assert "Hint: use 'beck check'" in captured.err
-    assert "Hint" not in captured.out
+    assert "the following arguments are required: <command>" in captured.err
+    assert captured.out == ""
 
 
 def test_beck_check_has_no_hint(
@@ -833,8 +836,8 @@ def test_v_on_a_scan_logs_on_stderr_and_leaves_stdout_alone(
 
 @pytest.mark.parametrize(
     "arguments",
-    [["check", "--no-color"], ["--no-color", "check"], ["--no-color"]],
-    ids=["after", "before", "no-command"],
+    [["check", "--no-color"], ["--no-color", "check"]],
+    ids=["after", "before"],
 )
 def test_no_color_works_before_or_after_the_command(
     arguments: list[str],
@@ -1435,7 +1438,7 @@ def test_exit_0_help(capsys: pytest.CaptureFixture[str]) -> None:
 
 def test_exit_2_usage_error(server: FakeSMBServer, capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as exit_info:
-        cli.main(["--no-such-flag"])
+        cli.main(["check", "--no-such-flag"])
 
     assert exit_info.value.code == 2
     assert "unrecognized arguments: --no-such-flag" in capsys.readouterr().err
@@ -1537,7 +1540,7 @@ def test_the_exit_code_reaches_the_operating_system(tmp_path: Path, command: lis
 
 def test_a_usage_error_reaches_the_operating_system(tmp_path: Path) -> None:
     result = subprocess.run(
-        [sys.executable, "-m", "beck", "--no-such-flag"],
+        [sys.executable, "-m", "beck", "check", "--no-such-flag"],
         capture_output=True,
         text=True,
         check=False,

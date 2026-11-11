@@ -85,7 +85,7 @@ wheels = [
 
 [[package]]
 name = "beck-bios"
-version = "0.5.0"
+version = "1.0.0rc1"
 source = { editable = "." }
 dependencies = [
     { name = "platformdirs" },

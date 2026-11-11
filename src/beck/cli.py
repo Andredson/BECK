@@ -462,7 +462,10 @@ def _build_parser(*, json_errors: bool = False) -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version=f"beck {__version__}")
     _add_global_options(parser, on_a_command=False)
-    commands = parser.add_subparsers(dest="command", title="commands", metavar="<command>")
+    # Required (DEC-70): a script that still runs bare `beck` fails with 2, not running check.
+    commands = parser.add_subparsers(
+        dest="command", required=True, title="commands", metavar="<command>"
+    )
     for name, (summary, example) in COMMANDS.items():
         command = commands.add_parser(
             name,
@@ -576,13 +579,13 @@ def _main(argv: list[str] | None, base_dir: Path | None) -> int:
     except UsageError as error:
         write_rejected_command(str(error))
         return error.exit_code
-    logger = configure_logging(logging.DEBUG if args.verbose else logging.WARNING)
+    configure_logging(logging.DEBUG if args.verbose else logging.WARNING)
     _log.debug("BECK %s, Python %s", __version__, platform.python_version())
     renderer: Renderer
     if args.json:
         # The frontend can come from the settings file, which may be what fails.
         renderer = JsonRenderer(
-            args.command or "check",
+            args.command,
             frontend=args.frontend or DEFAULT_FRONTEND,
             dry_run=args.dry_run,
             action=args.config_action,
@@ -590,10 +593,8 @@ def _main(argv: list[str] | None, base_dir: Path | None) -> int:
     else:
         environ = {**os.environ, "NO_COLOR": "1"} if args.no_color else None
         # A list is what report and scan are for, so quiet is only for check.
-        quiet = args.quiet and args.command in (None, "check")
+        quiet = args.quiet and args.command == "check"
         renderer = ConsoleRenderer(environ=environ, quiet=quiet, progress=not args.verbose)
-    if args.command is None and not args.quiet:
-        logger.warning("Hint: use 'beck check'. Running beck with no command is going away.")
 
     try:
         folder = Path.cwd() if base_dir is None else base_dir

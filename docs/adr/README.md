@@ -12,9 +12,9 @@ the consequences. The short form of every decision is a `DEC-NN` row in the
 | [0002](0002-ai-agent-support.md) | AI-agent support | Accepted | DEC-05, 06, 21, 22, 23, 43, 44, 46, 47, 69 |
 | [0003](0003-tooling.md) | Tooling | Accepted | DEC-07, 08, 17, 18, 19, 24, 26, 27, 28, 29, 36, 40, 42, 45, 49, 53, 55, 63 |
 | [0004](0004-ci-security-release.md) | CI, security and release | Accepted | DEC-11, 25, 32, 33, 34, 35, 37, 38, 41, 48, 65, 66, 67, 68 |
-| [0005](0005-process-and-docs.md) | Process and documentation | Accepted | DEC-14, 16, 20, 30, 31, 39, 51, 52 |
+| [0005](0005-process-and-docs.md) | Process and documentation | Accepted | DEC-14, 16, 20, 30, 31, 39, 51, 52, 71 |
 | [0006](0006-core-and-adapters.md) | Core and adapters | Accepted | None of its own (follows from DEC-02, 03, 04, 53) |
-| [0007](0007-cli-contract.md) | The CLI contract | Accepted | DEC-59, 62, 64, and follows from DEC-02, 05, 17, 23, 54 |
+| [0007](0007-cli-contract.md) | The CLI contract | Accepted | DEC-59, 62, 64, 70, and follows from DEC-02, 05, 17, 23, 54 |
 
 
 ## Adding a decision
