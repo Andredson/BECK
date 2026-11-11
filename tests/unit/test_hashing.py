@@ -3,6 +3,7 @@
 
 import hashlib
 import os
+import zipfile
 from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -55,6 +56,17 @@ def test_md5_uses_the_chunked_file_digest(tmp_path: Path, monkeypatch: pytest.Mo
     md5_file(file)
 
     assert len(calls) == 1
+
+
+def test_a_zip_archive_is_known_by_its_content_not_its_name(tmp_path: Path) -> None:
+    with zipfile.ZipFile(tmp_path / "archive-named.bin", "w") as archive:
+        archive.writestr("inside.rom", os.urandom(64))
+    write(tmp_path / "raw-named.zip", os.urandom(64))
+    write(tmp_path / "raw.bin", os.urandom(64))
+
+    is_zip = {file.relative.as_posix(): file.is_zip for file in scan(tmp_path).files}
+
+    assert is_zip == {"archive-named.bin": True, "raw-named.zip": False, "raw.bin": False}
 
 
 def test_keep_file_is_ignored(tmp_path: Path) -> None:

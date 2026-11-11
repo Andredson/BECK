@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import zipfile
 from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 from typing import Any, NoReturn
@@ -1676,13 +1677,43 @@ def test_a_full_run_warns_when_an_upload_changes_the_extension(
     server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     data = write(app / "bios" / "neocd.bin")
-    report(server, block("neocdz.zip", md5_of(data)))
+    report(server, block("neocd.rom", md5_of(data)))
 
     assert cli.main(["check"], base_dir=app) == 0
 
-    assert server.files[("bios", "neocdz.zip")] == data
+    assert server.files[("bios", "neocd.rom")] == data
     output = capsys.readouterr().out
-    assert "neocd.bin: copied -> neocdz.zip\nWarning: neocd.bin has a different extension" in output
+    assert "neocd.bin: copied -> neocd.rom\nWarning: neocd.bin has a different extension" in output
+
+
+def test_a_full_run_never_sends_a_file_that_is_not_a_zip_to_a_zip_target(
+    server: FakeSMBServer, app: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Regression: 1.0.0 uploaded neocd.bin as neocdz.zip, which Recalbox can't open."""
+    data = write(app / "bios" / "neocd.bin")
+    report(server, block("neocdz.zip", md5_of(data)))
+
+    assert cli.main(["check", "--clean-unmatched", "--yes"], base_dir=app) == 0
+
+    assert ("bios", "neocdz.zip") not in server.files
+    assert (app / "bios" / "neocd.bin").read_bytes() == data
+    output = capsys.readouterr().out
+    assert (
+        "neocd.bin: not a zip archive, not copied -> neocdz.zip\n"
+        "Warning: neocd.bin has an MD5 listed for neocdz.zip, but it isn't a zip archive"
+    ) in output
+    assert "Final result: 0/1 missing entries satisfied, 1 files analysed" in output
+
+
+def test_a_real_zip_archive_still_goes_to_a_zip_target(server: FakeSMBServer, app: Path) -> None:
+    archive = app / "bios" / "neogeo.zip"
+    with zipfile.ZipFile(archive, "w") as zipped:
+        zipped.writestr("000-lo.lo", os.urandom(64))
+    report(server, block("neogeo.zip", md5_of(archive.read_bytes())))
+
+    assert cli.main(["check"], base_dir=app) == 0
+
+    assert server.files[("bios", "neogeo.zip")] == archive.read_bytes()
 
 
 # File names stdout can't show (D18), and failed checks in a dry run (D19)
@@ -1730,14 +1761,14 @@ def test_a_file_named_badly_in_utf8_can_still_be_uploaded(
 ) -> None:
     data = os.urandom(64)
     (app / "bios" / BAD_NAME).write_bytes(data)
-    report(server, block("a.zip", md5_of(data)))
+    report(server, block("a.rom", md5_of(data)))
 
     assert run(app) == 0
 
-    assert server.files[("bios", "a.zip")] == data
+    assert server.files[("bios", "a.rom")] == data
     output = capsys.readouterr().out
-    assert f"{BAD_NAME_SHOWN}: copied -> a.zip" in output
-    assert f"Warning: {BAD_NAME_SHOWN} has a different extension from a.zip" in output
+    assert f"{BAD_NAME_SHOWN}: copied -> a.rom" in output
+    assert f"Warning: {BAD_NAME_SHOWN} has a different extension from a.rom" in output
 
 
 def test_an_unreadable_name_that_is_not_valid_utf8_is_listed(

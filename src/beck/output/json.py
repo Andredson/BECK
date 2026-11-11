@@ -284,6 +284,10 @@ class JsonRenderer:
             "uploads": _upload_items(result),
             "incorrect": _incorrect_items(plan.incorrect),
             "still_missing": still_missing,
+            "not_a_zip": [
+                {"path": upload.source.relative.as_posix(), "target": upload.target.as_posix()}
+                for upload in plan.not_a_zip
+            ],
             "duplicates": [
                 {
                     "path": duplicate.file.relative.as_posix(),

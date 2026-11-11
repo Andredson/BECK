@@ -89,6 +89,8 @@ flowchart LR
 - A file already on the target is kept, and `--overwrite` replaces it (DEC-61). The executor checks this, because the matcher does no I/O.
 - The plan doesn't depend on input order.
 - An upload that changes the file's extension still happens. The executor lists it, and the output warns about it.
+- Only a zip archive fills a `.zip` target, because Recalbox hashes those by the files inside (DEC-74). Any other file with a listed MD5
+  goes in `Plan.not_a_zip`, and the target stays missing. The scan tells a zip archive by its content, so the matcher does no I/O.
 
 ## Rules
 

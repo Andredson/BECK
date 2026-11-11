@@ -154,7 +154,7 @@ For an agent asked to run BECK on someone's files, rather than to change its cod
 field, with [the schemas](docs/schemas/), and [the `beck` command](docs/cli.md) has every flag.
 
 1. **Look first.** Always run `beck --json check --dry-run …` first, and show the human the plan: `uploads` (with `replaces` and
-   `warning`), `incorrect`, `still_missing`, `unreadable` and `deleted`. A dry run changes nothing, but it does connect to the target,
+   `warning`), `incorrect`, `still_missing`, `not_a_zip`, `unreadable` and `deleted`. A dry run changes nothing, but it does connect to the target,
    so use only a target the human named. `beck --json scan --source DIR` and `beck --json report --report-file FILE` work with no
    network.
 2. **Parse stdout as JSON, and branch on the exit code.** Stdout holds one document, even for an error or a bad flag, and logs go to

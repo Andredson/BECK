@@ -230,13 +230,18 @@ upload can leave the old file damaged. Names that differ only in case count as t
 
 ## Uploads that change a file's extension
 
-BECK matches files by MD5, and uploads them under the name the report asks for. Sometimes that changes the extension: the real
-Recalbox 10.1.1 report lists the same MD5 for `neocd/neocd.bin` and `neocdz.zip`, so a raw `.bin` can go up as a `.zip`. The MD5 is
-valid, but an emulator may not be able to read the file.
+BECK matches files by MD5, and uploads them under the name the report asks for. Sometimes that changes the extension, such as a
+`.rom` file going up as a `.bin`. The MD5 is valid, but an emulator may not be able to read the file.
 
 BECK uploads the file anyway and prints a warning, in a dry run too. A difference in case alone, like `.BIN` and `.bin`, gets no
 warning. Some targets have an unusual extension on purpose, like the Amiga `kick34005.A500`: there, a `.rom` file with the right MD5
 gets the warning but is probably fine.
+
+**A `.zip` target only takes a zip archive.** For a `.zip` target, Recalbox lists the MD5 of the files inside the zip. So a single file
+can have a listed MD5: the real Recalbox 10.1.1 report lists `neocd.bin`'s MD5 for `neocdz.zip`. Copied under that name, it isn't a zip
+archive, so Recalbox can't open it, and still lists the target as missing. Since 1.0.1, BECK doesn't copy a file that isn't a zip
+archive to a `.zip` target. It prints a warning, the target stays missing, and the file is never treated as unmatched, so
+`--clean-unmatched` doesn't delete it. BECK doesn't look inside zip archives yet, so it can't match a zip to a `.zip` target either.
 
 ## Exit codes
 

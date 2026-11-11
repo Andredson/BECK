@@ -77,6 +77,7 @@ ERROR: Rules = {"code": TEXT, "message": TEXT, "item": TEXT_OR_NULL}
 FILE: Rules = {"path": TEXT, "md5": MD5, "size": COUNT}
 UNREADABLE: Rules = {"path": TEXT, "reason": TEXT}
 DUPLICATE: Rules = {"path": TEXT, "of": TEXT, "md5": MD5}
+NOT_A_ZIP: Rules = {"path": TEXT, "target": TEXT}
 UPLOAD: Rules = {
     "source": TEXT,
     "target": TEXT,
@@ -143,6 +144,7 @@ V1_FIELDS: dict[str, Rules] = {
         **listing("uploads", UPLOAD),
         **listing("incorrect", INCORRECT),
         **listing("still_missing", MISSING),
+        **listing("not_a_zip", NOT_A_ZIP),  # added in 1.0.1
         **listing("duplicates", DUPLICATE),
         **listing("already_filled", FILE),
         **listing("unmatched", FILE),
@@ -392,6 +394,15 @@ def check_accounts_for_every_local_file(world: World) -> list[str]:
 
 @scenario(CHECK)
 def check_changes_an_extension(world: World) -> list[str]:
+    file = make_bios_file(world.source, "neocd.bin")
+    world.report(
+        make_missing("neocd/neocd.bin", file.md5), make_missing("neocd/neocd.rom", file.md5)
+    )
+    return world.check()
+
+
+@scenario(CHECK)
+def check_holds_back_a_file_that_is_not_a_zip(world: World) -> list[str]:
     file = make_bios_file(world.source, "neocd.bin")
     world.report(make_missing("neocd/neocd.bin", file.md5), make_missing("neocdz.zip", file.md5))
     return world.check()

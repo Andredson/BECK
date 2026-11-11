@@ -3,6 +3,7 @@
 
 import hashlib
 import os
+import zipfile
 from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 
@@ -26,7 +27,13 @@ def _describe_file(path: Path, relative: PurePosixPath) -> LocalFile | Unreadabl
         if not path.is_file():
             kind = "broken symlink" if path.is_symlink() else "not a regular file"
             return Unreadable(relative=relative, reason=kind)
-        return LocalFile(path=path, relative=relative, md5=md5_file(path), size=path.stat().st_size)
+        return LocalFile(
+            path=path,
+            relative=relative,
+            md5=md5_file(path),
+            size=path.stat().st_size,
+            is_zip=zipfile.is_zipfile(path),
+        )
     except OSError as e:
         return Unreadable(relative=relative, reason=e.strerror or str(e))
 

@@ -415,7 +415,7 @@ def test_end_to_end_json_on_a_real_server(
 ) -> None:
     app = tmp_path / "no-config"
     good = make_bios_file(app / "bios", "good.bin")
-    target = folder / "a.zip"
+    target = folder / "a.rom"
     put_report(make_report_text([make_missing(target.as_posix(), good.md5)]))
     url = f"smb://{samba.host}:{samba.port}/bios"
 

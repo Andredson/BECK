@@ -68,10 +68,10 @@ The [schemas](schemas/) describe each document. They allow extra fields on purpo
   "target": "smb://recalbox.local:445/bios",
   "summary": {
     "missing_entries": 3,
-    "satisfied": 2,
-    "still_missing": 1,
-    "files_scanned": 2,
-    "uploaded": 2,
+    "satisfied": 1,
+    "still_missing": 2,
+    "files_scanned": 1,
+    "uploaded": 1,
     "duplicates": 0,
     "unmatched": 0,
     "deleted": 0,
@@ -86,15 +86,6 @@ The [schemas](schemas/) describe each document. They allow extra fields on purpo
       "replaces": false,
       "error": null,
       "warning": null
-    },
-    {
-      "source": "neocd.bin",
-      "target": "neocdz.zip",
-      "md5": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "status": "uploaded",
-      "replaces": false,
-      "error": null,
-      "warning": "neocd.bin has a different extension from neocdz.zip. The MD5 matches, but an emulator may not be able to read it."
     }
   ],
   "incorrect": [],
@@ -104,6 +95,18 @@ The [schemas](schemas/) describe each document. They allow extra fields on purpo
       "target": "atarist/tos.img",
       "md5s": ["bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
       "required": true
+    },
+    {
+      "name": "neocdz.zip",
+      "target": "neocdz.zip",
+      "md5s": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+      "required": true
+    }
+  ],
+  "not_a_zip": [
+    {
+      "path": "neocd.bin",
+      "target": "neocdz.zip"
     }
   ],
   "duplicates": [],
@@ -126,6 +129,7 @@ document.
 | `uploads[]` | One item per target with a local file for it. See below. |
 | `incorrect[]` | Files on the device with a wrong hash, which stay as they are: `name`, `target`, `md5s`, `required` and `current_md5`, the hash of the file there, or `null` if the report doesn't give it. A local file in `unmatched` with an MD5 from `md5s` would fix one, with `--overwrite`. |
 | `still_missing[]` | Targets with no matching local file: `name`, `target`, `md5s` and `required`. A target whose upload failed is in `uploads`, not here. |
+| `not_a_zip[]` | Local files with an MD5 listed for a `.zip` target, which BECK didn't copy there because they aren't zip archives: `path`, and the `target`, which stays in `still_missing`. Recalbox hashes a `.zip` target by the files inside it, so a single file can have a listed MD5, but Recalbox can't read it under that name. Added in 1.0.1. |
 | `duplicates[]` | Local files identical to one chosen instead, and kept: `path`, `of` and `md5`. |
 | `already_filled[]` | Local files that matched, but other files fill all their targets: `path`, `md5` and `size`. |
 | `unmatched[]` | Local files the report doesn't ask for: `path`, `md5` and `size`. That doesn't make them junk: read [the warning](cli.md#what-beck-deletes-and-when). |

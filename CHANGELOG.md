@@ -5,6 +5,11 @@ Notable changes to BECK, in the layout of [Keep a Changelog](https://keepachange
 This file is generated from the commit messages by [git-cliff](https://git-cliff.org/), so don't edit it by hand.
 Changes to the documentation, tests and tooling aren't listed.
 
+## [1.0.1] - 2026-11-11
+
+### Fixed
+
+- matcher: Never upload a file that isn't a zip archive to a zip target
 ## [1.0.0] - 2026-11-11
 
 ### Added

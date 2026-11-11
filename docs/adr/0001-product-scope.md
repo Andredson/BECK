@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-02
-- **Decisions covered:** DEC-01, DEC-02, DEC-03, DEC-04, DEC-09, DEC-10, DEC-12, DEC-13, DEC-15, DEC-50, DEC-54, DEC-56, DEC-57, DEC-58, DEC-60, DEC-61
+- **Decisions covered:** DEC-01, DEC-02, DEC-03, DEC-04, DEC-09, DEC-10, DEC-12, DEC-13, DEC-15, DEC-50, DEC-54, DEC-56, DEC-57, DEC-58, DEC-60, DEC-61, DEC-75
 
 ## Context
 At the baseline review ([assessment](../../roadmap/00-assessment.md)), BECK was a 243-line script with an overall
@@ -43,6 +43,7 @@ differed from the recommendation.
   other frontends, each gated on real reference data.
 
 ## DEC-04 — Transports: SMB plus a local path
+- **Status:** Accepted. Its deferral of SSH/SFTP is superseded by [DEC-75](#dec-75--the-hash-cache-and-sshsftp-are-dropped): SSH/SFTP is dropped.
 - **Decision:** Keep SMB and add a local-folder transport (mounted SD card or USB drive, or running on the device).
   SSH/SFTP is deferred.
 - **Alternatives considered:**
@@ -199,3 +200,16 @@ differed from the recommendation.
 - **Consequences:** A re-run with an unchanged report changes nothing. `--overwrite` keeps no backup, and a failed upload can damage the
   old file. Each upload now checks the target first, which adds folder listings. On SMB, names that differ only in case count as the same
   file, as they do for Samba, or the check would miss a file that the upload then overwrites.
+
+## DEC-75 — The hash cache and SSH/SFTP are dropped
+- **Date:** 2026-11-11, before step 11.1.
+- **Context:** Stage 11 lists the features after 1.0, and step 11.1 asks the owner to mark each one planned, later or dropped. Before
+  that, the agent had suggested *later* for the hash cache (11.6), and 11.11, SSH/SFTP, was deferred by DEC-04.
+- **Decision:** **Supersedes DEC-04's deferral of SSH/SFTP.** Both features are dropped: 11.6, which would have cached MD5s between runs,
+  and 11.11, which would have added an SSH/SFTP transport. Their steps stay in the roadmap, marked as dropped, as step 11.1 asks.
+- **Alternatives considered:** None were offered: the owner asked for both to be cancelled. The owner gave no further reason.
+- **Consequences:**
+  - BECK hashes every file on every run. A large collection takes as long the second time.
+  - SMB and a local folder stay the only transports, and paramiko or asyncssh won't be added.
+  - `platformdirs` (DEC-19) is used only for the settings folder.
+  - The rest of step 11.1 is still open: the other features have no status yet.

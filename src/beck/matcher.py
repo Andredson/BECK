@@ -13,6 +13,16 @@ def _path(file: LocalFile) -> str:
     return file.relative.as_posix()
 
 
+def _fits(file: LocalFile, entry: MissingBios) -> bool:
+    """Whether the file can go to this target. Only a zip archive can fill a ``.zip`` target.
+
+    Recalbox hashes a ``.zip`` target by the files inside it, so its MD5 list holds those hashes,
+    and one of them can be the MD5 of a single file that isn't a zip. Uploaded under the ``.zip``
+    name, that file can't be opened, and Recalbox still lists the target as missing.
+    """
+    return file.is_zip or entry.target.suffix.casefold() != ".zip"
+
+
 def _entry_order(entry: MissingBios) -> tuple[str, str, str, list[str]]:
     return entry.target.as_posix(), str(entry.system), str(entry.required), sorted(entry.md5s)
 
@@ -36,6 +46,9 @@ def plan(
     ``replace_incorrect`` (DEC-61), those targets are filled like any other, and ``Plan.incorrect``
     has only the ones with no valid local file. ``rejected`` is what the report held that isn't safe
     to act on: it's only carried along, so that the run reports it, as failed items.
+
+    A file that isn't a zip archive never fills a ``.zip`` target: the target stays missing, and
+    ``Plan.not_a_zip`` says which file matched it.
     """
     ordered = sorted(missing, key=_entry_order)
     incorrect = [entry for entry in ordered if entry.incorrect]
@@ -59,10 +72,17 @@ def plan(
     for own_name_only in (True, False):
         for file in sorted(chosen.values(), key=_path):
             for entry in entries_by_md5[file.md5]:
-                if entry.name == file.relative.name or not own_name_only:
+                if (entry.name == file.relative.name or not own_name_only) and _fits(file, entry):
                     uploads.setdefault(entry.target, PlannedUpload(file, entry.target, entry))
 
+    not_a_zip: dict[PurePosixPath, PlannedUpload] = {}
+    for file in sorted(chosen.values(), key=_path):
+        for entry in entries_by_md5[file.md5]:
+            if not _fits(file, entry) and entry.target not in uploads:
+                not_a_zip.setdefault(entry.target, PlannedUpload(file, entry.target, entry))
+
     sources = {upload.source for upload in uploads.values()}
+    held_back = {upload.source for upload in not_a_zip.values()}
     return Plan(
         uploads=tuple(uploads.values()),
         directories=tuple(
@@ -74,7 +94,9 @@ def plan(
             if file != chosen[file.md5]
         ),
         unmatched=tuple(file for file in local if file.md5 not in entries_by_md5),
-        already_filled=tuple(file for file in chosen.values() if file not in sources),
+        already_filled=tuple(
+            file for file in chosen.values() if file not in sources and file not in held_back
+        ),
         still_missing=tuple(
             entry
             for entry in entries
@@ -82,4 +104,5 @@ def plan(
         ),
         incorrect=tuple(entry for entry in incorrect if entry.target not in uploads),
         rejected=tuple(rejected),
+        not_a_zip=tuple(not_a_zip.values()),
     )
