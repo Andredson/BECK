@@ -43,7 +43,7 @@ anything, and whatever answers on the network might not be your Recalbox.
 - **BECK can't tell it's talking to your Recalbox.** SMB here doesn't check who the server is. A fake one that you connect to gets your files, and with a user name, a login exchange that could be attacked offline, so a strong password matters.
 - **MD5 identifies files. It doesn't protect them.** It's what Recalbox's report uses. Two different files can be crafted to have the same MD5, so a match means "the file the report asks for", not that the file is trustworthy.
 - **`BECK_SMB_PASSWORD` is only as safe as your account.** Other programs running as you can read it, and setting it on the command line leaves it in your shell's history. The prompt avoids both.
-- **A malicious server can use up your memory.** BECK reads the report, and with `--verify` each upload, into memory, with no size limit. It can also try to hang BECK, through known bugs in `pyasn1`, which `pysmb` uses. See `.trivyignore` for what's accepted, and until when.
+- **A malicious server can use up your memory.** BECK reads the report, and with `--verify` each upload, into memory, with no size limit. Any Trivy finding accepted for a while, such as the `pyasn1` bugs that let a server hang BECK until November 2026, is listed in `.trivyignore`, with its expiry date.
 - **A damaged upload stays on the device,** because BECK has no way to delete there. It's reported, and `--overwrite` tries again.
 - **A symlink in your BIOS folder is followed,** if it points to a file. BECK treats that file as yours, and uploads it if the report asks for it.
 - **What the device does is up to the device.** Its Samba settings, including its default guest access, and any links on its share aren't BECK's to control.

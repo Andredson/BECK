@@ -270,4 +270,5 @@ Add one row per run, newest first. It records the reasons for every cooldown exc
 
 | Date | By | Changes | Cooldown exceptions and ignores | Follow-ups |
 |---|---|---|---|---|
+| 2026-11-11 | Agent (Claude Code), security fix only | pyasn1 0.6.4 → 0.6.5 (four denial-of-service fixes, no other changes; license unchanged) | Removed the four pyasn1 entries from `.trivyignore`, which is now empty. No cooldown exceptions. | The full monthly run is due in the first week of December. `uv lock --upgrade --dry-run` showed coverage 7.17.0, platformdirs 4.13.7, pytest 9.2.0 and ruff 0.17.3 on this date. The Python 3.15 proposal from 2026-11-02 is still open. |
 | 2026-11-02 | Stage 02 (initial pins) | uv 0.13.2; checkout v7.0.1; setup-uv v10.3.0; upload-artifact v7.0.2; commitizen 4.19.2; gitleaks 8.30.1; Trivy 0.76.0 | `.trivyignore`: four pyasn1 0.6.4 CVEs until 2026-11-11 (owner decision; fix 0.6.5 is inside the cooldown) | After 2026-11-10 06:33 UTC: `uv lock --upgrade-package pyasn1`, regenerate `requirements.txt`, delete the four entries. Python 3.15 was released on 2026-10-09: propose adding it to the CI matrix. |
