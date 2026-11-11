@@ -120,7 +120,7 @@ Error: Refused <name>: <why>
 **Exit code 0:** it's not an error, and your file stays where it is.
 
 - **Cause:** its MD5 isn't one the report asks for. BECK doesn't look at names, only at what's inside. It may be a different dump or region, or a different version. It may also be inside a `.zip`, because BECK compares the file itself and doesn't look inside. The report may just not want it, because nothing asks for that file.
-- **Fix:** see what you have with `beck scan`, and what's wanted in the report's `Possible MD5 List`. Unzip it if the report wants the file inside. Some targets are zips themselves, such as `neogeo.zip`, and there the zip's own MD5 has to match.
+- **Fix:** see what you have with `beck scan`, and what's wanted in the report's `Possible MD5 List`. Unzip it if the report wants the file inside. Some targets are zips themselves, such as `neogeo.zip`. For those, Recalbox lists the MD5 of the files inside the zip, not the zip's own, so BECK can't match a zip to them yet: copy it to your Recalbox yourself, and scan the BIOS files there to check it.
 
 ### A file is kept for another reason
 
@@ -151,6 +151,18 @@ Warning: <file> has a different extension from <target>. The MD5 matches, but an
 ```
 
 **Exit code 0.** The MD5 is right, so BECK uploads it under the name the report asks for. If the emulator can't use it, find the file in the form the target's name suggests.
+
+### A file isn't a zip archive
+
+```text
+<file>: not a zip archive, not copied -> <target>
+Warning: <file> has an MD5 listed for <target>, but it isn't a zip archive, so it wasn't copied: Recalbox can only read a zip archive there.
+```
+
+**Exit code 0:** it's not an error, and the target stays missing.
+
+- **Cause:** the target is a `.zip`, and Recalbox lists the MD5 of the files inside it. Your file is one of those files on its own, not the zip, so Recalbox couldn't open it under that name. BECK 1.0.0 copied it anyway, and Recalbox went on listing the target as missing.
+- **Fix:** find that BIOS as a zip archive, the form the target's name asks for, and copy it to your Recalbox yourself. If BECK 1.0.0 copied the file there, delete it from your Recalbox: it isn't a zip archive, so Recalbox can't use it.
 
 ### There are no files, or a folder is wrong
 

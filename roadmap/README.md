@@ -173,6 +173,7 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-64 | An upload whose size, or with `--verify` whose MD5, doesn't match has the status `failed`, not `uploaded` with an `error`. *(2026-11-06, step 07.7)* |
 | DEC-70 | **From 1.0, `beck` needs a command.** With none, it's a usage error with exit code 2, and nothing runs; with `--json`, it prints the rejected-command document, with `command: null`. Until then it ran `check` and printed a hint. *(2026-11-11, step 10.11)* |
 
+| DEC-74 | **A file that isn't a zip archive never fills a `.zip` target** (a fix, in `1.0.1`): the target stays missing, and `beck --json check` lists the file in a new `not_a_zip` list, with `path` and `target`. Recalbox hashes a `.zip` target by the files inside it, so 1.0.0 could upload a single file, such as `neocd.bin`, as `neocdz.zip`, which Recalbox can't open. *(2026-11-11, fix after the 11.2 research on the VM)* |
 ### CI/CD, security, and release
 
 | ID | Decision |

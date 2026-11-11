@@ -1271,7 +1271,7 @@ def test_q_hides_what_is_neither_an_error_nor_the_summary(
     put_report(
         device,
         make_missing("kept.bin", kept.md5),
-        make_missing("changes.zip", changes.md5),
+        make_missing("changes.rom", changes.md5),
         make_missing("bad.bin", B, incorrect=True),
     )
 
@@ -1378,11 +1378,13 @@ def test_check_shows_local_names_escaped_in_every_outcome(
     own = make_bios_file(source, "own.bin")
     other = make_bios_file(source, f"filled-{HOSTILE}.bin")
     fix = make_bios_file(source, f"fix-{HOSTILE}.bin")
+    zipless = make_bios_file(source, f"zipless-{HOSTILE}.bin")
     (source / f"broken-{HOSTILE}").symlink_to(source / "nowhere")
     make_bios_file(device, "bad.bin")
     put_report(
         device,
-        make_missing("good.zip", good.md5),
+        make_missing("good.rom", good.md5),
+        make_missing("need.zip", zipless.md5),
         make_missing("own.bin", own.md5, other.md5),
         make_missing("bad.bin", fix.md5, incorrect=True),
     )
@@ -1391,13 +1393,15 @@ def test_check_shows_local_names_escaped_in_every_outcome(
 
     shown = shown_by(capsys)
     for line in (
-        f"{HOSTILE_SHOWN}.bin: copied -> good.zip",
+        f"{HOSTILE_SHOWN}.bin: copied -> good.rom",
+        f"zipless-{HOSTILE_SHOWN}.bin: not a zip archive, not copied -> need.zip",
+        f"Warning: zipless-{HOSTILE_SHOWN}.bin has an MD5 listed for need.zip, but it isn't a zip",
         f"z-{HOSTILE_SHOWN}-copy.bin: duplicate of {HOSTILE_SHOWN}.bin, kept",
         f"junk-{HOSTILE_SHOWN}.bin: no match, kept",
         f"filled-{HOSTILE_SHOWN}.bin: target already filled, kept",
         f"fix-{HOSTILE_SHOWN}.bin: valid for bad.bin, which is incorrect on the device, kept",
         f"broken-{HOSTILE_SHOWN}: can't be read, skipped",
-        f"Warning: {HOSTILE_SHOWN}.bin has a different extension from good.zip",
+        f"Warning: {HOSTILE_SHOWN}.bin has a different extension from good.rom",
     ):
         assert line in shown
 

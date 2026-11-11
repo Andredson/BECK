@@ -104,6 +104,15 @@ def upload_status(upload: PlannedUpload, result: RunResult) -> str:
     return "planned" if result.dry_run else "skipped"
 
 
+def not_a_zip_warning(upload: PlannedUpload) -> str:
+    """Why a file whose MD5 a ``.zip`` target lists wasn't copied there (see ``matcher.plan``)."""
+    source = upload.source.relative.as_posix()
+    return (
+        f"{source} has an MD5 listed for {upload.target}, but it isn't a zip archive, so it wasn't "
+        "copied: Recalbox can only read a zip archive there."
+    )
+
+
 def extension_warning(upload: PlannedUpload) -> str:
     """The warning for an upload that changes an extension, for people and machines alike."""
     source = upload.source.relative.as_posix()

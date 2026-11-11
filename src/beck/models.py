@@ -59,6 +59,7 @@ class LocalFile:
     relative: PurePosixPath  # to the scanned folder
     md5: str
     size: int
+    is_zip: bool = False  # whether it's a zip archive, by its content and not its name
 
     def __post_init__(self) -> None:
         """Refuse an unsafe path, a malformed MD5 or a negative size."""
@@ -133,6 +134,7 @@ class Plan:
     still_missing: tuple[MissingBios, ...] = ()
     incorrect: tuple[MissingBios, ...] = ()  # on the device with a wrong hash, and being kept
     rejected: tuple[ItemError, ...] = ()  # entries of the report that aren't safe to act on
+    not_a_zip: tuple[PlannedUpload, ...] = ()  # matches a .zip target, isn't a zip: not uploaded
 
     def __post_init__(self) -> None:
         """Sort every list into a tuple, so that the same input always gives the same plan."""
@@ -145,6 +147,7 @@ class Plan:
             "still_missing": sorted(self.still_missing, key=lambda e: e.target),
             "incorrect": sorted(self.incorrect, key=lambda e: e.target),
             "rejected": sorted(self.rejected, key=lambda e: e.item),
+            "not_a_zip": sorted(self.not_a_zip, key=lambda u: u.target),
         }
         for name, value in fields.items():
             object.__setattr__(self, name, tuple(value))  # the only write: this class is frozen

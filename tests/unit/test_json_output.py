@@ -126,6 +126,7 @@ def test_a_normal_run_gives_the_whole_document(
         "still_missing": [
             {"name": "gone.bin", "target": "gone.bin", "md5s": [A], "required": True}
         ],
+        "not_a_zip": [],
         "duplicates": [],
         "already_filled": [],
         "unmatched": [],
@@ -197,17 +198,35 @@ def test_an_extension_change_carries_its_warning_on_the_upload(
     source: Path, device: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     file = make_bios_file(source, "neocd.bin")
-    report = (make_missing("neocd/neocd.bin", file.md5), make_missing("neocdz.zip", file.md5))
+    report = (make_missing("neocd/neocd.bin", file.md5), make_missing("neocd.rom", file.md5))
     put_report(device, *report)
 
     assert cli.main(check(source, device)) == 0
 
     warnings = {item["target"]: item["warning"] for item in document(capsys)["uploads"]}
     assert warnings["neocd/neocd.bin"] is None
-    assert warnings["neocdz.zip"] == (
-        "neocd.bin has a different extension from neocdz.zip. The MD5 matches, but an emulator "
+    assert warnings["neocd.rom"] == (
+        "neocd.bin has a different extension from neocd.rom. The MD5 matches, but an emulator "
         "may not be able to read it."
     )
+
+
+def test_a_file_that_is_not_a_zip_is_listed_and_its_zip_target_stays_missing(
+    source: Path, device: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    file = make_bios_file(source, "neocd.bin")
+    put_report(
+        device, make_missing("neocd/neocd.bin", file.md5), make_missing("neocdz.zip", file.md5)
+    )
+
+    assert cli.main(check(source, device)) == 0
+
+    doc = document(capsys)
+    assert [item["target"] for item in doc["uploads"]] == ["neocd/neocd.bin"]
+    assert doc["not_a_zip"] == [{"path": "neocd.bin", "target": "neocdz.zip"}]
+    assert [item["target"] for item in doc["still_missing"]] == ["neocdz.zip"]
+    assert doc["already_filled"] == doc["unmatched"] == []
+    assert not (device / "neocdz.zip").exists()
 
 
 # Check: what a dry run and existing files look like

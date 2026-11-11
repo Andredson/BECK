@@ -34,13 +34,15 @@ A user asks why a BIOS file is missing, or asks you to check or copy their BIOS 
    - which would replace a file, from `replaces`;
    - what's on the device with the wrong content, from `incorrect`;
    - what's still missing, from `still_missing`, starting with `required: true`. `false` means optional, and `null` means the report doesn't say;
+   - which files weren't copied because their `.zip` target needs a zip archive, from `not_a_zip`;
    - which files couldn't be read, from `unreadable`.
 4. **For each file still missing, or the one they asked about, find the likely reason:**
 
    | What you see | Likely reason | What to tell them |
    |---|---|---|
    | In `still_missing`, and a file with the same name in `unmatched` | Right name, wrong content: another dump, region or version. BECK goes by the MD5, not the name. | Compare its `md5` with the entry's `md5s`. Their file isn't the one Recalbox wants. |
-   | In `still_missing`, and a `.zip` in `unmatched` | It may be inside the zip. BECK compares the file itself, and doesn't look inside. | Unzip it and run again, unless the target is itself a zip. |
+   | In `still_missing`, and a `.zip` in `unmatched` | It may be inside the zip. BECK compares the file itself, and doesn't look inside. | Unzip it and run again, unless the target is itself a zip. A `.zip` target needs the zip, which they can copy over themselves. |
+   | In `still_missing`, and in `not_a_zip` | The target is a `.zip`, and their file is one of the files inside it, on its own. Recalbox can't read it under the zip's name. | They need that BIOS as a zip archive. |
    | In `still_missing`, and another file in `unmatched` | The name may differ, but so does the content, so it isn't this file. | They don't have a file with this content in that folder. |
    | In `still_missing`, and nothing else fits | There's no copy in that folder. | Check the folder. `beck --json scan --source <folder>` lists what BECK sees, and hidden files are skipped. |
    | In `unreadable` | BECK couldn't read that file or folder. | Give the `reason`, such as a permission or a broken link. |

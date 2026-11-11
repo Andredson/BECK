@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-05
-- **Decisions covered:** DEC-59, DEC-62, DEC-64, DEC-70. The rest of the contract follows from DEC-02, DEC-05, DEC-17, DEC-23 and DEC-54 (rows in the
+- **Decisions covered:** DEC-59, DEC-62, DEC-64, DEC-70, DEC-74. The rest of the contract follows from DEC-02, DEC-05, DEC-17, DEC-23 and DEC-54 (rows in the
   [decision log](../../roadmap/README.md#decision-log)).
 
 ## Context
@@ -211,3 +211,24 @@ The one-document-on-stdout rule and the `--json` no-prompt rule came from the ro
   The agent recommended the usage error, and the owner gave no further reason.
 - **Consequences:** A breaking change, in 1.0. A script that still runs bare `beck` fails loudly, and the troubleshooting guide says to use
   `beck check`. No schema changes: the rejected-command document already existed.
+
+## DEC-74 — A file that isn't a zip archive never fills a `.zip` target
+- **Date:** 2026-11-11 (a fix released as `1.0.1`, found while researching step 11.2 on the Recalbox 10.1.1 VM).
+- **Context:** Recalbox hashes a `.zip` target by the files inside it: its MD5 is that of the members' uncompressed bytes, one after
+  the other, and `es_bios.xml` lists those hashes, not the zip's own. On the VM, `geolith/neogeo.zip` has the file MD5 `266c74…` and
+  Recalbox's `b2c817…`, the MD5 of its contents, which is the one listed. So a single file can have an MD5 listed for a `.zip` target:
+  the real report lists `neocd.bin`'s for `neocdz.zip`. BECK 1.0.0 uploaded it under that name, and its own checks passed, but the file
+  isn't a zip archive, so Recalbox's web manager API reported `FileNotFound` for it. That's what the 1.0 end-to-end run did on the VM.
+- **Decision:** The matcher never sends a file that isn't a zip archive, by its content and not its name, to a target whose extension
+  is `.zip`, in any case. The target stays in `still_missing`, and the file never counts as unmatched, so `--clean-unmatched` keeps it.
+  `beck --json check` gets a new list, `not_a_zip`, of `{path, target}`, and the console prints a warning for each. Adding a field is
+  allowed within `schema_version` 1.
+- **Alternatives considered:**
+  - *No JSON change:* a warning on stderr only, with the file in none of the lists. The smallest change, but an agent reading stdout
+    couldn't tell why the target is still missing. Not chosen.
+
+  The owner chose to fix it at once as `1.0.1` rather than in step 11.4, and chose the new list, which the agent recommended. The owner
+  gave no further reason.
+- **Consequences:** BECK still can't match a real zip archive to a `.zip` target, because it compares the zip's own MD5: that's step
+  11.4. Uploading a real zip archive whose own MD5 is listed still works. A target the 1.0.0 run filled this way stays on the device
+  until the user deletes it, and the troubleshooting guide says so.

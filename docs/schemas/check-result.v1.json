@@ -16,6 +16,7 @@
     "uploads",
     "incorrect",
     "still_missing",
+    "not_a_zip",
     "duplicates",
     "already_filled",
     "unmatched",
@@ -124,6 +125,13 @@
       "description": "Targets with no matching local file. A target whose upload failed is in uploads, not here.",
       "items": {
         "$ref": "#/$defs/missing"
+      }
+    },
+    "not_a_zip": {
+      "type": "array",
+      "description": "Local files with an MD5 listed for a .zip target that aren't zip archives, so they weren't copied there. Added in 1.0.1.",
+      "items": {
+        "$ref": "#/$defs/not_a_zip"
       }
     },
     "duplicates": {
@@ -368,6 +376,21 @@
             "null"
           ],
           "description": "The target, folder or local file this is about. Null for an error that stopped the run."
+        }
+      }
+    },
+    "not_a_zip": {
+      "type": "object",
+      "required": [
+        "path",
+        "target"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
         }
       }
     }

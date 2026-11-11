@@ -26,6 +26,7 @@ from beck.output import (
     distinct_targets,
     escaped_for_terminal,
     extension_warning,
+    not_a_zip_warning,
     print_safely,
     upload_status,
 )
@@ -159,6 +160,7 @@ def _files_analysed(result: RunResult) -> list[LocalFile]:
     files = {upload.source for upload in plan.uploads}
     files.update(duplicate.file for duplicate in plan.duplicates)
     files.update(plan.unmatched, plan.already_filled)
+    files.update(upload.source for upload in plan.not_a_zip)
     return sorted(files, key=lambda file: file.relative.as_posix())
 
 
@@ -402,12 +404,13 @@ class ConsoleRenderer:
         for file in _files_analysed(result):
             path = file.relative.as_posix()
             uploads = [upload for upload in plan.uploads if upload.source == file]
+            held_back = [upload for upload in plan.not_a_zip if upload.source == file]
             if file in duplicate_of:
                 of = duplicate_of[file].relative.as_posix()
                 lines.append([f"{path}: duplicate of {of}, kept"])
             elif file in plan.already_filled:
                 lines.append([f"{path}: target already filled, kept"])
-            elif not uploads:
+            elif not uploads and not held_back:
                 fits = sorted({e.target for e in plan.incorrect if file.md5 in e.md5s})
                 if fits:
                     targets = ", ".join(str(target) for target in fits)
@@ -428,6 +431,9 @@ class ConsoleRenderer:
                 if upload in result.extension_changes:
                     label = self._paint("Warning", YELLOW)
                     lines.append([label, f": {extension_warning(upload)}"])
+            for upload in held_back:
+                lines.append([f"{path}: not a zip archive, not copied -> {upload.target}"])
+                lines.append([self._paint("Warning", YELLOW), f": {not_a_zip_warning(upload)}"])
             if uploads and file in result.deleted:
                 lines.append([f"{path}: {gone}"])
 

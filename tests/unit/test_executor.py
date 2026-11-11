@@ -494,11 +494,11 @@ def test_an_upload_that_changes_the_extension_is_listed_and_still_happens(
 ) -> None:
     file = make_bios_file(source, "neocd.bin")
 
-    result = run(plan([make_missing("neocdz.zip", file.md5)], scan(source).files), target)
+    result = run(plan([make_missing("neocd.rom", file.md5)], scan(source).files), target)
 
-    assert targets(result.extension_changes) == ["neocdz.zip"]
-    assert targets(result.completed) == ["neocdz.zip"]
-    assert (target / "neocdz.zip").read_bytes() == file.path.read_bytes()
+    assert targets(result.extension_changes) == ["neocd.rom"]
+    assert targets(result.completed) == ["neocd.rom"]
+    assert (target / "neocd.rom").read_bytes() == file.path.read_bytes()
     assert not result.errors
 
 
@@ -535,12 +535,12 @@ def test_a_file_with_no_extension_going_to_one_is_listed(source: Path, target: P
 
 def test_only_the_target_with_another_extension_is_listed(source: Path, target: Path) -> None:
     file = make_bios_file(source, "neocd.bin")
-    report = [make_missing("neocd/neocd.bin", file.md5), make_missing("neocdz.zip", file.md5)]
+    report = [make_missing("neocd/neocd.bin", file.md5), make_missing("neocd.rom", file.md5)]
 
     result = run(plan(report, scan(source).files), target)
 
-    assert targets(result.completed) == ["neocd/neocd.bin", "neocdz.zip"]
-    assert targets(result.extension_changes) == ["neocdz.zip"]
+    assert targets(result.completed) == ["neocd/neocd.bin", "neocd.rom"]
+    assert targets(result.extension_changes) == ["neocd.rom"]
 
 
 def test_a_dry_run_lists_the_extension_change_and_writes_nothing(
@@ -550,10 +550,10 @@ def test_a_dry_run_lists_the_extension_change_and_writes_nothing(
     before = snapshot(target)
 
     result = run(
-        plan([make_missing("neocdz.zip", file.md5)], scan(source).files), target, dry_run=True
+        plan([make_missing("neocd.rom", file.md5)], scan(source).files), target, dry_run=True
     )
 
-    assert targets(result.extension_changes) == ["neocdz.zip"]
+    assert targets(result.extension_changes) == ["neocd.rom"]
     assert snapshot(target) == before
 
 
@@ -561,52 +561,56 @@ def test_a_replacing_upload_that_changes_the_extension_is_listed(
     source: Path, target: Path
 ) -> None:
     file = make_bios_file(source, "neocd.bin")
-    make_bios_file(target, "neocdz.zip")
+    make_bios_file(target, "neocd.rom")
 
     result = run(
-        plan([make_missing("neocdz.zip", file.md5)], scan(source).files), target, overwrite=True
+        plan([make_missing("neocd.rom", file.md5)], scan(source).files), target, overwrite=True
     )
 
-    assert targets(result.replaced) == ["neocdz.zip"]
-    assert targets(result.extension_changes) == ["neocdz.zip"]
+    assert targets(result.replaced) == ["neocd.rom"]
+    assert targets(result.extension_changes) == ["neocd.rom"]
 
 
 def test_a_kept_file_gets_no_extension_warning(source: Path, target: Path) -> None:
     file = make_bios_file(source, "neocd.bin")
-    make_bios_file(target, "neocdz.zip")
+    make_bios_file(target, "neocd.rom")
 
-    result = run(plan([make_missing("neocdz.zip", file.md5)], scan(source).files), target)
+    result = run(plan([make_missing("neocd.rom", file.md5)], scan(source).files), target)
 
-    assert targets(result.kept) == ["neocdz.zip"]
+    assert targets(result.kept) == ["neocd.rom"]
     assert result.extension_changes == ()
 
 
 def test_a_failed_upload_gets_no_extension_warning(source: Path, target: Path) -> None:
     file = make_bios_file(source, "neocd.bin")
-    planned = plan([make_missing("neocdz.zip", file.md5)], scan(source).files)
+    planned = plan([make_missing("neocd.rom", file.md5)], scan(source).files)
     file.path.unlink()
 
     with LocalTransport(target) as transport:
         result = execute(planned, transport, dry_run=False)
 
-    assert [error.item for error in result.errors] == ["neocdz.zip"]
+    assert [error.item for error in result.errors] == ["neocd.rom"]
     assert result.extension_changes == ()
 
 
 def test_a_skipped_upload_gets_no_extension_warning(source: Path, target: Path) -> None:
     file = make_bios_file(source, "neocd.bin")
     (target / "blocked").write_bytes(b"a file, not a folder")
-    planned = plan([make_missing("blocked/neocdz.zip", file.md5)], scan(source).files)
+    planned = plan([make_missing("blocked/neocd.rom", file.md5)], scan(source).files)
 
     with LocalTransport(target) as transport:
         result = execute(planned, transport, dry_run=False)
 
-    assert targets(result.skipped) == ["blocked/neocdz.zip"]
+    assert targets(result.skipped) == ["blocked/neocd.rom"]
     assert result.extension_changes == ()
 
 
-def test_the_real_report_gives_the_extension_warning_for_neocd(target: Path) -> None:
-    """Nothing is read from the described file: a dry run uploads nothing, so no BIOS is needed."""
+def test_the_real_report_never_sends_neocd_bin_up_as_neocdz_zip(target: Path) -> None:
+    """Regression: 1.0.0 uploaded neocd.bin as neocdz.zip, and Recalbox couldn't open it.
+
+    The real report lists neocd.bin's MD5 for neocdz.zip, because Recalbox hashes a zip target by
+    what's inside it. Nothing is read from the described file: a dry run uploads nothing.
+    """
     entries = RecalboxAdapter().parse_report(load_report(REAL_REPORT))
     md5 = next(entry for entry in entries if entry.name == "neocdz.zip").md5s
     assert "f39572af7584cb5b3f70ae8cc848aba2" in md5
@@ -614,5 +618,7 @@ def test_the_real_report_gives_the_extension_warning_for_neocd(target: Path) -> 
 
     result = run(plan(entries, [file]), target, dry_run=True)
 
-    assert targets(result.skipped) == ["neocd/neocd.bin", "neocdz.zip"]
-    assert targets(result.extension_changes) == ["neocdz.zip"]
+    assert targets(result.skipped) == ["neocd/neocd.bin"]
+    assert targets(result.plan.not_a_zip) == ["neocdz.zip"]
+    assert "neocdz.zip" in [entry.name for entry in result.plan.still_missing]
+    assert result.extension_changes == ()

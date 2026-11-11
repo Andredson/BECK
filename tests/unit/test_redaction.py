@@ -171,6 +171,14 @@ def check_refused_login(server: FakeSMBServer, folder: Path) -> list[str]:
     return run_with_a_report(server, folder)
 
 
+def check_holds_back_a_file_that_is_not_a_zip(server: FakeSMBServer, folder: Path) -> list[str]:
+    data = make_bios_file(folder / "source", "neocd.bin")
+    server.files[("bios", "missing_bios_report.txt")] = make_report_text(
+        [make_missing("neocdz.zip", data.md5)]
+    ).encode()
+    return ["check", "--source", str(folder / "source")]
+
+
 def check_no_report(server: FakeSMBServer, folder: Path) -> list[str]:
     (folder / "source").mkdir()
     return ["check", "--source", str(folder / "source")]
@@ -253,6 +261,7 @@ SCENARIOS: list[Callable[[FakeSMBServer, Path], list[str]]] = [
     check_dry_run,
     check_fails_if_missing,
     check_refused_login,
+    check_holds_back_a_file_that_is_not_a_zip,
     check_no_report,
     check_unknown_share,
     report_works,

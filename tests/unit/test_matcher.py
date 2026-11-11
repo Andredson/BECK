@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 """The matcher: ported from the stage 03 matching tests (D3, step 03.12a), now with plain data."""
 
+import dataclasses
 import itertools
 import random
 from pathlib import Path, PurePosixPath
@@ -181,6 +182,67 @@ def test_files_with_no_match_are_listed() -> None:
     result = plan([make_missing("a.bin", A)], [make_local_file("copy.bin", A), other])
 
     assert result.unmatched == (other,)
+
+
+# A .zip target only takes a zip archive: Recalbox hashes it by the files inside it
+
+
+def a_zip(relative: str, md5: str) -> LocalFile:
+    return dataclasses.replace(make_local_file(relative, md5), is_zip=True)
+
+
+def test_a_file_that_is_not_a_zip_never_fills_a_zip_target() -> None:
+    raw = make_local_file("neocd.bin", A)
+    target = make_missing("neocdz.zip", A)
+
+    result = plan([target], [raw])
+
+    assert result.uploads == ()
+    assert [(u.source, u.target.as_posix()) for u in result.not_a_zip] == [(raw, "neocdz.zip")]
+    assert result.still_missing == (target,)
+    assert result.unmatched == result.already_filled == ()
+
+
+def test_a_zip_target_is_known_whatever_the_case_of_its_extension() -> None:
+    result = plan([make_missing("BIOS.ZIP", A)], [make_local_file("bios.bin", A)])
+
+    assert result.uploads == ()
+    assert [u.target.as_posix() for u in result.not_a_zip] == ["BIOS.ZIP"]
+
+
+def test_a_zip_archive_still_fills_a_zip_target() -> None:
+    archive = a_zip("neogeo.zip", A)
+
+    result = plan([make_missing("neogeo.zip", A)], [archive])
+
+    assert filled(result) == {"neogeo.zip": "neogeo.zip"}
+    assert result.not_a_zip == ()
+
+
+def test_a_zip_archive_may_still_fill_a_target_that_is_not_a_zip() -> None:
+    result = plan([make_missing("bios.bin", A)], [a_zip("bios.zip", A)])
+
+    assert filled(result) == {"bios.bin": "bios.zip"}
+
+
+def test_a_file_that_is_not_a_zip_still_fills_its_other_targets() -> None:
+    raw = make_local_file("neocd.bin", A)
+
+    result = plan([make_missing("neocd/neocd.bin", A), make_missing("neocdz.zip", A)], [raw])
+
+    assert filled(result) == {"neocd/neocd.bin": "neocd.bin"}
+    assert [u.target.as_posix() for u in result.not_a_zip] == ["neocdz.zip"]
+    assert result.already_filled == ()
+
+
+def test_a_zip_target_filled_by_an_archive_lists_nothing_as_not_a_zip() -> None:
+    result = plan(
+        [make_missing("neocdz.zip", A, B)], [make_local_file("neocd.bin", A), a_zip("cdz.zip", B)]
+    )
+
+    assert filled(result) == {"neocdz.zip": "cdz.zip"}
+    assert result.not_a_zip == ()
+    assert [file.relative.name for file in result.already_filled] == ["neocd.bin"]
 
 
 def test_targets_nobody_filled_are_still_missing() -> None:

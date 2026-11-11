@@ -134,7 +134,7 @@ def test_a_current_md5_must_be_a_valid_md5() -> None:
 def test_plan_is_empty_by_default() -> None:
     plan = Plan()
 
-    assert dataclasses.astuple(plan) == ((), (), (), (), (), (), (), ())
+    assert dataclasses.astuple(plan) == ((), (), (), (), (), (), (), (), ())
 
 
 def test_plan_sorts_every_field_whatever_the_input_order() -> None:
@@ -180,6 +180,12 @@ def test_plan_sorts_incorrect_entries() -> None:
     )
 
     assert Plan(incorrect=(second, first)).incorrect == (first, second)
+
+
+def test_plan_sorts_what_is_not_a_zip_by_target() -> None:
+    late, early = upload("z.zip"), upload("b.zip")
+
+    assert Plan(not_a_zip=(late, early)).not_a_zip == (early, late)
 
 
 def test_uploads_to_one_target_are_ordered_by_source() -> None:
