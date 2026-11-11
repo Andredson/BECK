@@ -178,7 +178,7 @@ A `failed` upload may have left a damaged file on the target: `error` says so, a
 | `missing_entries` | Targets the run set out to fill. One listed in several systems counts once, and `INCORRECT` files being kept don't count. |
 | `satisfied` | Targets this run filled, or in a dry run would. A file that was already there and kept doesn't count. |
 | `still_missing` | The length of `still_missing`. |
-| `files_scanned` | Local files read. It's 0 if BECK had no reason to scan them, because nothing is missing. |
+| `files_scanned` | Local files read, not counting the files inside zip archives. It's 0 if BECK had no reason to scan them, because nothing is missing. |
 | `uploaded` | Uploads done, so always 0 in a dry run. |
 | `duplicates`, `unmatched`, `deleted`, `errors` | The lengths of those lists. |
 
@@ -241,7 +241,8 @@ Hashes the local files. It uses no network and changes nothing.
 
 Each file inside a zip archive is in `files` too, with its name inside the archive as `member`, and the archive as `path`. A zip archive
 also has `contents_md5`: the MD5 Recalbox checks a `.zip` target with, from its members' bytes in the order of their names (DEC-78).
-`member` and `contents_md5` were added in 1.1.0, and are `null` where they don't apply. An archive BECK didn't open, because it's
+`member` and `contents_md5` were added in 1.1.0, and are `null` where they don't apply. `summary.files` is the length of `files`, so it counts
+members too. `beck check`'s `summary.files_scanned` counts only files on disk, as it always has. An archive BECK didn't open, because it's
 damaged or over [the limits](cli.md#bios-files-inside-zip-archives), is in `unreadable`, and its members aren't listed.
 
 ## `beck --json export`

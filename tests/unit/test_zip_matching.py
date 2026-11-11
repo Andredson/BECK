@@ -422,3 +422,26 @@ def test_json_check_names_the_member_of_an_upload(
         "bios/scph1001.bin",
         hashlib.md5(bios, usedforsecurity=False).hexdigest(),
     )
+
+
+def test_files_scanned_counts_files_on_disk_not_what_is_inside_archives(
+    source: Path, device: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Regression: the first version counted members too, which changed what files_scanned means.
+    make_zip(source, "a.zip", {"x.bin": os.urandom(8), "y.bin": os.urandom(8)})
+    make_bios_file(source, "b.bin")
+    report(device, make_missing("gone.bin", "a" * 32))
+
+    assert cli.main(["--json", *check(source, device)]) == 0
+
+    assert json.loads(capsys.readouterr().out)["summary"]["files_scanned"] == 2
+
+
+def test_scan_counts_members_apart_from_files_on_disk(
+    source: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    make_zip(source, "a.zip", {"x.bin": b"x", "y.bin": b"y"})
+
+    assert cli.main(["scan", "--source", str(source)]) == 0
+
+    assert capsys.readouterr().out.splitlines()[-1] == "Files: 1, inside zip archives: 2"

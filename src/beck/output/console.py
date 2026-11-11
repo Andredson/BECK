@@ -334,7 +334,9 @@ class ConsoleRenderer:
                 self._print(f"{file.contents_md5}  {'':>{width}}  {local_name(file)} (contents)")
         self.unreadable(scanned.unreadable)
         if scanned.files:
-            total = f"Files: {len(scanned.files)}"
+            members = sum(1 for file in scanned.files if file.member is not None)
+            inside = f", inside zip archives: {members}" if members else ""
+            total = f"Files: {len(scanned.files) - members}{inside}"
             unreadable = f", can't be read: {len(scanned.unreadable)}" if scanned.unreadable else ""
             self._print(f"{total}{unreadable}")
 
