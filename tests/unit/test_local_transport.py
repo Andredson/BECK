@@ -237,3 +237,66 @@ def test_a_target_folder_that_is_a_symlink_loop_is_a_transport_error(tmp_path: P
 
     with pytest.raises(TransportError), LocalTransport(loop):
         pass
+
+
+# list_files, for beck export (step 11.12)
+
+
+def listed(transport: Transport) -> list[tuple[str, int]]:
+    return [(file.path.as_posix(), file.size) for file in transport.list_files()]
+
+
+def test_list_files_finds_every_file_in_every_folder_sorted(
+    root: Path, transport: Transport
+) -> None:
+    (root / "ps1" / "x").mkdir(parents=True)
+    (root / "ps1" / "x" / "deep.bin").write_bytes(b"123")
+    (root / "ps1" / "scph1001.bin").write_bytes(b"1")
+    (root / "top.zip").write_bytes(b"12")
+    (root / "empty").mkdir()
+
+    assert listed(transport) == [("ps1/scph1001.bin", 1), ("ps1/x/deep.bin", 3), ("top.zip", 2)]
+
+
+def test_list_files_does_not_enter_a_linked_folder(
+    root: Path, transport: Transport, tmp_path: Path
+) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "secret.bin").write_bytes(b"x")
+    (root / "link").symlink_to(outside)
+
+    assert listed(transport) == []
+
+
+def test_a_linked_file_is_listed_but_reading_one_that_leads_out_is_refused(
+    root: Path, transport: Transport, tmp_path: Path
+) -> None:
+    (tmp_path / "outside.bin").write_bytes(b"xy")
+    (root / "link.bin").symlink_to(tmp_path / "outside.bin")
+
+    assert listed(transport) == [("link.bin", 2)]
+    with pytest.raises(TransportError, match="is outside"):
+        transport.read_bytes(PurePosixPath("link.bin"))
+
+
+def test_a_broken_link_is_left_out_with_a_warning(
+    root: Path, transport: Transport, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    (root / "broken.bin").symlink_to(tmp_path / "nowhere")
+    (root / "ok.bin").write_bytes(b"1")
+
+    assert listed(transport) == [("ok.bin", 1)]
+    assert "Left out broken.bin, which can't be read" in caplog.text
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root can read anything")
+def test_a_folder_that_cannot_be_listed_is_an_error(root: Path, transport: Transport) -> None:
+    locked = root / "locked"
+    locked.mkdir()
+    locked.chmod(0)
+    try:
+        with pytest.raises(TransportError, match="Error listing"):
+            transport.list_files()
+    finally:
+        locked.chmod(0o700)

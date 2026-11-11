@@ -4,6 +4,8 @@
 from pathlib import Path, PurePosixPath
 from typing import Protocol, Self
 
+from beck.models import RemoteFile
+
 
 class Transport(Protocol):
     """A target BECK can read from and copy to. Use it in a ``with`` block.
@@ -25,6 +27,9 @@ class Transport(Protocol):
 
     def size(self, path: PurePosixPath) -> int:
         """A remote file's size in bytes."""
+
+    def list_files(self) -> list[RemoteFile]:
+        """Every file under the BIOS root, in any folder, sorted by path. A failure is an error."""
 
     def makedirs(self, path: PurePosixPath) -> None:
         """Create a remote folder and any missing parents. An existing folder is fine."""

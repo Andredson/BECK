@@ -23,6 +23,7 @@ src/beck/
 ├── hashing.py           # chunked MD5, local folder scan
 ├── matcher.py           # pure: (missing entries, local files) -> Plan
 ├── executor.py          # applies a Plan through a Transport; dry-run aware
+├── exporter.py          # beck export: copies a target's .rom and .bin files to a local folder
 ├── frontends/
 │   ├── __init__.py      # registry: {"recalbox": RecalboxAdapter}
 │   ├── base.py          # FrontendAdapter Protocol
@@ -62,6 +63,10 @@ flowchart LR
    write method.
 6. `output/console.py`, or `output/json.py` with `--json`, renders the result, and `cli.py` returns the exit code.
 
+`beck export` goes the other way, with no report or matching: `exporter.export` lists the target through `Transport.list_files`, reads
+each `.rom` and `.bin` file with `read_bytes`, and creates it under the local folder. It returns an `ExportResult`, which the output layer
+renders.
+
 ## Modules
 
 | Module | Responsible for | Doesn't |
@@ -72,6 +77,7 @@ flowchart LR
 | `hashing.py` | Chunked MD5, and a recursive, sorted scan that skips hidden files | Use the network |
 | `matcher.py` | Deciding which file fills which target (rules below) | Do any I/O |
 | `executor.py` | Creating folders and uploading through a `Transport`; recording a failed item and continuing | Delete local files, or know which transport it's using |
+| `exporter.py` | `beck export`: listing a `Transport`, reading its `.rom` and `.bin` files, and creating local copies that don't exist yet | Write to the target, replace or delete a local file, or follow a link in the destination |
 | `frontends/` | One adapter per system: where its report is, how to parse it, and how device paths map to relative paths | Open connections |
 | `transports/` | Reading, checking and writing files on a target | Know about reports or matching |
 | `output/` | Rendering a `RunResult` for people, or as one JSON document for machines | Decide anything |
@@ -101,7 +107,7 @@ These are the boundaries to keep when changing the code:
 2. **`sys.exit` only in `cli.py`.** Everything else raises a `BeckError`, or returns.
 3. **Only adapters know about devices.** Recalbox paths and report formats stay in `frontends/`, and SMB stays in
    `transports/`. Only `transports/smb.py` imports `pysmb`.
-4. **`executor` depends on the `Transport` Protocol**, never on a specific transport.
+4. **`executor` and `exporter` depend on the `Transport` Protocol**, never on a specific transport.
 5. **Never delete or rename a user's local file** without an explicit opt-in flag (DEC-02). Only `executor.py` deletes, and nothing
    renames, which a test checks on the source.
 6. **Secrets don't leave the transport.** `Transport.describe()` is for messages and never includes a password. `Transport.url()` is for

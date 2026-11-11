@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Andredson/BECK/main/docs/schemas/export-result.v1.json",
+  "title": "Result of beck --json export",
+  "description": "See docs/json-output.md. Within schema_version 1, fields are only added, so ignore fields you don't know.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "beck_version",
+    "command",
+    "ok",
+    "dry_run",
+    "target",
+    "destination",
+    "summary",
+    "files",
+    "errors"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "beck_version": {
+      "type": "string"
+    },
+    "command": {
+      "const": "export"
+    },
+    "ok": {
+      "type": "boolean",
+      "description": "False when the exit code isn't 0."
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "target": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The target as a URL, with no user or password. Null if BECK stopped before opening one."
+    },
+    "destination": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The local folder, as given on the command line. Null if BECK stopped before reading it."
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "files_on_target",
+        "rom_and_bin",
+        "copied",
+        "planned",
+        "existing",
+        "failed",
+        "left_out"
+      ],
+      "properties": {
+        "files_on_target": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rom_and_bin": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "copied": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "planned": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "existing": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "left_out": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "description": "Each .rom and .bin file on the target, sorted by path.",
+      "items": {
+        "$ref": "#/$defs/file"
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/error"
+      }
+    }
+  },
+  "$defs": {
+    "file": {
+      "type": "object",
+      "required": [
+        "path",
+        "size",
+        "status",
+        "error"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Relative to the target's BIOS folder, and to the destination."
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "enum": [
+            "planned",
+            "copied",
+            "exists",
+            "failed"
+          ]
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "required": [
+        "code",
+        "message",
+        "item"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "usage, config, transport, internal, size_mismatch, write_failed or unsafe_path. New codes may be added."
+        },
+        "message": {
+          "type": "string"
+        },
+        "item": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The file this is about. Null for an error that stopped the run."
+        }
+      }
+    }
+  }
+}

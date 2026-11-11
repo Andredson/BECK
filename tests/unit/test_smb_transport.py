@@ -15,7 +15,7 @@ from smb.smb_structs import OperationFailure
 from beck.errors import TransportError
 from beck.transports.base import Transport
 from beck.transports.smb import SmbTransport
-from tests.fakes import FakeSMBConnection, FakeSMBServer, install_fake_smb
+from tests.fakes import FakeEntry, FakeSMBConnection, FakeSMBServer, install_fake_smb
 
 CREDENTIAL = "beck-test-password"
 
@@ -440,3 +440,62 @@ def test_describe_never_includes_the_credentials(server: FakeSMBServer) -> None:
         description = opened.describe()
 
     assert description == "SMB share bios on beck-test-server:445"
+
+
+# list_files, for beck export (step 11.12)
+
+
+def test_list_files_walks_every_folder_with_sizes_sorted(server: FakeSMBServer) -> None:
+    server.dirs |= {("bios", "ps1"), ("bios", "ps1/x"), ("bios", "empty")}
+    server.files[("bios", "ps1/x/deep.bin")] = b"123"
+    server.files[("bios", "ps1/scph1001.bin")] = b"1"
+    server.files[("bios", "top.zip")] = b"12"
+
+    with transport() as smb:
+        found = [(file.path.as_posix(), file.size) for file in smb.list_files()]
+
+    assert found == [("ps1/scph1001.bin", 1), ("ps1/x/deep.bin", 3), ("top.zip", 2)]
+
+
+def test_list_files_under_a_folder_of_the_share_is_relative_to_it(server: FakeSMBServer) -> None:
+    server.dirs |= {("bios", "recalbox"), ("bios", "recalbox/bios"), ("bios", "recalbox/bios/a")}
+    server.files[("bios", "recalbox/bios/a/b.bin")] = b"1"
+    server.files[("bios", "recalbox/other.bin")] = b"1"
+    root = PurePosixPath("recalbox/bios")
+
+    with SmbTransport("beck-test-server", 445, "bios", "", "", root=root) as smb:
+        assert [file.path.as_posix() for file in smb.list_files()] == ["a/b.bin"]
+
+
+def test_list_files_stops_at_a_loop(server: FakeSMBServer, monkeypatch: pytest.MonkeyPatch) -> None:
+    def a_folder_inside_every_folder(
+        self: FakeSMBConnection, service_name: str, path: str, *args: Any, **kwargs: Any
+    ) -> list[Any]:
+        return [FakeEntry(".", True), FakeEntry("loop", True)]
+
+    monkeypatch.setattr(FakeSMBConnection, "listPath", a_folder_inside_every_folder)
+
+    with transport() as smb, pytest.raises(TransportError, match="more than 32 levels deep"):
+        smb.list_files()
+
+
+def test_a_folder_that_cannot_be_listed_is_an_error(server: FakeSMBServer) -> None:
+    server.failures["listPath"] = OperationFailure("Failed to list", [])
+
+    with transport() as smb, pytest.raises(TransportError, match="Error listing folder"):
+        smb.list_files()
+
+
+@pytest.mark.parametrize("name", ["../escape.bin", "a/b.bin", "/etc/x.bin", "a\\b.bin"])
+def test_list_files_refuses_a_name_that_is_not_one_level(
+    server: FakeSMBServer, monkeypatch: pytest.MonkeyPatch, name: str
+) -> None:
+    def crafted(
+        self: FakeSMBConnection, service_name: str, path: str, *args: Any, **kwargs: Any
+    ) -> list[Any]:
+        return [FakeEntry(".", True), FakeEntry("..", True), FakeEntry(name, False, 1)]
+
+    monkeypatch.setattr(FakeSMBConnection, "listPath", crafted)
+
+    with transport() as smb, pytest.raises(TransportError, match="listed a name that isn't safe"):
+        smb.list_files()

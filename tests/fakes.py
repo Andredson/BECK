@@ -166,9 +166,9 @@ class FakeSMBConnection:
         for share, child in sorted(self.server.dirs):
             if share == service_name and _parent(child) == folder:
                 entries.append(FakeEntry(child.rpartition("/")[2], True))
-        for share, child in sorted(self.server.files):
+        for (share, child), content in sorted(self.server.files.items()):
             if share == service_name and _parent(child) == folder:
-                entries.append(FakeEntry(child.rpartition("/")[2], False))
+                entries.append(FakeEntry(child.rpartition("/")[2], False, len(content)))
         return entries
 
 

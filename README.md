@@ -13,8 +13,9 @@ Send your BIOS files to the right folders on your Recalbox, by matching them aga
 
 ## Legal notice
 
-BIOS files are copyrighted. BECK doesn't include, download or distribute them: it only matches files you already have. Only use BIOS dumps from
-hardware you own, and never commit BIOS files to this repository.
+BIOS files are copyrighted. BECK doesn't include or distribute them, and never downloads them from the internet: it only matches files you already
+have, and `beck export` only copies them back from your own device. Only use BIOS dumps from hardware you own, and never commit BIOS files to this
+repository.
 
 ## Install
 
@@ -64,6 +65,16 @@ network, with its SMB shares on, as they are on a fresh install.
    ```
 
 6. **On your Recalbox,** scan the BIOS files again, to see the result.
+
+## Copying BIOS files from your Recalbox
+
+`beck export DIR` goes the other way: it copies the `.rom` and `.bin` files on your Recalbox to `DIR`, for example as a backup. It never changes your
+Recalbox, and never replaces a file in `DIR`. It leaves out other kinds of BIOS file, such as `.zip` and `.img` ones, so it isn't a complete backup:
+[the guide](https://github.com/Andredson/BECK/blob/main/docs/cli.md#exporting-bios-files-from-the-device) has the details.
+
+```sh
+beck export ~/bios-backup --dry-run
+```
 
 ## Safety
 

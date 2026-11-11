@@ -11,6 +11,7 @@ beck check   [--source DIR] [--target URL | --target-dir DIR] [--frontend recalb
              [--yes] [--verify] [--fail-if-missing]
 beck scan    [--source DIR]
 beck report  [--target URL | --target-dir DIR | --report-file FILE]
+beck export  DIR [--target URL | --target-dir DIR] [--dry-run]
 beck config  path | init [--force] | show
 ```
 
@@ -53,6 +54,17 @@ systems appears once, and counts as required if any of them requires it. It writ
 ```sh
 beck report --target smb://recalbox.local/bios
 beck report --report-file missing_bios_report.txt     # a local copy: no network
+```
+
+### `beck export`
+
+Copies every `.rom` and `.bin` file in the device's BIOS folder to `DIR`, in the same folders, for example as a backup, or to move them to
+another device. It's the opposite direction to `check`, and it only reads the device. [Exporting](#exporting-bios-files-from-the-device)
+says what it copies and what it leaves out.
+
+```sh
+beck export ~/bios-backup --dry-run           # list what it would copy, and write nothing
+beck export ~/bios-backup                     # copy them
 ```
 
 ### `beck config`
@@ -98,8 +110,8 @@ act on your terminal, or look like something else. `--json` keeps the exact name
 | Option | Commands | What it does |
 |---|---|---|
 | `--source DIR` | `check`, `scan` | Your folder of BIOS files. The default is `./bios`. Hidden files and folders are skipped. A folder you name must exist, or BECK exits with 2. |
-| `--target URL` | `check`, `report` | An SMB target: `smb://[user@]host[:port]/share[/sub/path]`. The port defaults to 445. A URL with a password is refused. See [Passwords](#passwords). |
-| `--target-dir DIR` | `check`, `report` | A folder: a mounted SD card or USB drive, or the device itself. It can't be combined with `--target`. |
+| `--target URL` | `check`, `report`, `export` | An SMB target: `smb://[user@]host[:port]/share[/sub/path]`. The port defaults to 445. A URL with a password is refused. See [Passwords](#passwords). |
+| `--target-dir DIR` | `check`, `report`, `export` | A folder: a mounted SD card or USB drive, or the device itself. It can't be combined with `--target`. |
 | `--frontend NAME` | `check` | The kind of device. Only `recalbox`, for now. |
 | `--report-file FILE` | `check`, `report` | Reads a local copy of the report, not the one on the target. `beck report` then needs no target, and can't take one. `beck check` still needs a target to upload to. |
 
@@ -111,7 +123,7 @@ name one.
 | Option | What it does |
 |---|---|
 | `--overwrite` | Replaces files already on the device, including ones the report calls `INCORRECT`. There's no backup of what it replaces. See [Files already on the device](#files-already-on-the-device). |
-| `--dry-run` | Shows the full plan, including what would be deleted, and changes nothing, locally or on the device. |
+| `--dry-run` | Shows the full plan, including what would be deleted, and changes nothing, locally or on the device. With `export`, it lists what would be copied, and writes nothing, not even `DIR`. |
 | `--move` | Deletes a local file once it's uploaded to **all** its targets and each remote size matches. If any upload of that file failed, the file stays. |
 | `--clean-unmatched` | Deletes local files that matched nothing. Read the warning below first. |
 | `--yes` | Confirms deletions without asking. Required when BECK can't ask. |
@@ -242,6 +254,27 @@ can have a listed MD5: the real Recalbox 10.1.1 report lists `neocd.bin`'s MD5 f
 archive, so Recalbox can't open it, and still lists the target as missing. Since 1.0.1, BECK doesn't copy a file that isn't a zip
 archive to a `.zip` target. It prints a warning, the target stays missing, and the file is never treated as unmatched, so
 `--clean-unmatched` doesn't delete it. BECK doesn't look inside zip archives yet, so it can't match a zip to a `.zip` target either.
+
+## Exporting BIOS files from the device
+
+`beck export DIR` copies BIOS files the other way, from the device to `DIR` on this computer (DEC-57, DEC-60).
+
+- **What it copies:** every file ending in `.rom` or `.bin`, in any case, such as `ATARIBAS.ROM`, anywhere under the device's BIOS
+  folder. Each goes to the same path under `DIR`, which is created if needed.
+- **What it leaves out:** every other file. **So it isn't a complete backup of your BIOS files.** On Recalbox 10.1.1, 70 of the 232
+  files its report can ask for aren't `.rom` or `.bin`, such as `neogeo.zip`, `atarist/tos.img` and the Amiga `kick*.A500` files. It
+  also copies `.rom` and `.bin` files that aren't BIOS files. The result says how many files it left out.
+- **A file already in `DIR` is kept,** and reported, even if it's different. Export never replaces or deletes a local file, so running it
+  again copies only what's new.
+- **It never changes the device.** It lists the BIOS folder and reads files, and writes nothing there.
+- **A file that fails** is reported, and the others carry on, with exit code 3. A file is read whole before anything is written, and its
+  size must match the one the device listed, so a failed read leaves nothing behind.
+- **Links in `DIR` aren't followed:** a folder there that's a link fails the files under it, because it could lead anywhere.
+- **These are real BIOS files,** which are copyrighted. If `DIR` is inside a git repository, BECK warns you. Never commit them: in BECK's
+  own repository, only `bios/` is ignored.
+
+Each file is read in one piece, and the SMB timeout covers a whole file. On a slow network, a large file can time out: raise `timeout`
+under `[smb]` in [the settings file](#the-settings-file).
 
 ## Exit codes
 

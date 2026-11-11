@@ -9,11 +9,13 @@ import pytest
 
 from beck.models import (
     Duplicate,
+    ExportResult,
     ItemError,
     LocalFile,
     MissingBios,
     Plan,
     PlannedUpload,
+    RemoteFile,
     RunResult,
     ScanResult,
     Unreadable,
@@ -212,3 +214,29 @@ def test_run_result_defaults_to_a_real_run_with_nothing_done() -> None:
 
     assert result.dry_run is False
     assert not (result.completed or result.skipped or result.errors)
+
+
+@pytest.mark.parametrize("path", ["/abs.bin", "../up.bin", "a/../b.bin", "."])
+def test_a_remote_file_refuses_a_path_that_is_not_a_relative_file(path: str) -> None:
+    with pytest.raises(ValueError, match="Not a relative file path"):
+        RemoteFile(PurePosixPath(path), 1)
+
+
+def test_a_remote_file_refuses_a_negative_size() -> None:
+    with pytest.raises(ValueError, match="Negative size"):
+        RemoteFile(PurePosixPath("a.bin"), -1)
+
+
+def test_an_export_result_orders_its_files_and_counts_what_it_left_out() -> None:
+    a, b, c = (RemoteFile(PurePosixPath(name), 1) for name in ("a.bin", "b/c.rom", "c.bin"))
+
+    result = ExportResult(
+        destination=Path("out"),
+        copied=(c,),
+        existing=(a,),
+        failed=(b,),
+        on_target=5,
+    )
+
+    assert result.chosen == (a, b, c)
+    assert result.left_out == 2

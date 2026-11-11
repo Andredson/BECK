@@ -103,7 +103,13 @@ other files refer to them.
 - **Commit message:** `feat(scan): support multiple source folders and glob filters`
 
 ### 11.12 — Export: copy BIOS files from the target to this machine
-- [ ] Done
+- [x] Done (2026-11-11: run on the Recalbox 10.1.1 VM, at the owner's request, over its own Samba, as a guest. The dry run planned 232
+  of 3,109 files, left out 2,877, and wrote nothing. The export copied all 232 in 2.9 s, about 44 MB, with exit code 0, and each copy
+  has the same path and MD5 as on the VM. The VM's BIOS folder was unchanged: all 3,109 files had the same paths and MD5s before and
+  after. A second run copied nothing and kept all 232. Differences from this step: downloads use the existing `read_bytes`, so only
+  `list_files` is a new `Transport` operation, and a file is read whole, which means a failed read leaves nothing behind; a target
+  that can't be listed stops the run, with exit code 3; and the tick is its own commit, after the run. Not tested: real hardware, a slow
+  network with large files (the Samba tests copy an 8 MB file over a local one), and Windows or macOS.)
 - **Priority:** planned (1)
 - **Requested by the owner (2026-11-05):** a way to get the BIOS files on the target system and copy them to the machine running BECK,
   for example as a backup or to move to another device. It's the opposite direction to `check`. The owner decided how it works

@@ -14,6 +14,7 @@ from beck.config import ConfigLocation
 from beck.errors import BeckError
 from beck.models import (
     SHARE_ROOT,
+    ExportResult,
     ItemError,
     LocalFile,
     MissingBios,
@@ -25,6 +26,7 @@ from beck.output import (
     LOGGER_NAME,
     distinct_targets,
     escaped_for_terminal,
+    export_status,
     extension_warning,
     not_a_zip_warning,
     print_safely,
@@ -332,6 +334,46 @@ class ConsoleRenderer:
             total = f"Files: {len(scanned.files)}"
             unreadable = f", can't be read: {len(scanned.unreadable)}" if scanned.unreadable else ""
             self._print(f"{total}{unreadable}")
+
+    def exporting_to(self, destination: Path) -> None:
+        """Nothing: the summary names the folder."""
+
+    def exported(self, result: ExportResult) -> None:
+        """A line for each ``.rom`` and ``.bin`` file, the errors, then what was done and left."""
+        folder = str(result.destination)
+        outcomes = {
+            "copied": "copied",
+            "planned": "would copy",
+            "exists": f"already in {folder}, kept",
+            "failed": "failed",
+        }
+        for file in result.chosen:
+            status = export_status(file, result)
+            outcome = self._paint(outcomes[status], RED) if status == "failed" else outcomes[status]
+            self._print(f"{file.path.as_posix()}: ", outcome)
+        for error in result.errors:
+            self.error(error.message)
+        if not result.chosen:
+            self._print(self._paint("No .rom or .bin files were found on the device.", CYAN))
+        else:
+            done = len(result.planned) if result.dry_run else len(result.copied)
+            verb = "Dry run: would copy" if result.dry_run else "Copied"
+            failed = f", and {len(result.failed)} failed" if result.failed else ""
+            self._print(
+                f"{verb} ",
+                self._paint(done, GREEN),
+                f" of {len(result.chosen)} .rom and .bin files to {folder}{failed}.",
+            )
+        if result.existing:
+            self._print(
+                f"{len(result.existing)} were already in {folder}, and were kept: export never "
+                "replaces a file."
+            )
+        if result.left_out:
+            self._print(
+                f"Left out {result.left_out} other files on the device, which aren't .rom or .bin. "
+                "This isn't a complete backup of its BIOS files: see docs/cli.md."
+            )
 
     def config_path(self, location: ConfigLocation, exists: bool) -> None:
         """The path alone on the first line, so that ``$(beck config path | head -1)`` works."""

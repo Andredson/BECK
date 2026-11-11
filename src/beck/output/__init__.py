@@ -12,7 +12,7 @@ import re
 import sys
 from typing import TextIO
 
-from beck.models import Plan, PlannedUpload, RunResult
+from beck.models import ExportResult, Plan, PlannedUpload, RemoteFile, RunResult
 
 LOGGER_NAME = "beck"
 NOT_ABOUT_AN_UPLOAD = {"delete_failed", "unsafe_path"}
@@ -102,6 +102,20 @@ def upload_status(upload: PlannedUpload, result: RunResult) -> str:
     if upload.target.as_posix() in upload_errors(result):
         return "failed"
     return "planned" if result.dry_run else "skipped"
+
+
+def export_status(file: RemoteFile, result: ExportResult) -> str:
+    """What happened to a file ``beck export`` chose. Both outputs use this.
+
+    These are the values of ``files[].status`` in the export document, a public contract.
+    """
+    if file in result.copied:
+        return "copied"
+    if file in result.planned:
+        return "planned"
+    if file in result.existing:
+        return "exists"
+    return "failed"
 
 
 def not_a_zip_warning(upload: PlannedUpload) -> str:

@@ -204,6 +204,20 @@ def scan_works(server: FakeSMBServer, folder: Path) -> list[str]:
     return ["scan", "--source", str(folder / "source")]
 
 
+def export_works(server: FakeSMBServer, folder: Path) -> list[str]:
+    server.files[("bios", "a.bin")] = b"beck-test-bytes"
+    return ["export", str(folder / "out")]
+
+
+def export_dry_run(server: FakeSMBServer, folder: Path) -> list[str]:
+    return [*export_works(server, folder), "--dry-run"]
+
+
+def export_refused_login(server: FakeSMBServer, folder: Path) -> list[str]:
+    server.login_succeeds = False
+    return export_works(server, folder)
+
+
 def scan_no_folder(server: FakeSMBServer, folder: Path) -> list[str]:
     return ["scan", "--source", str(folder / "nope")]
 
@@ -268,6 +282,9 @@ SCENARIOS: list[Callable[[FakeSMBServer, Path], list[str]]] = [
     report_refused_login,
     scan_works,
     scan_no_folder,
+    export_works,
+    export_dry_run,
+    export_refused_login,
     config_path,
     config_show,
     config_init_refused,

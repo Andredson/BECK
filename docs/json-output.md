@@ -42,6 +42,7 @@ The [schemas](schemas/) describe each document. They allow extra fields on purpo
 | `beck --json check` | [`check-result.v1.json`](schemas/check-result.v1.json) |
 | `beck --json report` | [`report-result.v1.json`](schemas/report-result.v1.json) |
 | `beck --json scan` | [`scan-result.v1.json`](schemas/scan-result.v1.json) |
+| `beck --json export` | [`export-result.v1.json`](schemas/export-result.v1.json) |
 | `beck --json config` | [`config-result.v1.json`](schemas/config-result.v1.json) |
 | A command line BECK rejected | [`rejected-command.v1.json`](schemas/rejected-command.v1.json) |
 
@@ -233,6 +234,49 @@ Hashes the local files. It uses no network and changes nothing.
 }
 ```
 
+## `beck --json export`
+
+Copies the `.rom` and `.bin` files on the target to a local folder. It only reads the target, and never replaces a local file.
+
+```json
+{
+  "schema_version": 1,
+  "beck_version": "0.1.0",
+  "command": "export",
+  "ok": true,
+  "dry_run": false,
+  "target": "smb://recalbox.local:445/bios",
+  "destination": "bios-backup",
+  "summary": {
+    "files_on_target": 5,
+    "rom_and_bin": 3,
+    "copied": 2,
+    "planned": 0,
+    "existing": 1,
+    "failed": 0,
+    "left_out": 2
+  },
+  "files": [
+    { "path": "atari800/ATARIBAS.ROM", "size": 8192, "status": "copied", "error": null },
+    { "path": "neocd/neocd.bin", "size": 524288, "status": "exists", "error": null },
+    { "path": "ps1/scph1001.bin", "size": 524288, "status": "copied", "error": null }
+  ],
+  "errors": []
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `dry_run` | Whether this was a dry run, which writes nothing. |
+| `target` | The target as a URL, as in `check`. `null` if BECK stopped before opening one. |
+| `destination` | The local folder, as given. `null` if BECK stopped before reading the command line's folder. |
+| `files[]` | Each `.rom` and `.bin` file on the target, in any case: `path`, relative to the target's BIOS folder and to `destination`, `size`, `status` and `error`. |
+| `files[].status` | `planned` in a dry run; `copied`; `exists`, when a file is already at that path in `destination`, and was kept; or `failed`, with the reason in `error`, and in `errors`. |
+| `summary.files_on_target` | Every file on the target. |
+| `summary.rom_and_bin` | The length of `files`. |
+| `summary.copied`, `planned`, `existing`, `failed` | How many `files` have each status. |
+| `summary.left_out` | The files on the target that aren't `.rom` or `.bin`, so weren't exported. Some are BIOS files, such as `.zip` and `.img` ones, so an export isn't a complete backup. |
+
 ## `beck --json config`
 
 `config path`, `config init` and `config show` all give this document. It connects to nothing.
@@ -283,10 +327,11 @@ An error about **one item** doesn't stop the run. `item` names the target, folde
 | `transport` | 3 | Yes, if `item` is `null` | Couldn't connect or log in, or one upload, folder or check failed. |
 | `report_not_found` | 4 | Yes | There's no report, so generate one on the device. |
 | `report_parse` | 4 | Yes | BECK can't read the report. |
-| `size_mismatch` | 3 | No | The size of an upload on the target doesn't match, so the upload is `failed`, and with `--move` the local file stays. |
+| `size_mismatch` | 3 | No | The size of an upload on the target doesn't match, so the upload is `failed`, and with `--move` the local file stays. With `export`, a file read from the target didn't have the size it was listed with, and nothing was written. |
 | `md5_mismatch` | 3 | No | With `--verify`, the MD5 of an upload on the target doesn't match. It's handled the same way. |
 | `delete_failed` | 3 | No | A local file couldn't be deleted. |
-| `unsafe_path` | 3 | No | A report entry isn't safe to act on, so it was refused. `item` is its name. `beck --json report` can have it too. |
+| `unsafe_path` | 3 | No | A report entry isn't safe to act on, so it was refused. `item` is its name. `beck --json report` can have it too. With `export`, a folder in the destination is a link, which export doesn't follow. |
+| `write_failed` | 3 | No | With `export`, a local file or folder couldn't be written. `item` is the file's path. |
 | `internal` | 1 | Yes | A bug in BECK. The details are on stderr, and they aren't in the document because they could hold anything. Please report it. |
 
 A rejected command line is the one case with fewer fields, because no command ran:
