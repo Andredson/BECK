@@ -127,7 +127,7 @@ These are the boundaries to keep when changing the code:
 
 ## Extending BECK
 
-- **A new frontend** (stage 11): add an adapter in `frontends/` that follows `FrontendAdapter`, register it, and add real
+- **A new frontend** (such as [#21](https://github.com/Andredson/BECK/issues/21) or [#22](https://github.com/Andredson/BECK/issues/22)): add an adapter in `frontends/` that follows `FrontendAdapter`, register it, and add real
   report fixtures for it. [The `add-frontend-adapter` skill](../.agents/skills/add-frontend-adapter/SKILL.md) has the whole procedure.
 - **A new transport**: add a class in `transports/` that follows `Transport`. Only `cli.py` needs to know it exists.
 

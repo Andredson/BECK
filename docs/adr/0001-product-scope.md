@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-02
-- **Decisions covered:** DEC-01, DEC-02, DEC-03, DEC-04, DEC-09, DEC-10, DEC-12, DEC-13, DEC-15, DEC-50, DEC-54, DEC-56, DEC-57, DEC-58, DEC-60, DEC-61, DEC-75
+- **Decisions covered:** DEC-01, DEC-02, DEC-03, DEC-04, DEC-09, DEC-10, DEC-12, DEC-13, DEC-15, DEC-50, DEC-54, DEC-56, DEC-57, DEC-58, DEC-60, DEC-61, DEC-75, DEC-76, DEC-77
 
 ## Context
 At the baseline review ([assessment](../../roadmap/00-assessment.md)), BECK was a 243-line script with an overall
@@ -202,6 +202,7 @@ differed from the recommendation.
   file, as they do for Samba, or the check would miss a file that the upload then overwrites.
 
 ## DEC-75 — The hash cache and SSH/SFTP are dropped
+- **Status:** Accepted. Keeping the dropped steps in the roadmap is superseded by [DEC-76](#dec-76--translations-are-dropped-and-dropped-steps-leave-the-roadmap): they're removed.
 - **Date:** 2026-11-11, before step 11.1.
 - **Context:** Stage 11 lists the features after 1.0, and step 11.1 asks the owner to mark each one planned, later or dropped. Before
   that, the agent had suggested *later* for the hash cache (11.6), and 11.11, SSH/SFTP, was deferred by DEC-04.
@@ -213,3 +214,32 @@ differed from the recommendation.
   - SMB and a local folder stay the only transports, and paramiko or asyncssh won't be added.
   - `platformdirs` (DEC-19) is used only for the settings folder.
   - The rest of step 11.1 is still open: the other features have no status yet.
+
+## DEC-76 — Translations are dropped, and dropped steps leave the roadmap
+- **Date:** 2026-11-11, before step 11.1.
+- **Context:** DEC-75 dropped 11.6 and 11.11, and kept their steps in the stage file marked as dropped, because step 11.1 said not to
+  delete dropped items. The owner then dropped 11.10 too, and asked for the dropped features to be removed from the roadmap file.
+- **Decision:** **Supersedes the part of DEC-75 that kept dropped steps in the roadmap.**
+  - 11.10, translating BECK's messages, is dropped.
+  - Dropped features are removed from `roadmap/11-feature-expansion.md`: 11.6, 11.10 and 11.11 are gone. A line under *Steps* names
+    them, and the other steps keep their numbers, because decisions and other files refer to them, such as 11.12 in DEC-57 and DEC-60.
+  - Step 11.1 now says to remove a dropped feature, not to keep it marked. The decision log and this ADR keep the record.
+- **Alternatives considered:** None were offered: the owner asked for both. The owner gave no further reason.
+- **Consequences:**
+  - BECK's messages stay in English only, so there's no `gettext` or message catalog.
+  - Older references to the removed steps stay as they were, because accepted decisions aren't edited: DEC-04's "deferred item (step
+    11.11)", DEC-19's "hash cache (11.6)" and DEC-75.
+
+## DEC-77 — Other systems move from the roadmap to issues
+- **Date:** 2026-11-11, before step 11.1.
+- **Context:** Stage 11 had three steps for other systems: 11.7, a Batocera adapter, and 11.8, a RetroBat adapter, both blocked by real
+  data from those systems, and 11.9, research into RetroPie and Lakka. The owner asked for them to leave stage 11 and become issues, to
+  be developed later by the owner or another developer.
+- **Decision:** Steps 11.7, 11.8 and 11.9 are removed from `roadmap/11-feature-expansion.md`, and are GitHub issues instead:
+  [#21](https://github.com/Andredson/BECK/issues/21) (Support Batocera), [#22](https://github.com/Andredson/BECK/issues/22) (Support RetroBat) and [#23](https://github.com/Andredson/BECK/issues/23) (Research RetroPie and Lakka support). Each issue
+  keeps the step's procedure, its blocker and its *Done when*. The stage file lists them under *Other systems*.
+- **Alternatives considered:** None were offered: the owner asked for it. The owner gave no further reason.
+- **Consequences:**
+  - Stage 11 can close without them. They aren't dropped: DEC-03's adapter interface and the `add-frontend-adapter` skill stay.
+  - The issues are labelled `type: feature` and `help wanted`. #21 and #22 are `blocked` until someone sends real data, and #21 also has
+    `frontend: batocera`. There's no `frontend: retrobat` label yet: the owner adds one when work starts, as the label guide says.

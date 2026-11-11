@@ -119,6 +119,8 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-13 | License metadata: SPDX `GPL-3.0-only`. |
 | DEC-15 | PyPI distribution name `beck-bios`; the command stays `beck`. |
 | DEC-75 | **Supersedes DEC-04's deferral of SSH/SFTP.** Two stage 11 features are dropped: 11.6, the hash cache, and 11.11, an SSH/SFTP transport. Their steps stay in the roadmap, marked as dropped. *(2026-11-11, before step 11.1)* |
+| DEC-76 | **Supersedes the part of DEC-75 that kept dropped steps in the roadmap.** 11.10, translations, is dropped too. Dropped features are removed from the stage file, and this log keeps the record: 11.6, 11.10 and 11.11 are gone from `11-feature-expansion.md`, and the other steps keep their numbers. *(2026-11-11, before step 11.1)* |
+| DEC-77 | Support for other systems leaves the roadmap: steps 11.7 (Batocera), 11.8 (RetroBat) and 11.9 (RetroPie and Lakka research) become GitHub issues [#21](https://github.com/Andredson/BECK/issues/21), [#22](https://github.com/Andredson/BECK/issues/22) and [#23](https://github.com/Andredson/BECK/issues/23), for the owner or any contributor to develop later. DEC-03's adapter interface stays. *(2026-11-11, before step 11.1)* |
 
 ### AI-agent support
 
