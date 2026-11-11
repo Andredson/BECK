@@ -43,6 +43,7 @@ CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against
 | `docs/json-output.md`, `docs/schemas/` | [The `--json` output](docs/json-output.md) and its JSON Schema files: a **public contract** (DEC-23). Ask the owner before changing an existing field. `tests/unit/test_json_contract.py` checks every kind of document against the schemas, and its `V1_FIELDS` records what version 1 promises, so a new field goes in the output, the schema, the guide and that record. |
 | `SECURITY.md`, `docs/threat-model.md` | [How to report a vulnerability](SECURITY.md), and [what BECK protects and the risks it accepts](docs/threat-model.md). Update the threat model when a change alters a defense it names. |
 | `docs/spikes/` | Results of technical experiments, such as [`smbprotocol` vs `pysmb`](docs/spikes/smbprotocol.md). |
+| `docs/research/` | What was found out about a device before building on it, such as [where Recalbox defines its BIOS files](docs/research/recalbox-bios-definitions.md). |
 | `docs/releasing.md` | [Versions, tags and the release checklist](docs/releasing.md): who does each step, and what to check. Agents stop before the push; the owner tags and approves. |
 | `docs/maintenance.md` | [Monthly maintenance routine](docs/maintenance.md): dependency upgrades, pin refreshes, security review (replaces an update bot, DEC-29). Follow it when asked to update dependencies, or when the weekly *Security* run or an expired `.trivyignore` entry fails. It also lists [the issue labels](docs/maintenance.md#issue-labels), which must match GitHub's. |
 | `.github/pull_request_template.md` | PR description template with the roadmap checklist and a required *AI assistance* item (DEC-69). Fill it in when preparing a PR description for the human, and tick *AI tools helped write this PR*, naming your tool. |
@@ -156,7 +157,7 @@ field, with [the schemas](docs/schemas/), and [the `beck` command](docs/cli.md) 
 1. **Look first.** Always run `beck --json check --dry-run …` first, and show the human the plan: `uploads` (with `replaces` and
    `warning`), `incorrect`, `still_missing`, `not_a_zip`, `unreadable` and `deleted`. A dry run changes nothing, but it does connect to the target,
    so use only a target the human named. `beck --json scan --source DIR` and `beck --json report --report-file FILE` work with no
-   network.
+   network. `missing_from` says where the list came from: `report` means a report that may be out of date, so say so.
 2. **Parse stdout as JSON, and branch on the exit code.** Stdout holds one document, even for an error or a bad flag, and logs go to
    stderr. Check that `schema_version` is `1`. The exceptions: `--help` and `--version` print text, and Ctrl-C prints no document.
 
@@ -166,7 +167,7 @@ field, with [the schemas](docs/schemas/), and [the `beck` command](docs/cli.md) 
    | 1 | A bug in BECK. | Stop, and show the human stderr. The lists can't be trusted, because a bug can stop a run partway. |
    | 2 | A bad flag or setting, or a deletion nobody confirmed. Nothing changed. | Read `errors`. Don't answer a refused deletion by adding `--yes`. |
    | 3 | The target failed, or some items did, and the others finished. | Read `errors`, and `uploads[].status`, before running it again. |
-   | 4 | No report, or one BECK can't read. | Ask the human to generate a new one on the device. |
+   | 4 | No report, or one BECK can't read, and the web API didn't answer. | Ask the human to generate a new one on the device. |
    | 5 | `--fail-if-missing` found required files missing or incorrect. `errors` is empty. | Tell the human what's in `still_missing` and `incorrect`. |
 
 3. **Never add `--yes`, `--overwrite`, `--move` or `--clean-unmatched` without the human's explicit approval in this session,** for

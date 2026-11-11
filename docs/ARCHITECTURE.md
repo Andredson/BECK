@@ -32,7 +32,8 @@ src/beck/
 │   ├── __init__.py
 │   ├── base.py          # Transport Protocol (context manager)
 │   ├── local.py         # folder on disk: mounted SD/USB, on-device runs, tests
-│   └── smb.py           # pysmb (DEC-53)
+│   ├── smb.py           # pysmb (DEC-53)
+│   └── webapi.py        # one GET to a device's web API, with http.client (DEC-79)
 └── output/
     ├── __init__.py
     ├── console.py       # human output: colors, NO_COLOR, TTY detection
@@ -56,7 +57,9 @@ flowchart LR
 ```
 
 1. `cli.py` loads the settings, picks a frontend adapter and opens a transport.
-2. The report is read through the transport, and the adapter parses its text into `MissingBios` entries.
+2. For an SMB target, `transports/webapi.py` asks the device's web API for what's missing, and the adapter's `parse_api` turns its
+   answer into `MissingBios` entries (DEC-79). Without an answer, or with `--no-api`, a folder target or `--report-file`, the report is
+   read through the transport instead, and the adapter parses its text into the same entries.
 3. `hashing.scan` turns the local folder into `LocalFile` items.
 4. `matcher.plan` turns both lists into a `Plan`. Nothing has been written yet.
 5. `executor.execute` applies the plan through the transport and returns a `RunResult`. With `dry_run=True`, it calls no

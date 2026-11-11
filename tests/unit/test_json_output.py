@@ -100,6 +100,7 @@ def test_a_normal_run_gives_the_whole_document(
         "dry_run": False,
         "frontend": "recalbox",
         "target": device.resolve().as_uri(),
+        "missing_from": "report",
         "summary": {
             "missing_entries": 2,
             "satisfied": 1,
@@ -946,6 +947,7 @@ def test_report_lists_missing_and_incorrect_once_each(
         "ok": True,
         "frontend": "recalbox",
         "target": None,
+        "missing_from": "report_file",
         "summary": {"missing": 2, "incorrect": 1},
         "missing": [
             {"name": "b.bin", "target": "b.bin", "md5s": [A], "required": False},

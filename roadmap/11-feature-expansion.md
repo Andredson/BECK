@@ -55,7 +55,14 @@ other files refer to them.
 - **Commit message:** `docs(roadmap): prioritize feature expansion with the owner`
 
 ### 11.2 — Report-less Recalbox mode
-- [ ] Done
+- [x] Done (2026-11-11, DEC-79: `es_bios.xml` isn't on any SMB share, so BECK asks Recalbox's web manager API instead, `GET :81/api/bios`,
+  with the report as the fallback, and `--no-api` to skip it. The research is in `docs/research/recalbox-bios-definitions.md`, not in
+  `RecalboxAdapter` alone: the GET is in `transports/webapi.py`, and `--json` gets `missing_from`. Checked on the Recalbox 10.1.1 VM,
+  read-only, with the owner's OK, against a report the owner generated just before: BECK's parse of the API and of the report gave the
+  same 80 entries, field for field; `beck --json check --dry-run` with the owner's 233 files gave the same document both ways, apart from
+  `missing_from`; with port 81 unreachable, it fell back to the report with the warning; and the VM's 3,109 BIOS files were unchanged. The
+  pair is a fixture now. Port 81 isn't forwarded from the VM, so the API run went through an SSH tunnel, with the adapter's port set to
+  the tunnel's. Not tested: real hardware, Recalbox before web manager v3, and the web manager turned off.)
 - **Priority:** planned (3)
 - **What:** Today the user must first generate `missing_bios_report.txt` on the device. Research whether
   Recalbox keeps its BIOS definitions (names, paths, MD5s) in a file BECK could read directly over SMB or a

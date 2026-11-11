@@ -1,13 +1,18 @@
 # SPDX-License-Identifier: GPL-3.0-only
 """Recalbox: how its report is laid out. See tests/fixtures/reports/ for real examples."""
 
+import json
 import re
 from pathlib import PurePosixPath
+from typing import Any
 
 from beck.errors import ReportParseError
 from beck.models import ItemError, MissingBios
 
 BIOS_ROOT = "/recalbox/share/bios/"
+API_PORT = 81  # Recalbox's web manager API, since web manager v3 (DEC-79)
+API_PATH = "/api/bios"
+API_STATUSES = {"HashMatching", "FileNotFound", "HashNotMatching"}
 
 TITLE = "MISSING BIOS REPORT"
 SYSTEM_LINE = re.compile(r"^[ \t]*SYSTEM:[ \t]*(.+)$", re.MULTILINE)
@@ -130,11 +135,53 @@ def _read(text: str) -> tuple[list[MissingBios], list[ItemError]]:
     return missing, rejected
 
 
+def _api_entry(system: str, key: str, bios: Any) -> MissingBios | ItemError | None:
+    """One BIOS from the API as the report would list it: missing, incorrect, or nothing.
+
+    The report lists a file that isn't there, and one with a wrong MD5 only where the MD5 must match
+    (``hashMatchingMandatory``). That's what keeps it equal to the report, which 10.1.1 shows.
+    """
+    status = bios["realStatus"]
+    if status not in API_STATUSES:
+        raise ReportParseError(f"Unknown status {status!r} for {key} in the web API's answer")
+    incorrect = status == "HashNotMatching"
+    if status == "HashMatching" or (incorrect and not bios["hashMatchingMandatory"]):
+        return None
+    # Like a Path line with two locations, the first one is where BECK writes (DEC-50). Recalbox
+    # 10.1.1 gives paths from the BIOS folder, and newer code may give them whole.
+    first_path = key.split("|")[0].strip()
+    if not first_path.startswith("/"):
+        first_path = BIOS_ROOT + first_path
+    name = first_path.rpartition("/")[2]
+    reason = _why_unsafe(name, first_path)
+    if reason is not None:
+        return ItemError(
+            item=name or key, message=f"Refused {name or key}: {reason}", code="unsafe_path"
+        )
+    md5s = frozenset(md5.lower() for md5 in bios["md5List"] if MD5.fullmatch(md5))
+    current = bios["currentMd5"].lower()
+    if not md5s:
+        raise ReportParseError(f"No MD5 value for {key} in the web API's answer")
+    return MissingBios(
+        name=name,
+        target=PurePosixPath(first_path.removeprefix(BIOS_ROOT)),
+        md5s=md5s,
+        required=bool(bios["mandatory"]),
+        system=system,
+        incorrect=incorrect,
+        current_md5=current
+        if incorrect and MD5.fullmatch(current) and current.strip("0")
+        else None,
+    )
+
+
 class RecalboxAdapter:
     """Reads the report Recalbox writes from main menu > BIOS CHECKING > REPORT."""
 
     name = "recalbox"
     report_path = PurePosixPath("missing_bios_report.txt")
+    api_port: int | None = API_PORT
+    api_path = API_PATH
 
     def parse_report(self, text: str) -> list[MissingBios]:
         """Turn a report into one entry per ``MISSING`` or ``INCORRECT`` block, in order. Pure.
@@ -148,3 +195,24 @@ class RecalboxAdapter:
     def rejected_entries(self, text: str) -> list[ItemError]:
         """The entries that aren't safe to act on, one failed item each. Pure."""
         return _read(text)[1]
+
+    def parse_api(self, raw: bytes) -> tuple[list[MissingBios], list[ItemError]]:
+        """What ``GET /api/bios`` lists, as the report would: entries, and those refused. Pure.
+
+        The answer is ``{system: {"fullName", "biosList": {path: bios}}}``. An answer in another
+        form raises ReportParseError, so that BECK can read the report instead.
+        """
+        try:
+            systems = json.loads(raw)
+            missing: list[MissingBios] = []
+            rejected: list[ItemError] = []
+            for system in systems.values():
+                for key, bios in system["biosList"].items():
+                    item = _api_entry(str(system["fullName"]), str(key), bios)
+                    if isinstance(item, MissingBios):
+                        missing.append(item)
+                    elif item is not None:
+                        rejected.append(item)
+        except (ValueError, KeyError, TypeError, AttributeError) as e:
+            raise ReportParseError(f"BECK can't read the web API's answer: {e}") from e
+        return missing, rejected

@@ -14,7 +14,7 @@ What BECK protects, what it trusts, how it defends itself, and what it doesn't t
 ```mermaid
 flowchart LR
     A[Local disk: your files and settings] --> B[BECK]
-    B -- "SMB, not encrypted" --> C[Network]
+    B -- "SMB, and HTTP to the web API, neither encrypted" --> C[Network]
     C --> D[The device: its files and its report]
     D -. "the report decides what BECK writes" .-> B
 ```
@@ -41,6 +41,9 @@ anything, and whatever answers on the network might not be your Recalbox.
 
 ## Risks it accepts
 
+- **The web API is plain HTTP, with no login** (DEC-79). Anyone on your network can read the list of missing files BECK asks for, or answer
+  in your Recalbox's place, as with the report over SMB. BECK treats the answer like a report: it checks every path the same way, reads at
+  most 16 MiB, never follows a redirect or uses a proxy, and sends nothing but that one request, with no credentials. `--no-api` stops it.
 - **SMB isn't encrypted here.** `pysmb` has no SMB encryption (DEC-53). The password isn't sent as plain text, because the login uses NTLMv2, but your files and the report are, and someone on your network can read or
   change them. `--verify` catches damage, but it can't stop someone who can change what it reads back. Use BECK on a network you trust.
 - **BECK can't tell it's talking to your Recalbox.** SMB here doesn't check who the server is. A fake one that you connect to gets your files, and with a user name, a login exchange that could be attacked offline, so a strong password matters.

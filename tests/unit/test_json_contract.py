@@ -81,6 +81,7 @@ COUNT: Json = {"type": "integer", "minimum": 0}
 MD5: Json = {"type": "string", "pattern": "^[0-9a-f]{32}$"}
 MD5_OR_NULL: Json = {"anyOf": [MD5, {"type": "null"}]}
 UPLOAD_STATUS: Json = {"enum": ["planned", "uploaded", "replaced", "kept", "failed", "skipped"]}
+MISSING_FROM: Json = {"enum": ["api", "report", "report_file", None]}  # added in 1.1.0
 
 ERROR: Rules = {"code": TEXT, "message": TEXT, "item": TEXT_OR_NULL}
 FILE: Rules = {"path": TEXT, "md5": MD5, "size": COUNT}
@@ -154,6 +155,7 @@ V1_FIELDS: dict[str, Rules] = {
         "dry_run": FLAG,
         "frontend": TEXT,
         "target": TEXT_OR_NULL,
+        "missing_from": MISSING_FROM,
         **summary(
             "missing_entries",
             "satisfied",
@@ -180,6 +182,7 @@ V1_FIELDS: dict[str, Rules] = {
         "command": {"const": "report"},
         "frontend": TEXT,
         "target": TEXT_OR_NULL,
+        "missing_from": MISSING_FROM,
         **summary("missing", "incorrect"),
         **listing("missing", MISSING),
         **listing("incorrect", INCORRECT),
@@ -407,6 +410,50 @@ def check_with_a_target_url(world: World) -> list[str]:
         "--target",
         "smb://beck-test-user@beck-test-server/bios",
     ]
+
+
+@scenario(CHECK)
+def check_with_the_web_api(world: World) -> list[str]:
+    server = world.on_smb()
+    server.api_answer = json.dumps(
+        {
+            "ps1": {
+                "fullName": "Sony Playstation",
+                "biosList": {
+                    "ps1/scph1001.bin": {
+                        "mandatory": True,
+                        "hashMatchingMandatory": True,
+                        "currentMd5": "0" * 32,
+                        "md5List": [A.upper()],
+                        "realStatus": "FileNotFound",
+                    }
+                },
+            }
+        }
+    ).encode()
+    return ["--json", "check", "--source", str(world.source)]
+
+
+@scenario(REPORT)
+def report_with_the_web_api(world: World) -> list[str]:
+    server = world.on_smb()
+    server.api_answer = json.dumps(
+        {
+            "ps1": {
+                "fullName": "Sony Playstation",
+                "biosList": {
+                    "ps1/scph1001.bin": {
+                        "mandatory": True,
+                        "hashMatchingMandatory": True,
+                        "currentMd5": "0" * 32,
+                        "md5List": [A.upper()],
+                        "realStatus": "FileNotFound",
+                    }
+                },
+            }
+        }
+    ).encode()
+    return ["--json", "report"]
 
 
 @scenario(CHECK)

@@ -1,0 +1,666 @@
+==============================================================
+MISSING BIOS REPORT
+Platform: x86_64
+Generated on 2026/Nov./11 21:30:12+0100
+==============================================================
+
+SYSTEM: Apple Macintosh
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: MinivMacBootv2.dsk
+    Path: /recalbox/share/bios/macintosh/MinivMacBootv2.dsk
+    For: libretro/minivmac
+    Possible MD5 List:
+      16DDB8838D48BE26E471A2F2BB85A961
+      E66DC7952C8B9673868AD2FABA3C0D20
+
+SYSTEM: Commodore 64
+---------------------------------------------
+
+  MISSING OPTIONAL BIOS: JiffyDOS_C64.bin
+    Path: /recalbox/share/bios/vice/JiffyDOS_C64.bin
+    Notes: JiffyDOS support
+    For: libretro/vice_x64,libretro/vice_x64sc,libretro/vice_x128
+    Possible MD5 List:
+      BE09394F0576CF81FA8BACF634DAF9A2
+
+  MISSING OPTIONAL BIOS: JiffyDOS_C128.bin
+    Path: /recalbox/share/bios/vice/JiffyDOS_C128.bin
+    Notes: JiffyDOS support
+    For: libretro/vice_x64,libretro/vice_x64sc,libretro/vice_x128
+    Possible MD5 List:
+      CBBD1BBCB5E4FD8046B6030AB71FC021
+
+  MISSING OPTIONAL BIOS: JiffyDOS_1541-II.bin
+    Path: /recalbox/share/bios/vice/JiffyDOS_1541-II.bin
+    Notes: JiffyDOS support
+    For: libretro/vice_x64,libretro/vice_x64sc,libretro/vice_x128
+    Possible MD5 List:
+      1B1E985EA5325A1F46EB7FD9681707BF
+
+  MISSING OPTIONAL BIOS: JiffyDOS_1571_repl310654.bin
+    Path: /recalbox/share/bios/vice/JiffyDOS_1571_repl310654.bin
+    Notes: JiffyDOS support
+    For: libretro/vice_x64,libretro/vice_x64sc,libretro/vice_x128
+    Possible MD5 List:
+      41C6CC528E9515FFD0ED9B180F8467C0
+
+  MISSING OPTIONAL BIOS: JiffyDOS_1581.bin
+    Path: /recalbox/share/bios/vice/JiffyDOS_1581.bin
+    Notes: JiffyDOS support
+    For: libretro/vice_x64,libretro/vice_x64sc,libretro/vice_x128
+    Possible MD5 List:
+      20B6885C6DC2D42C38754A365B043D71
+
+  MISSING OPTIONAL BIOS: scpu-dos-1.4.bin
+    Path: /recalbox/share/bios/vice/SCPU64/scpu-dos-1.4.bin
+    Notes: 1.4 SuperCPU dos from SuperCPU64
+    For: libretro/xscpu64
+    Possible MD5 List:
+      CDA2FCD2E1F0412029383E51DD472095
+
+  MISSING OPTIONAL BIOS: scpu-dos-2.04.bin
+    Path: /recalbox/share/bios/vice/SCPU64/scpu-dos-2.04.bin
+    Notes: 2.04 SuperCPU dos from SuperCPU128
+    For: libretro/xscpu64
+    Possible MD5 List:
+      B2869F8678B8B274227F35AAD26BA509
+
+SYSTEM: Dragon 32/64
+---------------------------------------------
+
+  MISSING OPTIONAL BIOS: ddos10.rom
+    Path: /recalbox/share/bios/dragon/ddos10.rom
+    Notes: Dragon DOS 1.0
+    For: xroar
+    Possible MD5 List:
+      1C965DA49B6C5459B8353630AA1482E7
+
+  MISSING OPTIONAL BIOS: ddos11c.rom
+    Path: /recalbox/share/bios/dragon/ddos11c.rom
+    Notes: Dragon DOS 1.1
+    For: xroar
+    Possible MD5 List:
+      D8429AF1A12F7438A4BF88A5B934CB3A
+
+  MISSING OPTIONAL BIOS: ddos12a.rom
+    Path: /recalbox/share/bios/dragon/ddos12a.rom
+    Notes: Dragon DOS 1.2
+    For: xroar
+    Possible MD5 List:
+      55E2535DBBED7F1A26B5F263D7C72C63
+
+  MISSING OPTIONAL BIOS: ddos40.rom
+    Path: /recalbox/share/bios/dragon/ddos40.rom
+    Notes: Dragon DOS 4.0
+    For: xroar
+    Possible MD5 List:
+      9DDC388632CD3C376B164BA5CFC64329
+
+  MISSING OPTIONAL BIOS: ddos42.rom
+    Path: /recalbox/share/bios/dragon/ddos42.rom
+    Notes: Dragon DOS 4.2
+    For: xroar
+    Possible MD5 List:
+      C956A854CBC4B9D1E69C000F78368668
+
+  MISSING OPTIONAL BIOS: deltados.rom
+    Path: /recalbox/share/bios/dragon/deltados.rom
+    Notes: Delta DOS
+    For: xroar
+    Possible MD5 List:
+      024EAC3DB20F1B5CF98C30A0E4743201
+
+  MISSING OPTIONAL BIOS: dplus48.rom
+    Path: /recalbox/share/bios/dragon/dplus48.rom
+    Notes: DOS Plus 4.8
+    For: xroar
+    Possible MD5 List:
+      EE6F24D893A52B8EFEA9F787855456B5
+
+  MISSING OPTIONAL BIOS: dplus49b.rom
+    Path: /recalbox/share/bios/dragon/dplus49b.rom
+    Notes: DOS Plus 4.9
+    For: xroar
+    Possible MD5 List:
+      56F1B97314E4CA82491C465BB887059E
+
+  MISSING OPTIONAL BIOS: dplus50.rom
+    Path: /recalbox/share/bios/dragon/dplus50.rom
+    Notes: DOS Plus 5.0
+    For: xroar
+    Possible MD5 List:
+      35DE5D28DA507EBB213A26E04241D940
+
+  MISSING OPTIONAL BIOS: sdose6.rom
+    Path: /recalbox/share/bios/dragon/sdose6.rom
+    Notes: Super DOS E6
+    For: xroar
+    Possible MD5 List:
+      9D85E6B7133F915C021156F4B9CDB512
+
+  MISSING OPTIONAL BIOS: sdose8.rom
+    Path: /recalbox/share/bios/dragon/sdose8.rom
+    Notes: Super DOS E8
+    For: xroar
+    Possible MD5 List:
+      167F409B7A4B992FAABB784B061AB4C6
+
+SYSTEM: Microsoft Xbox
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: Complex_4627.bin
+    Path: /recalbox/share/bios/xbox/Complex_4627.bin
+    For: xemu
+    Possible MD5 List:
+      39CEE882148A87F93CB440B99DDE3CEB
+
+  MISSING REQUIRED BIOS: mcpx_1.0.bin
+    Path: /recalbox/share/bios/xbox/mcpx_1.0.bin
+    For: xemu
+    Possible MD5 List:
+      D49C52A4102F6DF7BCF8D0617AC475ED
+
+SYSTEM: NEC PC-Engine CD
+---------------------------------------------
+
+  MISSING OPTIONAL BIOS: syscard1.pce
+    Path: /recalbox/share/bios/pcenginecd/syscard1.pce
+    For: libretro/mednafen_supergrafx,libretro/mednafen_pce_fast,libretro/geargrafx
+    Possible MD5 List:
+      9F770275393B8627CF9D24E5C56D2AB9
+
+  MISSING OPTIONAL BIOS: syscard2.pce
+    Path: /recalbox/share/bios/pcenginecd/syscard2.pce
+    For: libretro/mednafen_supergrafx,libretro/mednafen_pce_fast,libretro/geargrafx
+    Possible MD5 List:
+      424F1D6BF93259BF255AFA7D1DC9F721
+
+  MISSING OPTIONAL BIOS: syscard2u.pce
+    Path: /recalbox/share/bios/pcenginecd/syscard2u.pce
+    For: libretro/mednafen_pce_fast
+    Possible MD5 List:
+      94279F315E8B52904F65AB3108542AFE
+
+  MISSING OPTIONAL BIOS: syscard3u.pce
+    Path: /recalbox/share/bios/pcenginecd/syscard3u.pce
+    For: libretro/mednafen_pce_fast
+    Possible MD5 List:
+      0754F903B52E3B3342202BDAFB13EFA5
+
+SYSTEM: Palm Pilot
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: palmos41-en-m515.rom
+    Path: /recalbox/share/bios/palm/palmos41-en-m515.rom
+    For: libretro/mu
+    Possible MD5 List:
+      83CB1D1C76E568B916DC2E7C0BF669F6
+
+  MISSING OPTIONAL BIOS: bootloader-dbvz.rom
+    Path: /recalbox/share/bios/palm/bootloader-dbvz.rom
+    For: libretro/mu
+    Possible MD5 List:
+      9DA101CD2317830649A31F8FA46DEBEC
+
+SYSTEM: Philips CD-I
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: cdimono1.zip
+    Path: /recalbox/share/bios/cdi/cdimono1.zip
+    For: libretro/cdi2015,libretro/same_cdi
+    Possible MD5 List:
+      CE590C4787460161359F2B680136CB60
+      BBE6636AC11D3744F0710E8E820187E7
+      1A7C3C98C46555FF5FC93EE3FEAE4B47
+
+  MISSING OPTIONAL BIOS: cdibios.zip
+    Path: /recalbox/share/bios/cdi/cdibios.zip
+    For: libretro/same_cdi
+    Possible MD5 List:
+      9FD6B277CD877D51426427A33D1D19BB
+
+  MISSING OPTIONAL BIOS: cdimono2.zip
+    Path: /recalbox/share/bios/cdi/cdimono2.zip
+    For: libretro/same_cdi
+    Possible MD5 List:
+      2AC8CD5BB23287E022CA17D616949255
+
+SYSTEM: SNK Neo-Geo
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: neogeo.zip
+    Path: /recalbox/share/bios/neogeo.zip or /recalbox/share/roms/neogeo/neogeo.zip
+    For: libretro/fbneo,libretro/fba2x,libretro/mame2000,libretro/mame2003,libretro/ mame2003-plus,libretro/mame2010,libretro/mame2015
+    Possible MD5 List:
+      E023D0A4B5249FDFF2A4620C28963944
+      8CBDFF53661F41DDBE486A98915E1EC9
+      42E359E394F0BE1D61B94DDCA0EFBE6C
+      C1E0A738D266926F604186AA9D63E4DB
+      D12BBA59121229FF13702878B415CB7C
+      2B4FFDF24D5D4F24C4B116C50C4BAFC3
+      005B843B6E70B939C2CCA41887CBC371
+      42E359E394F0BE1D61B94DDCA0EFBE6C
+      4B9432A4571D03CC8BAE9D24D8D6EB40
+      4CD64313E26537C04CDB561B8F84B0E4
+      50BBFD6BF297038B085E29265C65723A
+      76EE7390CCD537CDDEA1018025CA29A8
+      84D6C35AAD790A77BA3CFC1B319E1061
+      912C0A56BAFE0FBA39D0C668B139B250
+      94748719C0EF31E7375B0C357D82FC89
+      AB25B9E25052A6064901A7A221037EB6
+      AE9E5825CDE82C58E39DFD48534F7060
+      B18F83FEEF474B8A1306EF199CD810A2
+      B4519DF27A352C2A6E42E06D31330D91
+      BF00272E7150B31156A8995D60BF185D
+      CA66FD463EF7DCAB492A6DE8CE5F45EB
+      F4A125538DFD7A8044E025FC5188FB88
+      A3B2C9A69C28AD0BD4EA07877B744BBE
+      00DAD01ABDBF8EA9E79AD2FE11BDB182
+
+  MISSING REQUIRED BIOS: aes.zip
+    Path: /recalbox/share/bios/geolith/aes.zip
+    For: libretro/geolith
+    Possible MD5 List:
+      AD9585C72130C56F04AE26AAE87C289D
+      7A4DCD56B3924215AAC7F903FF907339
+
+SYSTEM: SNK Neo-Geo CD
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: neogeo.zip
+    Path: /recalbox/share/bios/neogeo.zip
+    For: libretro/fbneo,libretro/fba2x,libretro/mame2000,libretro/mame2003,libretro/mame2003-plus,libretro/mame2010,libretro/mame2015
+    Possible MD5 List:
+      E023D0A4B5249FDFF2A4620C28963944
+      8CBDFF53661F41DDBE486A98915E1EC9
+      42E359E394F0BE1D61B94DDCA0EFBE6C
+      C1E0A738D266926F604186AA9D63E4DB
+      D12BBA59121229FF13702878B415CB7C
+      2B4FFDF24D5D4F24C4B116C50C4BAFC3
+      005B843B6E70B939C2CCA41887CBC371
+      42E359E394F0BE1D61B94DDCA0EFBE6C
+      4B9432A4571D03CC8BAE9D24D8D6EB40
+      4CD64313E26537C04CDB561B8F84B0E4
+      50BBFD6BF297038B085E29265C65723A
+      76EE7390CCD537CDDEA1018025CA29A8
+      84D6C35AAD790A77BA3CFC1B319E1061
+      912C0A56BAFE0FBA39D0C668B139B250
+      94748719C0EF31E7375B0C357D82FC89
+      AB25B9E25052A6064901A7A221037EB6
+      AE9E5825CDE82C58E39DFD48534F7060
+      B18F83FEEF474B8A1306EF199CD810A2
+      B4519DF27A352C2A6E42E06D31330D91
+      BF00272E7150B31156A8995D60BF185D
+      CA66FD463EF7DCAB492A6DE8CE5F45EB
+      F4A125538DFD7A8044E025FC5188FB88
+      A3B2C9A69C28AD0BD4EA07877B744BBE
+      00DAD01ABDBF8EA9E79AD2FE11BDB182
+
+  MISSING OPTIONAL BIOS: ng-lo.rom
+    Path: /recalbox/share/bios/neocd/ng-lo.rom
+    Notes: ZOOM Rom
+    For: libretro/neocd
+    Possible MD5 List:
+      E255264D85D5765013B1B2FA8109DD53
+
+  MISSING REQUIRED BIOS: neocd.zip
+    Path: /recalbox/share/bios/geolith/neocd.zip
+    Notes: Neo-Geo CD Bios
+    For: libretro/geolith
+    Possible MD5 List:
+      3711783A59EF875C31076512E3F9F0E5
+
+SYSTEM: ST-V
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: epr-20091.ic8
+    Path: /recalbox/share/bios/stv/epr-20091.ic8
+    Notes: Required for Japan-region ST-V games.
+    For: libretro/mednafen_stv
+    Possible MD5 List:
+      34175C7AD31ACBE44F2BACCC7EA065C7
+
+  MISSING REQUIRED BIOS: epr-17952a.ic8
+    Path: /recalbox/share/bios/stv/epr-17952a.ic8
+    Notes: Required for North America/US-region ST-V games.
+    For: libretro/mednafen_stv
+    Possible MD5 List:
+      249B67334CFAE53810C1D1E3B93957A3
+
+  MISSING REQUIRED BIOS: epr-17954a.ic8
+    Path: /recalbox/share/bios/stv/epr-17954a.ic8
+    Notes: Required for Europe-region ST-V games.
+    For: libretro/mednafen_stv
+    Possible MD5 List:
+      BA2CB634C15E59D7EA5552729306F2EF
+
+  MISSING REQUIRED BIOS: stvbios.zip
+    Path: /recalbox/share/bios/stv/stvbios.zip
+    For: libretro/kronos
+    Possible MD5 List:
+      2B99D9DCECDE22DB4371580B6BB33F32
+      53A094AD3A188F86DE4E64624FE9B3CA
+      17116D2AEA72454096B3F80AB714BFBA
+      2B99D9DCECDE22DB4371580B6BB33F32
+      4CB34733B741ADA074F11E3ABCDC56D8
+      6B6D422A6C392EAEC178B64B92987E99
+      88B9DA6CDA268BA1D9E37DD82D038801
+      8C34608CC140E1BFBF9C945A12FED0E8
+      B876D86E244D00B336980B4E26E94132
+
+SYSTEM: Sammy Atomiswave
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: awbios.zip
+    Path: /recalbox/share/bios/dc/awbios.zip
+    For: libretro/flycast
+    Possible MD5 List:
+      A420C0E56135C2E7E87399C887D7EF4A
+      ABB0A508C83E689FC5E9230C623DABD0
+      042A0ADECF2D616CCFB915A5CD71FDE5
+      27FB8181FD9A0DF18C7F6F941E9D60AB
+      74F5E994ECFF655F18F0F9F998C9B1D9
+
+SYSTEM: ScummVM
+---------------------------------------------
+
+  MISSING OPTIONAL BIOS: MT32_CONTROL.ROM
+    Path: /recalbox/share/bios/scummvm/MT32_CONTROL.ROM
+    For: libretro/scummvm,scummvm
+    Possible MD5 List:
+      5626206284B22C2734F3E9EFEFCD2675
+
+  MISSING OPTIONAL BIOS: MT32_PCM.ROM
+    Path: /recalbox/share/bios/scummvm/MT32_PCM.ROM
+    For: libretro/scummvm,scummvm
+    Possible MD5 List:
+      89E42E386E82E0CACB4A2704A03706CA
+
+SYSTEM: Sega Naomi
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: naomi.zip
+    Path: /recalbox/share/bios/dc/naomi.zip
+    For: libretro/flycast
+    Possible MD5 List:
+      7300A99A4FC856D1A3C36B4485789897
+      40AE83A9552DF0F340D5EEEADC5436EA
+      7ED453BDA92B25156536FF055B8685B6
+      A48E7A735B9036BE8F150018155370AD
+      E1DCB105789296B93BF58E37B7F38FC6
+      3C6B0FB04AB3EAE5DC6A99F63507DBD4
+
+  MISSING OPTIONAL BIOS: airlbios.zip
+    Path: /recalbox/share/bios/dc/airlbios.zip
+    Notes: Required only for the game 'Airline Pilots'
+    For: libretro/flycast
+    Possible MD5 List:
+      06DD41B614A6D6D079EC1EE73E2BF87D
+      5B7DE05FB2DEA6FB0408149C9BADA27C
+      987E08B1786A93653281CA8A5B21DC7F
+
+  MISSING OPTIONAL BIOS: hod2bios.zip
+    Path: /recalbox/share/bios/dc/hod2bios.zip
+    Notes: Required only for the game 'The House of the Dead 2'
+    For: libretro/flycast
+    Possible MD5 List:
+      09B92AD1240FBA7954985BDEE59D1741
+      2C08C42CC8C6EB3A4E07BFF07DB5102F
+      9E1F4846028B18B5EF8A6BD8EFD6C67D
+      FBDF7E1CEF86D3FFD23754C0A303A4AF
+      729A623576CB9D8F7FD7C4E44ECE3066
+
+SYSTEM: Sega Naomi 2
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: naomi2.zip
+    Path: /recalbox/share/bios/dc/naomi2.zip
+    For: libretro/flycast
+    Possible MD5 List:
+      34F9C1ACDAF53D6A50DD8DE052E506CA
+
+SYSTEM: Sega Naomi GD-Rom
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: naomigd.zip
+    Path: /recalbox/share/bios/dc/naomigd.zip
+    For: libretro/flycast
+    Possible MD5 List:
+      288CDE03A112E7726FA8093E05D46853
+      416B5914ACB3D0B4A190A1D358C8710D
+      BD9F19B4BE0692E92E272D0EB82402F7
+      BE57D3744E71A3396FB8DC59830E880A
+
+SYSTEM: Sharp X1
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: IPLROM.X1T
+    Path: /recalbox/share/bios/xmil/IPLROM.X1T
+    For: libretro/xmil
+    Possible MD5 List:
+      56C28ADCF1F3A2F87CF3D57C378013F5
+
+SYSTEM: Sony Playstation 2
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: ps2-0230a-20080220.bin
+    Path: /recalbox/share/bios/ps2/ps2-0230a-20080220.bin
+    Notes: Recommended for better compatibility.
+    For: libretro/pcsx2,pcsx2
+    Possible MD5 List:
+      21038400DC633070A78AD53090C53017
+
+  MISSING REQUIRED BIOS: ps2-0230e-20080220.bin
+    Path: /recalbox/share/bios/ps2/ps2-0230e-20080220.bin
+    For: libretro/pcsx2,pcsx2
+    Possible MD5 List:
+      DC69F0643A3030AAA4797501B483D6C4
+
+  MISSING REQUIRED BIOS: ps2-0230h-20080220.bin
+    Path: /recalbox/share/bios/ps2/ps2-0230h-20080220.bin
+    For: libretro/pcsx2,pcsx2
+    Possible MD5 List:
+      30D56E79D89FBDDF10938FA67FE3F34E
+
+  MISSING REQUIRED BIOS: ps2-0230j-20080220.bin
+    Path: /recalbox/share/bios/ps2/ps2-0230j-20080220.bin
+    For: libretro/pcsx2,pcsx2
+    Possible MD5 List:
+      80AC46FA7E77B8AB4366E86948E54F83
+
+SYSTEM: TRS-80 Color Computer 1/2
+---------------------------------------------
+
+  MISSING OPTIONAL BIOS: bas10.rom
+    Path: /recalbox/share/bios/trs80coco/bas10.rom
+    Notes: CoCo 1 BASIC
+    For: xroar
+    Possible MD5 List:
+      A74F3D95B395DAD7CDCA19D560EEEA74
+
+  MISSING REQUIRED BIOS: bas11.rom
+    Path: /recalbox/share/bios/trs80coco/bas11.rom
+    Notes: CoCo 1 BASIC
+    For: xroar
+    Possible MD5 List:
+      C73FB4BFF9621C5AB17F6220B20DB82F
+
+  MISSING OPTIONAL BIOS: bas12.rom
+    Path: /recalbox/share/bios/trs80coco/bas12.rom
+    Notes: CoCo 2 BASIC
+    For: xroar
+    Possible MD5 List:
+      C933316C7D939532A13648850C1C2AA6
+
+  MISSING REQUIRED BIOS: bas13.rom
+    Path: /recalbox/share/bios/trs80coco/bas13.rom
+    Notes: CoCo 2 BASIC
+    For: xroar
+    Possible MD5 List:
+      C2FC43556EB6B7B25BDF5955BD9DF825
+
+  MISSING REQUIRED BIOS: extbas10.rom
+    Path: /recalbox/share/bios/trs80coco/extbas10.rom
+    Notes: CoCo 1 Extended BASIC
+    For: xroar
+    Possible MD5 List:
+      FDA72F415AFE99B36F953BB9BC1253DA
+
+  MISSING REQUIRED BIOS: extbas11.rom
+    Path: /recalbox/share/bios/trs80coco/extbas11.rom
+    Notes: CoCo 2 Extended BASIC
+    For: xroar
+    Possible MD5 List:
+      21070AA0496142B886C562BF76D7C113
+
+  MISSING OPTIONAL BIOS: mx1600bas.rom
+    Path: /recalbox/share/bios/trs80coco/mx1600bas.rom
+    Notes: MX1600 BASIC
+    For: xroar
+    Possible MD5 List:
+      88D1504E93366F498105A846CDBF7FB7
+
+  MISSING OPTIONAL BIOS: disk10.rom
+    Path: /recalbox/share/bios/trs80coco/disk10.rom
+    Notes: RSDos 1.0
+    For: xroar
+    Possible MD5 List:
+      A64B3EF9EFCC066B18D35B134068D1CC
+
+  MISSING OPTIONAL BIOS: disk11.rom
+    Path: /recalbox/share/bios/trs80coco/disk11.rom
+    Notes: RSDos 1.1
+    For: xroar
+    Possible MD5 List:
+      8CAB28F4B7311B8DF63C07BB3B59BFD5
+
+  MISSING OPTIONAL BIOS: hdbdw3bck.rom
+    Path: /recalbox/share/bios/trs80coco/hdbdw3bck.rom
+    Notes: RSDos Becker
+    For: xroar
+    Possible MD5 List:
+      EF750D93D24D7BC87A8ECD6E5A15A845
+
+  MISSING OPTIONAL BIOS: mc10.rom
+    Path: /recalbox/share/bios/trs80coco/mc10.rom
+    Notes: MC-10
+    For: xroar
+    Possible MD5 List:
+      F29E94FF36577FFB6A787959E45BFE85
+
+  MISSING OPTIONAL BIOS: coco3.rom
+    Path: /recalbox/share/bios/trs80coco/coco3.rom
+    Notes: Coco 3 Basic
+    For: xroar
+    Possible MD5 List:
+      7233C6C429F3CE1C7392F28A933E0B6F
+
+  MISSING OPTIONAL BIOS: coco3p.rom
+    Path: /recalbox/share/bios/trs80coco/coco3p.rom
+    Notes: Coco 3 Basic
+    For: xroar
+    Possible MD5 List:
+      4AE57E5A8E7494E5485446FEFEDB580B
+
+  MISSING OPTIONAL BIOS: alice32.rom
+    Path: /recalbox/share/bios/trs80coco/alice32.rom
+    Notes: Alice
+    For: xroar
+    Possible MD5 List:
+      79EA46603D716578D5F2B52EB4C33CA2
+
+  MISSING OPTIONAL BIOS: alice4k.rom
+    Path: /recalbox/share/bios/trs80coco/alice4k.rom
+    Notes: Alice
+    For: xroar
+    Possible MD5 List:
+      78AF465C2F31CF4E05DEC1EFDA77DA01
+
+SYSTEM: Tangerine Oric/Atmos
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: basic11b.rom
+    Path: /recalbox/share/bios/oricutron/basic11b.rom
+    For: oricutron
+    Possible MD5 List:
+      A330779C42AD7D0C4AC6EF9E92788EC6
+
+  MISSING REQUIRED BIOS: basic10.rom
+    Path: /recalbox/share/bios/oricutron/basic10.rom
+    For: oricutron
+    Possible MD5 List:
+      EBE418EC8A6C85D5AC32956C9A96C179
+
+  MISSING OPTIONAL BIOS: bd500.rom
+    Path: /recalbox/share/bios/oricutron/bd500.rom
+    For: oricutron
+    Possible MD5 List:
+      2B6498FD29A0ADBF1C529762C02C33AB
+
+  MISSING REQUIRED BIOS: jasmin.rom
+    Path: /recalbox/share/bios/oricutron/jasmin.rom
+    For: oricutron
+    Possible MD5 List:
+      5136F764A7DBD1352519351FBB53A9F3
+
+  MISSING REQUIRED BIOS: microdis.rom
+    Path: /recalbox/share/bios/oricutron/microdis.rom
+    For: oricutron
+    Possible MD5 List:
+      DF864344D2A2091C3F952BD1C5CE1707
+
+  MISSING REQUIRED BIOS: pravetzt.rom
+    Path: /recalbox/share/bios/oricutron/pravetzt.rom
+    For: oricutron
+    Possible MD5 List:
+      8712A22E7E078DE3343667D9FC1F2390
+
+  MISSING OPTIONAL BIOS: 8dos2.rom
+    Path: /recalbox/share/bios/oricutron/8dos2.rom
+    For: oricutron
+    Possible MD5 List:
+      5F3CD5A4307FED7A9DFE8FAA4C044273
+
+  MISSING REQUIRED BIOS: teleass.rom
+    Path: /recalbox/share/bios/oricutron/teleass.rom
+    For: oricutron
+    Possible MD5 List:
+      2324C9CC227C1327A72A667C97ED2990
+
+  MISSING REQUIRED BIOS: hyperbas.rom
+    Path: /recalbox/share/bios/oricutron/hyperbas.rom
+    For: oricutron
+    Possible MD5 List:
+      364BF095E0DC4222D75354D50B8CDDFC
+
+  MISSING REQUIRED BIOS: telmon24.rom
+    Path: /recalbox/share/bios/oricutron/telmon24.rom
+    For: oricutron
+    Possible MD5 List:
+      9A432244D9EE4A49E8DDCDE64AF94E05
+
+SYSTEM: Texas Instrument TI-99/4A
+---------------------------------------------
+
+  MISSING REQUIRED BIOS: TI-994A.ctg
+    Path: /recalbox/share/bios/ti994a/TI-994A.ctg
+    Notes: System cartridge
+    For: ti99sim
+    Possible MD5 List:
+      412ECBF991EDCB68EDD0E76C2CAA4A59
+
+  MISSING OPTIONAL BIOS: spchrom.bin
+    Path: /recalbox/share/bios/ti994a/spchrom.bin
+    Notes: Speech synthesis
+    For: ti99sim
+    Possible MD5 List:
+      7ADCAF64272248F7A7161CFC02FD5B3F
+
+  MISSING OPTIONAL BIOS: ti-disk.ctg
+    Path: /recalbox/share/bios/ti994a/ti-disk.ctg
+    Notes: Disk Operating System
+    For: ti99sim
+    Possible MD5 List:
+      04714F43347CEFB2A051A77116344B3F
+

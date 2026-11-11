@@ -12,6 +12,7 @@
     "dry_run",
     "frontend",
     "target",
+    "missing_from",
     "summary",
     "uploads",
     "incorrect",
@@ -50,6 +51,15 @@
         "null"
       ],
       "description": "The target as a URL, never with a user name or a password. Null when no target was opened."
+    },
+    "missing_from": {
+      "enum": [
+        "api",
+        "report",
+        "report_file",
+        null
+      ],
+      "description": "Where the list of missing files came from: Recalbox's web API, the report on the device, or a local copy given with --report-file. Null if BECK stopped before reading one. Added in 1.1.0."
     },
     "summary": {
       "type": "object",

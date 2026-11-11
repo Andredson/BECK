@@ -1,6 +1,9 @@
 # Generating the missing-BIOS report
 
-BECK copies only what your Recalbox says it's missing, and that list is a file your Recalbox writes when you ask it to. So this comes first, and again whenever the list changes.
+BECK copies only what your Recalbox says it's missing. Since 1.1.0, it asks Recalbox's web manager for that list, so on a Recalbox where the
+web manager answers, you don't need the report at all ([how BECK chooses](../cli.md#where-beck-finds-whats-missing)). Otherwise, the list
+is a file your Recalbox writes when you ask it to, so this comes first, and again whenever the list changes. BECK says when it falls back
+to the report.
 
 ## Generating it
 

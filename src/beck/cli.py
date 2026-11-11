@@ -22,7 +22,14 @@ from beck.config import (
     write_template,
 )
 from beck.credentials import password_for
-from beck.errors import BeckError, ConfigError, ReportNotFoundError, TransportError, UsageError
+from beck.errors import (
+    BeckError,
+    ConfigError,
+    ReportNotFoundError,
+    ReportParseError,
+    TransportError,
+    UsageError,
+)
 from beck.executor import execute
 from beck.exporter import export
 from beck.frontends import get_adapter
@@ -36,6 +43,7 @@ from beck.output.console import ConsoleRenderer, configure_logging
 from beck.output.json import JsonRenderer, write_rejected_command
 from beck.redact import add_secret, forget_secrets, redact
 from beck.targets import URL_FORM, parse_smb_url
+from beck.transports import webapi
 from beck.transports.base import Transport
 from beck.transports.local import LocalTransport
 from beck.transports.smb import DEFAULT_TIMEOUT, SmbTransport
@@ -79,6 +87,7 @@ left. These are real BIOS files, so never commit them to a git repository."""
 
 FAILED_IF_MISSING_EXIT_CODE = 5
 REPORT_FILE_HELP = "read this local copy of the report, not the one on the target"
+NO_API_HELP = "read the report on the device, not Recalbox's web API (see docs/cli.md)"
 
 Renderer = ConsoleRenderer | JsonRenderer
 Entries = tuple[list[MissingBios], list[ItemError]]  # what a report asks for, and what it refused
@@ -165,6 +174,36 @@ def _entries_from_target(adapter: FrontendAdapter, transport: Transport) -> Entr
             "Generate the report on the device first."
         )
     return _parsed_report(adapter, transport.read_bytes(adapter.report_path))
+
+
+def _entries_on_device(
+    args: argparse.Namespace, settings: Settings, adapter: FrontendAdapter, transport: Transport
+) -> tuple[Entries, str]:
+    """What's missing on the device, and where that came from: the web API, else the report.
+
+    The API lists the same as the report, but now, so a report that's out of date, or that nobody
+    generated, doesn't matter (DEC-79). Only an SMB target has a host to ask, and ``--no-api``
+    skips it. If it doesn't answer, or answers in a form BECK doesn't know, BECK says so and reads
+    the report.
+    """
+    smb_target = settings.target_dir is None and settings.target_url is not None
+    if smb_target and adapter.api_port is not None and not args.no_api:
+        host = parse_smb_url(str(settings.target_url)).host
+        timeout = settings.smb_timeout or DEFAULT_TIMEOUT
+        try:
+            raw = webapi.get(host, adapter.api_port, adapter.api_path, timeout)
+            entries = adapter.parse_api(raw)
+        except (TransportError, ReportParseError) as e:
+            logging.getLogger(LOGGER_NAME).warning(
+                "Recalbox's web API didn't give the list of missing files: %s. BECK reads %s "
+                "instead, which may be out of date.",
+                e,
+                adapter.report_path,
+            )
+        else:
+            _log.debug("Missing files: %d from the web API", len(entries[0]))
+            return entries, "api"
+    return _entries_from_target(adapter, transport), "report"
 
 
 def _parsed_report(adapter: FrontendAdapter, raw: bytes) -> Entries:
@@ -283,8 +322,10 @@ def _run_check(
     with transport:
         if args.report_file is not None:
             entries, rejected = _entries_from_file(adapter, args.report_file)
+            renderer.missing_from("report_file")
         else:
-            entries, rejected = _entries_from_target(adapter, transport)
+            (entries, rejected), came_from = _entries_on_device(args, settings, adapter, transport)
+            renderer.missing_from(came_from)
         if not entries and not rejected:
             renderer.nothing_missing()
         incorrect = [entry for entry in entries if entry.incorrect]
@@ -339,12 +380,14 @@ def _run_report(
     adapter = get_adapter(settings.frontend)
     if args.report_file is not None:
         entries, rejected = _entries_from_file(adapter, args.report_file)
+        renderer.missing_from("report_file")
     else:
         transport = _connect_to_target(settings, renderer)
         renderer.opened(transport.url())
         _log.debug("Target: %s", transport.url())
         with transport:
-            entries, rejected = _entries_from_target(adapter, transport)
+            (entries, rejected), came_from = _entries_on_device(args, settings, adapter, transport)
+        renderer.missing_from(came_from)
     renderer.report(entries, rejected)
     return TransportError.exit_code if rejected else 0
 
@@ -529,6 +572,7 @@ def _build_parser(*, json_errors: bool = False) -> argparse.ArgumentParser:
         if name == "check":
             group = _add_target_options(command)
             command.add_argument("--report-file", metavar="FILE", help=REPORT_FILE_HELP)
+            command.add_argument("--no-api", action="store_true", help=NO_API_HELP)
             command.add_argument(
                 "--overwrite",
                 action="store_true",
@@ -570,6 +614,7 @@ def _build_parser(*, json_errors: bool = False) -> argparse.ArgumentParser:
         if name == "report":
             group = _add_target_options(command)
             group.add_argument("--report-file", metavar="FILE", help=REPORT_FILE_HELP)
+            command.add_argument("--no-api", action="store_true", help=NO_API_HELP)
         if name == "export":
             command.add_argument(
                 "directory", metavar="DIR", help="the folder to copy them to, created if needed"
@@ -609,6 +654,7 @@ def _build_parser(*, json_errors: bool = False) -> argparse.ArgumentParser:
         config_action=None,
         force=False,
         directory=None,
+        no_api=False,
     )
     return parser
 
