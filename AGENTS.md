@@ -10,11 +10,11 @@ BECK (BIOS checker for Recalbox) matches a user's BIOS files against the MD5 has
 report that Recalbox generates, then copies the matching files, under the expected names, into the right
 folders on the Recalbox over SMB.
 
-**Status (2026-11-09, stage 12 closed; stage 10 in progress):** prototype, not published yet. The application is the `beck` package in `src/beck/`, with a pure
+**Status (2026-11-11, stages 01–10 and 12 closed):** released: `1.0.0` is on PyPI as `beck-bios`, and installs the `beck` command. The application is the `beck` package in `src/beck/`, with a pure
 core and adapters around it ([design](docs/ARCHITECTURE.md)). Its [known defects are fixed](roadmap/00-assessment.md#defects),
 and it never renames local files, or deletes them unless `--move` or `--clean-unmatched` asks for it. The repository around it has tooling and
-CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against a real Samba server, commit-message, secret and dependency checks. It is being improved stage by stage following
-[roadmap/README.md](roadmap/README.md). The target is an installable CLI `beck` published on PyPI as `beck-bios`.
+CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against a real Samba server, commit-message, secret and dependency checks. It was improved stage by stage following
+[roadmap/README.md](roadmap/README.md), where stage 11, new features, is next. Releases follow [docs/releasing.md](docs/releasing.md).
 
 ## Repository map
 

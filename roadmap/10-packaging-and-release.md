@@ -1,6 +1,6 @@
 # Stage 10 — Packaging & release
 
-**Status:** In progress · **Depends on:** 09 · **Branch:** `stage/10-release` · **Effort:** M
+**Status:** Done (2026-11-11) · **Depends on:** 09 · **Branch:** `stage/10-release` · **Effort:** M
 
 ## Goal
 Publish BECK as `beck-bios` on PyPI through **trusted publishing**, with attestations, an SBOM, generated
@@ -180,7 +180,7 @@ flowchart LR
 - **Commit message:** `chore(release): <version>`
 
 ### 10.11 — Define and reach 1.0
-- [ ] Done
+- [x] Done (2026-11-11: `beck-bios` 1.0.0 is on [PyPI](https://pypi.org/project/beck-bios/), published by the owner's `v1.0.0` tag on `main` (`93a5d70`) after their approval, in one attempt. Both files have attestations naming `Andredson/BECK`, `release.yml` and `pypi`, and match the GitHub Release's, which is marked latest and has the notes and the SBOM, with `pyasn1` 0.6.5. In empty home folders, `uv tool install`, `pipx` and the Verify command each gave `beck 1.0.0`, and bare `beck` exits with 2. The first `uv tool install` found no 1.0.0, because its first try, seconds after the publish, had cached PyPI's index; `--refresh`, or a fresh home, installed it. Every [criterion](../docs/releasing.md#reaching-10) is checked. Three things differ from the step. It took three commits, not one (DEC-71), and the box is ticked here, in 10.12's commit, because the third commit couldn't show that 1.0.0 was on PyPI, though DEC-71 put the tick in it. The end-to-end run was on the Recalbox 10.1.1 VM, not real hardware, because `recalbox.local` didn't resolve and the owner accepted the VM (DEC-72). And 1.0.0 is marked `5 - Production/Stable` (DEC-73). The run used the report already on the VM, and its one upload, `neocd.bin` as `neocdz.zip`, came with the extension warning: the report's MD5 for a `.zip` matching a raw `.bin` suggests Recalbox lists the MD5 of the file inside, which is a proposal for later, not looked into. Not tested: real hardware, Windows and macOS.)
 > BLOCKED (2026-11-06): follows 10.10, and needs a run on a real device with the installed package, by the owner.
 > Still BLOCKED (2026-11-11): 10.10 is done. The step is three commits (DEC-71), and this is the first: it writes [the criteria](../docs/releasing.md#reaching-10), and removes `check_bios.py`, `requirements.txt` and its CI check, and bare `beck`, which is now a usage error (DEC-70). Next, `chore(release): 1.0.0rc1`, which the owner tags. Then the owner runs it on a real device, and `chore(release): 1.0.0` follows.
 > Still BLOCKED (2026-11-11): the third commit, `chore(release): 1.0.0`, is this one. `1.0.0rc1` went to TestPyPI, and every [criterion](../docs/releasing.md#reaching-10) is checked: the end-to-end run was on the VM, which the owner accepted (DEC-72), and 1.0.0 is marked stable (DEC-73). This commit also fixes the release candidate's install command in the checklist, which stopped working once `beck-bios` was on PyPI. What's left is the owner's: merge, tag `v1.0.0` and approve the publish. The box is ticked once `1.0.0` is on PyPI, which this commit can't show, so in step 10.12's commit.
@@ -202,7 +202,7 @@ flowchart LR
 - **Commit message:** `chore(release)!: 1.0.0`
 
 ### 10.12 — Close the stage
-- [ ] Done
+- [x] Done (2026-11-11: re-scored at 8 / 10, sum 149 / 19 = 7.8, which meets the target of about 8. The AGENTS.md status and `SECURITY.md`'s supported versions now say BECK is released. `main`'s CI is green on `93a5d70`, the 1.0.0 merge, and this step's own PR is the owner's to open and merge, so its check on `main` comes after.)
 - **What:** Re-score [00-assessment](00-assessment.md#re-scoring-history); this is the "after roadmap" score
   (target ≈ 8/10). Update the [README](README.md#stages) status. Push the closing commit (DEC-47). If the stage PR
   doesn't exist yet, print this command for the human (DEC-43):
