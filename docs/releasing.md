@@ -59,6 +59,7 @@ test "$GITHUB_REF_NAME" = "v$(uv version --short)"
 ```
 
 Never move a tag or reuse a version. PyPI won't accept the same version twice, even after a delete, so a mistake in a release gets a new version.
+The one exception is a tag whose `build` failed, so that nothing was published: see [If something goes wrong](#if-something-goes-wrong).
 
 ## The SBOM
 
@@ -93,7 +94,7 @@ trivy fs --format cyclonedx --skip-dirs .venv --output "sbom/beck-bios-$(uv vers
 
 3. **Merge it.** *(Owner)* Push the branch, open the PR, and merge it with a merge commit. **Check:** CI is green, including `package`.
 
-4. **Tag it.** *(Owner)* The workflow starts from this:
+4. **Tag it.** *(Owner)* Only once the PR is merged: a tag pushed before then is on the old `main`, with the old version. The workflow starts from this:
 
    ```sh
    git switch main && git pull && git tag -a vX.Y.Z -m "beck-bios X.Y.Z" && git push origin vX.Y.Z
@@ -105,7 +106,9 @@ trivy fs --format cyclonedx --skip-dirs .venv --output "sbom/beck-bios-$(uv vers
 
 6. **Check the result.** *(Anyone)*
    - **The project's page** on [PyPI](https://pypi.org/project/beck-bios/) or [TestPyPI](https://test.pypi.org/project/beck-bios/): the version, the description, its links, and that the files show attestations.
-   - **That it installs:** in a new environment, `pipx install beck-bios==X.Y.Z` or `uv tool install beck-bios==X.Y.Z`, then `beck --version`. A release candidate is on TestPyPI only. Install that file, checked against its hash, so that its dependencies still come from PyPI. Take the wheel's `url` and `sha256` from `https://test.pypi.org/pypi/beck-bios/X.Y.Z/json`, then:
+   - **That it installs:** in a new environment, `pipx install beck-bios==X.Y.Z` or `uv tool install beck-bios==X.Y.Z`, then `beck --version`. Just after a publish,
+     uv's cached copy of the index may not list the new version yet, and the install says there's no such version. Add `--refresh` to `uv tool install` or
+     `uvx`, and run pipx, which installs with uv, as `UV_NO_CACHE=1 pipx install …`. A release candidate is on TestPyPI only. Install that file, checked against its hash, so that its dependencies still come from PyPI. Take the wheel's `url` and `sha256` from `https://test.pypi.org/pypi/beck-bios/X.Y.Z/json`, then:
 
      ```sh
      D=$(mktemp -d) && W=beck_bios-X.Y.Z-py3-none-any.whl && curl -sSfL -o "$D/$W" "<url>" && echo "<sha256>  $D/$W" | sha256sum -c && uv tool install --reinstall "$D/$W" && beck --version
@@ -117,6 +120,15 @@ trivy fs --format cyclonedx --skip-dirs .venv --output "sbom/beck-bios-$(uv vers
 ### If something goes wrong
 
 - **`build` failed:** nothing was published. Fix it in a new PR. If the fix changes files in the release, it needs a new version and a new tag.
+- **`build` failed at "The tag is the project's version":** the tag isn't on the release commit, usually because it was pushed before the PR was merged.
+  Nothing was published, so this is the one time a tag can be deleted and made again. Check that PyPI has no such version, and that there's no
+  GitHub Release for it. Then merge the PR, and run:
+
+  ```sh
+  git push origin :refs/tags/vX.Y.Z && git tag -d vX.Y.Z && git switch main && git pull && git tag -a vX.Y.Z -m "beck-bios X.Y.Z" && git push origin vX.Y.Z
+  ```
+
+  This happened with `1.0.1`.
 - **A publish job failed:** read why. If it's a setting, such as the trusted publisher or the environment, fix that and re-run the failed jobs.
 - **The GitHub Release failed, after publishing:** the package is out. Re-run that job.
 - **A published version is wrong:** you can't replace it. Publish a fix as a new version, and [yank the bad one](https://pypi.org/help/#yanked) on PyPI if it could harm someone.
@@ -128,6 +140,9 @@ trivy fs --format cyclonedx --skip-dirs .venv --output "sbom/beck-bios-$(uv vers
 - [x] **Stages 01–09 are done, and 10.1–10.10.** Step 10.12 closes stage 10 after 1.0. Defects D1–D16 are fixed, as [the assessment](../roadmap/00-assessment.md#defects) records. D16 was only suspected: the run below connected to Recalbox's own Samba on port 445.
 - [x] **A real report from the current stable Recalbox is a fixture.** `recalbox-10.1.1/default-install`, from 10.1.1 in a VM. Recalbox 10.1 has been the stable release since 2026-09-04, and nothing newer was out on 2026-11-11, before the final tag.
 - [x] **An end-to-end run with the installed package has passed, on the Recalbox 10.1.1 VM** (DEC-72; no real hardware was available, and the owner accepted the VM). On 2026-11-11, `beck 1.0.0rc1`, installed from TestPyPI's wheel as in [step 6 of the checklist](#the-release-checklist), with the owner's own BIOS files: the owner's `beck --json check --dry-run` planned one upload and exited with 0; `beck --json check --verify` uploaded it, checked its MD5 on the VM, and exited with 0, with no errors; a second dry run kept the file. The report was the one already on the VM, not a new one. Not run on it: `--move`, `--clean-unmatched`, `--overwrite`, or a login with a password, which the tests cover.
+  **Found afterwards:** Recalbox couldn't use the file it uploaded. It was `neocd.bin`, sent up as `neocdz.zip`, which isn't a zip archive, so
+  Recalbox went on listing the target as missing. BECK's checks compare what arrived with the local file, not whether Recalbox accepts it.
+  `1.0.1` fixes this (DEC-74).
 - [x] **The `--json` schema version 1 is frozen.** [The compatibility promise](json-output.md#the-compatibility-promise) only lets fields be added, and `V1_FIELDS` in `tests/unit/test_json_contract.py` records what version 1 holds.
 - [x] **No open issue is labelled `data-loss`.** None on 2026-11-11, before the final tag: `gh issue list -R Andredson/BECK --label data-loss --state open`.
 - [x] **Removed:** `check_bios.py`, `requirements.txt` and its CI check, and running `beck` with no command, which is now a usage error with exit code 2 (DEC-70).
