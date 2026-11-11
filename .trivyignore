@@ -1,17 +1,2 @@
 # Trivy ignore list (DEC-34). Every entry needs a comment, a link and an `exp:` expiry date. When an entry
 # expires, Trivy reports the finding again and CI fails, so the fix can't be forgotten.
-
-# pyasn1 0.6.4 (via pysmb): four denial-of-service bugs in ASN.1 decoding, fixed in pyasn1 0.6.5
-# (https://github.com/pyasn1/pyasn1/releases/tag/v0.6.5). 0.6.5 was uploaded on 2026-10-27 06:32 UTC, so the
-# 14-day cooldown (DEC-45) admits it on 2026-11-10 at 06:33 UTC; these entries expire a day later. Then run
-# `uv lock --upgrade-package pyasn1`, regenerate requirements.txt and delete these lines. Exposure until then: a
-# malicious SMB server could make BECK hang or use a lot of CPU; BECK is a client the user runs by hand against
-# their own Recalbox. Owner decision, 2026-11-02.
-# https://github.com/advisories/GHSA-fm9c-5rcf-2q5p
-CVE-2026-119194 exp:2026-11-11
-# https://github.com/advisories/GHSA-9m75-vc3g-4x39
-CVE-2026-119195 exp:2026-11-11
-# https://github.com/advisories/GHSA-2qm8-x737-gmw5
-CVE-2026-119196 exp:2026-11-11
-# https://github.com/advisories/GHSA-mm57-4v3p-rchx
-CVE-2026-119197 exp:2026-11-11
