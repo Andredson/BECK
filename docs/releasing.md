@@ -105,7 +105,13 @@ trivy fs --format cyclonedx --skip-dirs .venv --output "sbom/beck-bios-$(uv vers
 
 6. **Check the result.** *(Anyone)*
    - **The project's page** on [PyPI](https://pypi.org/project/beck-bios/) or [TestPyPI](https://test.pypi.org/project/beck-bios/): the version, the description, its links, and that the files show attestations.
-   - **That it installs:** in a new environment, `pipx install beck-bios==X.Y.Z` or `uv tool install beck-bios==X.Y.Z`, then `beck --version`. A release candidate installs from TestPyPI, with its dependencies from PyPI: `uvx --index https://pypi.org/simple/ --default-index https://test.pypi.org/simple/ --from "beck-bios==X.Y.Z" beck --version`. uv takes each package from the first index that has it, PyPI here, so only `beck-bios` comes from TestPyPI, where anyone can upload under a name that's free there. Don't add `--index-strategy unsafe-best-match`, which would let a dependency come from TestPyPI.
+   - **That it installs:** in a new environment, `pipx install beck-bios==X.Y.Z` or `uv tool install beck-bios==X.Y.Z`, then `beck --version`. A release candidate is on TestPyPI only. Install that file, checked against its hash, so that its dependencies still come from PyPI. Take the wheel's `url` and `sha256` from `https://test.pypi.org/pypi/beck-bios/X.Y.Z/json`, then:
+
+     ```sh
+     D=$(mktemp -d) && W=beck_bios-X.Y.Z-py3-none-any.whl && curl -sSfL -o "$D/$W" "<url>" && echo "<sha256>  $D/$W" | sha256sum -c && uv tool install --reinstall "$D/$W" && beck --version
+     ```
+
+     Installing by name doesn't work once `beck-bios` is on PyPI: uv takes a package from the first index that has it, so it looks only at PyPI, which has no release candidate. Don't add `--index-strategy unsafe-best-match` to get round that, because it would let a dependency come from TestPyPI, where anyone can upload under a name that's free there. And check the hash with `sha256sum`: uv doesn't check a `#sha256=` on the end of the URL.
    - **The [GitHub Release](https://github.com/Andredson/BECK/releases):** it has the notes, the wheel, the source archive and the SBOM, and a release candidate is marked as a pre-release. Commit messages are short, so if a `Breaking` line doesn't say enough, add to the notes with `gh release edit vX.Y.Z --notes-file <file>`.
 
 ### If something goes wrong
@@ -119,10 +125,10 @@ trivy fs --format cyclonedx --skip-dirs .venv --output "sbom/beck-bios-$(uv vers
 
 `1.0.0` says BECK is stable: from then on, a breaking change needs a major version. It's released through [the checklist](#the-release-checklist), with a release candidate first, once every criterion below is met and the owner signs off ([step 10.11](../roadmap/10-packaging-and-release.md#1011--define-and-reach-10)). The status was checked on 2026-11-11.
 
-- [x] **Stages 01–09 are done, and 10.1–10.10.** Step 10.12 closes stage 10 after 1.0. Defects D1–D16 are fixed, as [the assessment](../roadmap/00-assessment.md#defects) records. D16 was only suspected, so the device run below is what confirms it.
-- [x] **A real report from the current stable Recalbox is a fixture.** `recalbox-10.1.1/default-install`, from 10.1.1 in a VM. Recalbox 10.1 has been the stable release since 2026-09-04. Check again before the final tag that no newer stable version is out.
-- [ ] **An end-to-end run with the installed package on a real device has passed.** The owner installs `1.0.0rc1` from TestPyPI, as in [step 6 of the checklist](#the-release-checklist), and runs `beck check --dry-run`, then `beck check`, on real Recalbox hardware.
+- [x] **Stages 01–09 are done, and 10.1–10.10.** Step 10.12 closes stage 10 after 1.0. Defects D1–D16 are fixed, as [the assessment](../roadmap/00-assessment.md#defects) records. D16 was only suspected: the run below connected to Recalbox's own Samba on port 445.
+- [x] **A real report from the current stable Recalbox is a fixture.** `recalbox-10.1.1/default-install`, from 10.1.1 in a VM. Recalbox 10.1 has been the stable release since 2026-09-04, and nothing newer was out on 2026-11-11, before the final tag.
+- [x] **An end-to-end run with the installed package has passed, on the Recalbox 10.1.1 VM** (DEC-72; no real hardware was available, and the owner accepted the VM). On 2026-11-11, `beck 1.0.0rc1`, installed from TestPyPI's wheel as in [step 6 of the checklist](#the-release-checklist), with the owner's own BIOS files: the owner's `beck --json check --dry-run` planned one upload and exited with 0; `beck --json check --verify` uploaded it, checked its MD5 on the VM, and exited with 0, with no errors; a second dry run kept the file. The report was the one already on the VM, not a new one. Not run on it: `--move`, `--clean-unmatched`, `--overwrite`, or a login with a password, which the tests cover.
 - [x] **The `--json` schema version 1 is frozen.** [The compatibility promise](json-output.md#the-compatibility-promise) only lets fields be added, and `V1_FIELDS` in `tests/unit/test_json_contract.py` records what version 1 holds.
-- [x] **No open issue is labelled `data-loss`.** Check again before the final tag: `gh issue list -R Andredson/BECK --label data-loss --state open`.
+- [x] **No open issue is labelled `data-loss`.** None on 2026-11-11, before the final tag: `gh issue list -R Andredson/BECK --label data-loss --state open`.
 - [x] **Removed:** `check_bios.py`, `requirements.txt` and its CI check, and running `beck` with no command, which is now a usage error with exit code 2 (DEC-70).
 - [x] **The message about the old `config/config.yml` stays,** in 1.0 and for one more minor version after it.
