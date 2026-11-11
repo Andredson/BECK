@@ -13,7 +13,7 @@ adapter interface built in stage 04, support for other retro-gaming frontends (D
   never with code.
 
 ## Decisions applied
-DEC-03, DEC-04, DEC-09, DEC-14, DEC-22, DEC-43.
+DEC-03, DEC-04, DEC-09, DEC-14, DEC-22, DEC-43, DEC-75.
 
 ## How to run a feature in this stage
 Each feature below is independent and goes through the same sub-steps, using the
@@ -85,6 +85,8 @@ Each feature below is independent and goes through the same sub-steps, using the
 
 ### 11.6 — Hash cache
 - [ ] Done
+> DROPPED (2026-11-11, DEC-75): the owner cancelled this feature. Don't do this step. It stays here for the record, and its box stays
+> unchecked without blocking the stage.
 - **What:** For large collections, cache MD5s keyed by `(absolute path, size, mtime_ns)` in a JSON file under
   `platformdirs.user_cache_path("beck")`. Ignore the cache with `--no-cache`. A corrupt cache is discarded
   with a warning. Measure the speed-up and record it in the PR.
@@ -140,6 +142,8 @@ Each feature below is independent and goes through the same sub-steps, using the
 
 ### 11.11 — Deferred: SSH/SFTP transport
 - [ ] Done
+> DROPPED (2026-11-11, DEC-75): the owner cancelled this feature, so it's no longer deferred. Don't do this step. It stays here for the
+> record, and its box stays unchecked without blocking the stage.
 - **What:** Deferred by DEC-04. Revisit only if the owner asks or users request it. It would need a new
   dependency (e.g. paramiko or asyncssh) and a DEC. Leave this box unchecked until then; it doesn't block
   closing the stage.
