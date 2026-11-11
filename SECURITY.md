@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-BECK hasn't had a release yet. Once it has, only the latest minor version gets security fixes.
+Only the latest minor version gets security fixes: 1.0 now.
 
 ## Reporting a vulnerability
 
