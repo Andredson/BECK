@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-05
-- **Decisions covered:** DEC-59, DEC-62, DEC-64, DEC-70, DEC-74. The rest of the contract follows from DEC-02, DEC-05, DEC-17, DEC-23 and DEC-54 (rows in the
+- **Decisions covered:** DEC-59, DEC-62, DEC-64, DEC-70, DEC-74, DEC-78. The rest of the contract follows from DEC-02, DEC-05, DEC-17, DEC-23 and DEC-54 (rows in the
   [decision log](../../roadmap/README.md#decision-log)).
 
 ## Context
@@ -232,3 +232,35 @@ The one-document-on-stdout rule and the `--json` no-prompt rule came from the ro
 - **Consequences:** BECK still can't match a real zip archive to a `.zip` target, because it compares the zip's own MD5: that's step
   11.4. Uploading a real zip archive whose own MD5 is listed still works. A target the 1.0.0 run filled this way stays on the device
   until the user deletes it, and the troubleshooting guide says so.
+
+## DEC-78 — Zip-aware matching
+- **Date:** 2026-11-11 (step 11.4).
+- **Context:** Step 11.4 planned to match files inside zip archives. DEC-74 had found that Recalbox hashes a `.zip` target by its members,
+  but not in which order. Recalbox's EmulationStation source answers it: `Zip::Md5Composite` in `es-core/src/utils/Zip.cpp` lists the
+  members' names, as libzip gives them (UTF-8 if they're valid UTF-8, otherwise CP437 turned into UTF-8), sorts them with `std::sort`, which
+  compares them byte by byte, and feeds each member's bytes to one MD5. An archive libzip can't open gives an empty hash, which is the
+  `[Bios] Invalid MD5:` line seen in the VM's log. BECK reimplements the order with the standard library's `zipfile`, and copies no code.
+- **Decision:**
+  - **Scope: both kinds of match.** A zip archive fills a `.zip` target if its contents MD5 is listed, or as before its own MD5, and is
+    uploaded whole. A member of a zip fills any other target by its own MD5: it's extracted to a temporary folder and uploaded under the
+    target's name. A member never fills a `.zip` target, and a zip doesn't fill another target by its contents.
+  - **Fixed limits:** at most 1,000 members and 512 MiB unpacked per archive, counted while reading. An archive over a limit, or damaged,
+    is listed as unreadable, and its members aren't used. This differs from the step, which asked for configurable limits.
+  - **JSON:** a `member` field, `null` for a plain file, wherever a local file can be a member: `uploads`, `duplicates` (with
+    `of_member`), `already_filled`, `not_a_zip`, and `beck scan`'s `files`, which also get `contents_md5`. `path` and `source` stay the
+    archive's real path. All are additions, allowed within `schema_version` 1.
+- **Alternatives considered:**
+  - Scope: *zip targets only*, or *members only*, as the step was first written. Not chosen.
+  - Limits: *keys in the settings file*, or *command-line flags*. Not chosen.
+  - JSON: *a path through the archive*, such as `bios.zip/scph1001.bin`, with no new field. It would change what `path` means, since it
+    would no longer always be a real file. Not chosen.
+
+  The agent recommended each chosen option, and the owner gave no further reason.
+- **Consequences:**
+  - The 15 `.zip` targets the 10.1.1 VM still lacked can be filled from the user's own archives.
+  - A plain file wins over an identical member. Members are never unmatched: `--clean-unmatched` deletes an archive only if neither it nor
+    anything in it matched, and `--move` deletes one only if it was itself uploaded and every upload from it worked.
+  - Every zip in the BIOS folder is unpacked once per scan, which costs time on a large collection.
+  - Not read: archives inside archives, `.7z` and `.rar` (which would need a new dependency, and a DEC), encrypted members, which Recalbox
+    skips too, and Info-ZIP's Unicode path field. Two members whose names are the same after libzip's conversion are an edge where Recalbox
+    reads one twice; BECK reads each once.

@@ -253,7 +253,28 @@ gets the warning but is probably fine.
 can have a listed MD5: the real Recalbox 10.1.1 report lists `neocd.bin`'s MD5 for `neocdz.zip`. Copied under that name, it isn't a zip
 archive, so Recalbox can't open it, and still lists the target as missing. Since 1.0.1, BECK doesn't copy a file that isn't a zip
 archive to a `.zip` target. It prints a warning, the target stays missing, and the file is never treated as unmatched, so
-`--clean-unmatched` doesn't delete it. BECK doesn't look inside zip archives yet, so it can't match a zip to a `.zip` target either.
+`--clean-unmatched` doesn't delete it. A zip archive with the right contents does fill it: see below.
+
+## BIOS files inside zip archives
+
+Since 1.1.0, BECK looks inside each zip archive in your BIOS folder (DEC-78). Whether a file is a zip archive depends on what's in it, not on
+its name.
+
+- **A `.zip` target,** such as `neogeo.zip` or `naomi.zip`, takes a zip archive whose contents match. Recalbox hashes such a target from its
+  members: the MD5 of all their bytes, in the order of their names, sorted byte by byte. BECK works it out the same way, and uploads your
+  archive whole, under the target's name. An archive whose own MD5 is listed still matches, as before.
+- **Any other target** takes a file inside a zip archive, if that file's MD5 matches. BECK extracts it to a temporary folder, uploads it
+  under the target's name, and the temporary copy goes away. Your archive stays as it is.
+- **A plain file wins over a file inside an archive** when they're identical. The other is listed as a duplicate.
+- **Deleting:** `--move` never deletes an archive because a file inside it was uploaded. It deletes an archive only when the archive itself
+  was uploaded, and every upload from it worked. `--clean-unmatched` deletes an archive only if neither it nor anything inside it matched.
+- **Limits:** BECK reads at most 1,000 members and 512 MiB of unpacked data from each archive, to protect against a "zip bomb". An archive
+  over a limit, or damaged, is listed as unreadable, and its members aren't used. It can still match as a whole, by its own MD5.
+- **What it doesn't read:** archives inside archives, other archive formats such as `.7z` or `.rar`, and encrypted members, which Recalbox
+  can't open either.
+
+`beck scan` lists each member, after its archive, and the archive's contents MD5, so you can compare it with the report's `Possible MD5
+List`.
 
 ## Exporting BIOS files from the device
 

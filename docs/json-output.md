@@ -81,6 +81,7 @@ The [schemas](schemas/) describe each document. They allow extra fields on purpo
   "uploads": [
     {
       "source": "neocd.bin",
+      "member": null,
       "target": "neocd/neocd.bin",
       "md5": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "status": "uploaded",
@@ -107,6 +108,7 @@ The [schemas](schemas/) describe each document. They allow extra fields on purpo
   "not_a_zip": [
     {
       "path": "neocd.bin",
+      "member": null,
       "target": "neocdz.zip"
     }
   ],
@@ -130,9 +132,9 @@ document.
 | `uploads[]` | One item per target with a local file for it. See below. |
 | `incorrect[]` | Files on the device with a wrong hash, which stay as they are: `name`, `target`, `md5s`, `required` and `current_md5`, the hash of the file there, or `null` if the report doesn't give it. A local file in `unmatched` with an MD5 from `md5s` would fix one, with `--overwrite`. |
 | `still_missing[]` | Targets with no matching local file: `name`, `target`, `md5s` and `required`. A target whose upload failed is in `uploads`, not here. |
-| `not_a_zip[]` | Local files with an MD5 listed for a `.zip` target, which BECK didn't copy there because they aren't zip archives: `path`, and the `target`, which stays in `still_missing`. Recalbox hashes a `.zip` target by the files inside it, so a single file can have a listed MD5, but Recalbox can't read it under that name. Added in 1.0.1. |
-| `duplicates[]` | Local files identical to one chosen instead, and kept: `path`, `of` and `md5`. |
-| `already_filled[]` | Local files that matched, but other files fill all their targets: `path`, `md5` and `size`. |
+| `not_a_zip[]` | Local files with an MD5 listed for a `.zip` target, which BECK didn't copy there because they aren't zip archives: `path`, `member`, and the `target`, which stays in `still_missing`. Recalbox hashes a `.zip` target by the files inside it, so a single file can have a listed MD5, but Recalbox can't read it under that name. Added in 1.0.1. |
+| `duplicates[]` | Local files identical to one chosen instead, and kept: `path`, `member`, `of`, `of_member` and `md5`. |
+| `already_filled[]` | Local files that matched, but other files fill all their targets: `path`, `member`, `md5` and `size`. |
 | `unmatched[]` | Local files the report doesn't ask for: `path`, `md5` and `size`. That doesn't make them junk: read [the warning](cli.md#what-beck-deletes-and-when). |
 | `unreadable[]` | Local files and folders BECK couldn't read and skipped: `path` and `reason`. This doesn't change the exit code. |
 | `deleted[]` | Local files deleted, or in a dry run the ones that would be: `path`, `md5` and `size`. |
@@ -150,8 +152,9 @@ names.
 | Field | Meaning |
 |---|---|
 | `source` | The local file. |
+| `member` | For a file inside a zip archive, its name there, and `source` is the archive. `null` for anything else. Added in 1.1.0. |
 | `target` | Where it goes. |
-| `md5` | The file's MD5. |
+| `md5` | The file's MD5. For a zip archive matched by its contents, its own MD5, which isn't the one on the report. |
 | `status` | What happened. See below. |
 | `replaces` | `true` if this overwrites a file on the target, or in a dry run would. |
 | `error` | What went wrong with this upload, or `null`. |
@@ -223,9 +226,11 @@ Hashes the local files. It uses no network and changes nothing.
   "beck_version": "0.1.0",
   "command": "scan",
   "ok": true,
-  "summary": { "files": 1, "unreadable": 1 },
+  "summary": { "files": 3, "unreadable": 1 },
   "files": [
-    { "path": "ps1/scph1001.bin", "md5": "cccccccccccccccccccccccccccccccc", "size": 524288 }
+    { "path": "neogeo.zip", "member": null, "md5": "dddddddddddddddddddddddddddddddd", "size": 2048, "contents_md5": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" },
+    { "path": "neogeo.zip", "member": "000-lo.lo", "md5": "ffffffffffffffffffffffffffffffff", "size": 131072, "contents_md5": null },
+    { "path": "ps1/scph1001.bin", "member": null, "md5": "cccccccccccccccccccccccccccccccc", "size": 524288, "contents_md5": null }
   ],
   "unreadable": [
     { "path": "broken-link.bin", "reason": "broken symlink" }
@@ -233,6 +238,11 @@ Hashes the local files. It uses no network and changes nothing.
   "errors": []
 }
 ```
+
+Each file inside a zip archive is in `files` too, with its name inside the archive as `member`, and the archive as `path`. A zip archive
+also has `contents_md5`: the MD5 Recalbox checks a `.zip` target with, from its members' bytes in the order of their names (DEC-78).
+`member` and `contents_md5` were added in 1.1.0, and are `null` where they don't apply. An archive BECK didn't open, because it's
+damaged or over [the limits](cli.md#bios-files-inside-zip-archives), is in `unreadable`, and its members aren't listed.
 
 ## `beck --json export`
 

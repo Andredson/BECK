@@ -73,12 +73,21 @@
       "type": "object",
       "required": [
         "path",
+        "member",
         "md5",
-        "size"
+        "size",
+        "contents_md5"
       ],
       "properties": {
         "path": {
           "type": "string"
+        },
+        "member": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The name inside the zip archive at path, for a file found in one (added in 1.1.0); null for a plain file."
         },
         "md5": {
           "$ref": "#/$defs/md5"
@@ -86,6 +95,17 @@
         "size": {
           "type": "integer",
           "minimum": 0
+        },
+        "contents_md5": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/md5"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "For a zip archive, the MD5 Recalbox checks a .zip target with: of its members' bytes, in the order of their names (added in 1.1.0). Null for anything else."
         }
       }
     },

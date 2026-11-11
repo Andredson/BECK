@@ -7,7 +7,7 @@ Send your BIOS files to the right folders on your Recalbox, by matching them aga
 ## What it does
 
 1. **Report:** your Recalbox writes a list of the BIOS files it's missing, with the MD5 each one should have.
-2. **Scan:** BECK works out the MD5 of each file in your BIOS folder.
+2. **Scan:** BECK works out the MD5 of each file in your BIOS folder, and of the files inside zip archives there.
 3. **Match:** the name of your file doesn't matter, only its MD5.
 4. **Copy:** BECK sends each match over the network, under the name and into the folder your Recalbox expects.
 

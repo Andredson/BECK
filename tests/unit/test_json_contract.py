@@ -30,7 +30,15 @@ from beck.frontends.recalbox import RecalboxAdapter
 from beck.models import MissingBios
 from beck.transports.local import LocalTransport
 from tests.conftest import REAL_REPORT, REPORT_NAMES, REPORTS, isolate_settings
-from tests.factories import make_bios_file, make_missing, make_report_text, settings_text
+from tests.factories import (
+    contents_md5,
+    make_bios_file,
+    make_missing,
+    make_report_text,
+    make_zip,
+    md5_of,
+    settings_text,
+)
 from tests.fakes import FakeSMBServer, install_fake_smb
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -83,10 +91,19 @@ EXPORTED: Rules = {
     "status": {"enum": ["planned", "copied", "exists", "failed"]},
     "error": TEXT_OR_NULL,
 }
-DUPLICATE: Rules = {"path": TEXT, "of": TEXT, "md5": MD5}
-NOT_A_ZIP: Rules = {"path": TEXT, "target": TEXT}
+MATCHED: Rules = {**FILE, "member": TEXT_OR_NULL}  # member: added in 1.1.0
+SCANNED: Rules = {**MATCHED, "contents_md5": MD5_OR_NULL}  # contents_md5: added in 1.1.0
+DUPLICATE: Rules = {
+    "path": TEXT,
+    "member": TEXT_OR_NULL,  # added in 1.1.0
+    "of": TEXT,
+    "of_member": TEXT_OR_NULL,  # added in 1.1.0
+    "md5": MD5,
+}
+NOT_A_ZIP: Rules = {"path": TEXT, "member": TEXT_OR_NULL, "target": TEXT}  # member: in 1.1.0
 UPLOAD: Rules = {
     "source": TEXT,
+    "member": TEXT_OR_NULL,  # added in 1.1.0
     "target": TEXT,
     "md5": MD5,
     "status": UPLOAD_STATUS,
@@ -153,7 +170,7 @@ V1_FIELDS: dict[str, Rules] = {
         **listing("still_missing", MISSING),
         **listing("not_a_zip", NOT_A_ZIP),  # added in 1.0.1
         **listing("duplicates", DUPLICATE),
-        **listing("already_filled", FILE),
+        **listing("already_filled", MATCHED),
         **listing("unmatched", FILE),
         **listing("unreadable", UNREADABLE),
         **listing("deleted", FILE),
@@ -171,7 +188,7 @@ V1_FIELDS: dict[str, Rules] = {
         **COMMON,
         "command": {"const": "scan"},
         **summary("files", "unreadable"),
-        **listing("files", FILE),
+        **listing("files", SCANNED),
         **listing("unreadable", UNREADABLE),
     },
     EXPORT: {  # added in 1.1.0
@@ -423,6 +440,27 @@ def check_changes_an_extension(world: World) -> list[str]:
 def check_holds_back_a_file_that_is_not_a_zip(world: World) -> list[str]:
     file = make_bios_file(world.source, "neocd.bin")
     world.report(make_missing("neocd/neocd.bin", file.md5), make_missing("neocdz.zip", file.md5))
+    return world.check()
+
+
+@scenario(CHECK)
+def check_uploads_files_from_zip_archives(world: World) -> list[str]:
+    bios = os.urandom(64)
+    make_zip(world.source, "a-bios.zip", {"ps1/scph1001.bin": bios, "readme.txt": b"text"})
+    make_zip(world.source, "b-copy.zip", {"scph1001.bin": bios})
+    neogeo = {"000-lo.lo": os.urandom(64), "sp-s2.sp1": os.urandom(64)}
+    make_zip(world.source, "neogeo-mine.zip", neogeo)
+    neocd = os.urandom(64)
+    make_zip(world.source, "cd.zip", {"neocd.bin": neocd, "other.rom": os.urandom(64)})
+    filled, other = os.urandom(64), os.urandom(64)
+    make_bios_file(world.source, "filled.bin", filled)
+    make_zip(world.source, "z-other.zip", {"other.bin": other})
+    world.report(
+        make_missing("ps1/scph1001.bin", md5_of(bios)),
+        make_missing("neogeo.zip", contents_md5(neogeo)),
+        make_missing("neocdz.zip", md5_of(neocd)),
+        make_missing("x.bin", md5_of(filled), md5_of(other)),
+    )
     return world.check()
 
 
@@ -909,6 +947,12 @@ SCENARIOS |= {
 def scan_lists_files_and_what_it_cannot_read(world: World) -> list[str]:
     make_bios_file(world.source, "ps1/a.bin")
     (world.source / "broken").symlink_to(world.source / "nowhere")
+    return ["--json", "scan", "--source", str(world.source)]
+
+
+@scenario(SCAN)
+def scan_lists_the_members_of_a_zip_archive(world: World) -> list[str]:
+    make_zip(world.source, "neogeo.zip", {"000-lo.lo": os.urandom(64), "sp-s2.sp1": b"x"})
     return ["--json", "scan", "--source", str(world.source)]
 
 

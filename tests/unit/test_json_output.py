@@ -114,6 +114,7 @@ def test_a_normal_run_gives_the_whole_document(
         "uploads": [
             {
                 "source": "ps1/copy.bin",
+                "member": None,
                 "target": "ps1/scph.bin",
                 "md5": file.md5,
                 "status": "uploaded",
@@ -149,7 +150,9 @@ def test_every_local_file_is_accounted_for(
     assert cli.main(check(source, device)) == 0
 
     doc = document(capsys)
-    assert doc["duplicates"] == [{"path": "b-copy.bin", "of": "a.bin", "md5": dup.md5}]
+    assert doc["duplicates"] == [
+        {"path": "b-copy.bin", "member": None, "of": "a.bin", "of_member": None, "md5": dup.md5}
+    ]
     assert doc["unmatched"] == [{"path": "junk.bin", "md5": junk.md5, "size": junk.size}]
     assert [item["path"] for item in doc["unreadable"]] == ["broken"]
     assert doc["unreadable"][0]["reason"]
@@ -169,7 +172,9 @@ def test_a_file_whose_targets_are_filled_is_listed(
     assert cli.main(check(source, device)) == 0
 
     doc = document(capsys)
-    assert doc["already_filled"] == [{"path": "a-other.bin", "md5": other.md5, "size": other.size}]
+    assert doc["already_filled"] == [
+        {"path": "a-other.bin", "member": None, "md5": other.md5, "size": other.size}
+    ]
     assert statuses(doc) == {"target.bin": "uploaded"}
 
 
@@ -223,7 +228,7 @@ def test_a_file_that_is_not_a_zip_is_listed_and_its_zip_target_stays_missing(
 
     doc = document(capsys)
     assert [item["target"] for item in doc["uploads"]] == ["neocd/neocd.bin"]
-    assert doc["not_a_zip"] == [{"path": "neocd.bin", "target": "neocdz.zip"}]
+    assert doc["not_a_zip"] == [{"path": "neocd.bin", "member": None, "target": "neocdz.zip"}]
     assert [item["target"] for item in doc["still_missing"]] == ["neocdz.zip"]
     assert doc["already_filled"] == doc["unmatched"] == []
     assert not (device / "neocdz.zip").exists()
@@ -1005,7 +1010,15 @@ def test_scan_lists_the_files_and_what_it_could_not_read(
     assert doc["command"] == "scan"
     assert doc["ok"] is True
     assert doc["summary"] == {"files": 1, "unreadable": 1}
-    assert doc["files"] == [{"path": "ps1/a.bin", "md5": file.md5, "size": file.size}]
+    assert doc["files"] == [
+        {
+            "path": "ps1/a.bin",
+            "member": None,
+            "md5": file.md5,
+            "size": file.size,
+            "contents_md5": None,
+        }
+    ]
     assert [item["path"] for item in doc["unreadable"]] == ["broken"]
     assert doc["errors"] == []
     assert set(doc) == {

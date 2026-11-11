@@ -28,6 +28,7 @@ from beck.output import (
     escaped_for_terminal,
     export_status,
     extension_warning,
+    local_name,
     not_a_zip_warning,
     print_safely,
     upload_status,
@@ -163,7 +164,7 @@ def _files_analysed(result: RunResult) -> list[LocalFile]:
     files.update(duplicate.file for duplicate in plan.duplicates)
     files.update(plan.unmatched, plan.already_filled)
     files.update(upload.source for upload in plan.not_a_zip)
-    return sorted(files, key=lambda file: file.relative.as_posix())
+    return sorted(files, key=LocalFile.sort_key)
 
 
 class ConsoleRenderer:
@@ -328,7 +329,9 @@ class ConsoleRenderer:
             self.no_files(folder)
         width = max((len(str(file.size)) for file in scanned.files), default=0)
         for file in scanned.files:
-            self._print(f"{file.md5}  {file.size:>{width}}  {file.relative.as_posix()}")
+            self._print(f"{file.md5}  {file.size:>{width}}  {local_name(file)}")
+            if file.contents_md5 is not None:
+                self._print(f"{file.contents_md5}  {'':>{width}}  {local_name(file)} (contents)")
         self.unreadable(scanned.unreadable)
         if scanned.files:
             total = f"Files: {len(scanned.files)}"
@@ -444,11 +447,11 @@ class ConsoleRenderer:
         lines: list[list[_Part]] = []
 
         for file in _files_analysed(result):
-            path = file.relative.as_posix()
+            path = local_name(file)
             uploads = [upload for upload in plan.uploads if upload.source == file]
             held_back = [upload for upload in plan.not_a_zip if upload.source == file]
             if file in duplicate_of:
-                of = duplicate_of[file].relative.as_posix()
+                of = local_name(duplicate_of[file])
                 lines.append([f"{path}: duplicate of {of}, kept"])
             elif file in plan.already_filled:
                 lines.append([f"{path}: target already filled, kept"])

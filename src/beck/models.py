@@ -53,20 +53,40 @@ class MissingBios:
 
 @dataclass(frozen=True, slots=True)
 class LocalFile:
-    """A file found in the user's BIOS folder."""
+    """A file found in the user's BIOS folder, or a file inside a zip archive there (DEC-78).
+
+    For a member, ``path`` and ``relative`` are the archive's; ``md5`` and ``size`` are its own.
+    """
 
     path: Path
     relative: PurePosixPath  # to the scanned folder
     md5: str
     size: int
     is_zip: bool = False  # whether it's a zip archive, by its content and not its name
+    member: str | None = None  # the name inside the archive at ``path``, for a member
+    contents_md5: str | None = None  # a zip's MD5 as Recalbox computes it, from its members
 
     def __post_init__(self) -> None:
-        """Refuse an unsafe path, a malformed MD5 or a negative size."""
+        """Refuse an unsafe path, a malformed MD5, a negative size, or a member that's a zip."""
         _check_relative_file(self.relative)
         _check_md5(self.md5)
         if self.size < 0:
             raise ValueError(f"Negative size for {self.relative}")
+        if self.member is not None and (not self.member or self.is_zip):
+            raise ValueError(f"Not a member BECK reads: {self.member!r} in {self.relative}")
+        if self.contents_md5 is not None:
+            if not self.is_zip or self.member is not None:
+                raise ValueError(f"{self.relative} has a contents MD5 but isn't a zip archive")
+            _check_md5(self.contents_md5)
+
+    @property
+    def name(self) -> str:
+        """The file's own name: a member's last part, or the file's."""
+        return PurePosixPath(self.member).name if self.member else self.relative.name
+
+    def sort_key(self) -> tuple[str, str]:
+        """By path, as text, and then a plain file before the members of an archive."""
+        return self.relative.as_posix(), self.member or ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,7 +118,7 @@ class PlannedUpload:
         _check_relative_file(self.target)
         if self.target != self.entry.target:
             raise ValueError(f"Target {self.target} isn't the entry's {self.entry.target}")
-        if self.source.md5 not in self.entry.md5s:
+        if not {self.source.md5, self.source.contents_md5} & self.entry.md5s:  # DEC-78
             raise ValueError(f"{self.source.relative} has no MD5 listed for {self.target}")
 
 
@@ -139,11 +159,11 @@ class Plan:
     def __post_init__(self) -> None:
         """Sort every list into a tuple, so that the same input always gives the same plan."""
         fields: dict[str, list[Any]] = {
-            "uploads": sorted(self.uploads, key=lambda u: (u.target, u.source.relative.as_posix())),
+            "uploads": sorted(self.uploads, key=lambda u: (u.target, u.source.sort_key())),
             "directories": sorted(self.directories),
-            "duplicates": sorted(self.duplicates, key=lambda d: d.file.relative.as_posix()),
-            "unmatched": sorted(self.unmatched, key=lambda f: f.relative.as_posix()),
-            "already_filled": sorted(self.already_filled, key=lambda f: f.relative.as_posix()),
+            "duplicates": sorted(self.duplicates, key=lambda d: d.file.sort_key()),
+            "unmatched": sorted(self.unmatched, key=LocalFile.sort_key),
+            "already_filled": sorted(self.already_filled, key=LocalFile.sort_key),
             "still_missing": sorted(self.still_missing, key=lambda e: e.target),
             "incorrect": sorted(self.incorrect, key=lambda e: e.target),
             "rejected": sorted(self.rejected, key=lambda e: e.item),

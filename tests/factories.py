@@ -3,6 +3,7 @@
 
 import hashlib
 import os
+import zipfile
 from collections.abc import Iterable
 from pathlib import Path, PurePosixPath
 
@@ -29,6 +30,21 @@ def make_bios_file(directory: Path, relative: str, content: bytes | None = None)
     return LocalFile(
         path=path, relative=PurePosixPath(relative), md5=md5_file(path), size=len(data)
     )
+
+
+def make_zip(directory: Path, relative: str, members: dict[str, bytes]) -> Path:
+    """Write a zip archive with these members, in this order. Their content is the test's own."""
+    path = directory / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
+        for name, data in members.items():
+            archive.writestr(name, data)
+    return path
+
+
+def contents_md5(members: dict[str, bytes]) -> str:
+    """A zip's MD5 as Recalbox computes it: its members' bytes, in the order of their names."""
+    return md5_of(b"".join(members[name] for name in sorted(members)))
 
 
 def make_local_file(relative: str, md5: str, size: int = 1) -> LocalFile:

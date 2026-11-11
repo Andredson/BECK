@@ -7,20 +7,31 @@ from pathlib import PurePosixPath
 from beck.models import Duplicate, ItemError, LocalFile, MissingBios, Plan, PlannedUpload
 
 
-def _path(file: LocalFile) -> str:
+def _path(file: LocalFile) -> tuple[str, str]:
     # As text, like stage 03: "first by path" decides which file wins, and PurePosixPath compares
     # folder by folder, which orders a/x and a-b/x the other way round.
-    return file.relative.as_posix()
+    return file.sort_key()
+
+
+def _is_zip_target(entry: MissingBios) -> bool:
+    return entry.target.suffix.casefold() == ".zip"
 
 
 def _fits(file: LocalFile, entry: MissingBios) -> bool:
-    """Whether the file can go to this target. Only a zip archive can fill a ``.zip`` target.
+    """Whether the file fills this target, checked the way Recalbox checks it.
 
-    Recalbox hashes a ``.zip`` target by the files inside it, so its MD5 list holds those hashes,
-    and one of them can be the MD5 of a single file that isn't a zip. Uploaded under the ``.zip``
-    name, that file can't be opened, and Recalbox still lists the target as missing.
+    Recalbox hashes a ``.zip`` target by the files inside it (DEC-74, DEC-78), so only a zip archive
+    fills one: by that contents MD5, or by its own MD5 as before. Any other target is hashed whole,
+    so a file, a zip as a whole, or a member of a zip fills it by its own MD5.
     """
-    return file.is_zip or entry.target.suffix.casefold() != ".zip"
+    if _is_zip_target(entry):
+        return file.is_zip and bool({file.md5, file.contents_md5} & entry.md5s)
+    return file.md5 in entry.md5s
+
+
+def _not_a_zip(file: LocalFile, entry: MissingBios) -> bool:
+    """A file that isn't a zip archive, with an MD5 a ``.zip`` target lists: it can't fill it."""
+    return _is_zip_target(entry) and not file.is_zip and file.md5 in entry.md5s
 
 
 def _entry_order(entry: MissingBios) -> tuple[str, str, str, list[str]]:
@@ -48,38 +59,49 @@ def plan(
     to act on: it's only carried along, so that the run reports it, as failed items.
 
     A file that isn't a zip archive never fills a ``.zip`` target: the target stays missing, and
-    ``Plan.not_a_zip`` says which file matched it.
+    ``Plan.not_a_zip`` says which file matched it. A member of a zip archive is matched like a file,
+    but it's never unmatched: an archive is, if neither it nor any of its members matched.
     """
     ordered = sorted(missing, key=_entry_order)
     incorrect = [entry for entry in ordered if entry.incorrect]
     kept_targets = {entry.target for entry in incorrect}
     entries = ordered if replace_incorrect else [e for e in ordered if e.target not in kept_targets]
-    entries_by_md5: dict[str, list[MissingBios]] = {}
-    for entry in entries:
-        for md5 in entry.md5s:
-            entries_by_md5.setdefault(md5, []).append(entry)
+    candidates = {
+        file: [e for e in entries if _fits(file, e) or _not_a_zip(file, e)] for file in local
+    }
 
     def named_like_a_target(file: LocalFile) -> bool:
-        return any(entry.name == file.relative.name for entry in entries_by_md5[file.md5])
+        return any(entry.name == file.name for entry in candidates[file])
 
-    matching = [file for file in local if file.md5 in entries_by_md5]
+    matching = [file for file in local if candidates[file]]
 
     chosen: dict[str, LocalFile] = {}
-    for file in sorted(matching, key=lambda file: (not named_like_a_target(file), _path(file))):
+    in_order = sorted(
+        matching,
+        key=lambda file: (not named_like_a_target(file), file.member is not None, _path(file)),
+    )
+    for file in in_order:
         chosen.setdefault(file.md5, file)
 
     uploads: dict[PurePosixPath, PlannedUpload] = {}
     for own_name_only in (True, False):
         for file in sorted(chosen.values(), key=_path):
-            for entry in entries_by_md5[file.md5]:
-                if (entry.name == file.relative.name or not own_name_only) and _fits(file, entry):
+            for entry in candidates[file]:
+                if (entry.name == file.name or not own_name_only) and _fits(file, entry):
                     uploads.setdefault(entry.target, PlannedUpload(file, entry.target, entry))
 
     not_a_zip: dict[PurePosixPath, PlannedUpload] = {}
     for file in sorted(chosen.values(), key=_path):
-        for entry in entries_by_md5[file.md5]:
-            if not _fits(file, entry) and entry.target not in uploads:
+        for entry in candidates[file]:
+            if _not_a_zip(file, entry) and entry.target not in uploads:
                 not_a_zip.setdefault(entry.target, PlannedUpload(file, entry.target, entry))
+
+    # An archive with a member that fits a target kept as incorrect isn't unmatched either, so that
+    # --clean-unmatched can't delete it (DEC-59).
+    valid_for_incorrect = {md5 for entry in incorrect for md5 in entry.md5s}
+    used_archives = {file.path for file in matching} | {
+        file.path for file in local if file.member is not None and file.md5 in valid_for_incorrect
+    }
 
     sources = {upload.source for upload in uploads.values()}
     held_back = {upload.source for upload in not_a_zip.values()}
@@ -93,7 +115,9 @@ def plan(
             for file in matching
             if file != chosen[file.md5]
         ),
-        unmatched=tuple(file for file in local if file.md5 not in entries_by_md5),
+        unmatched=tuple(
+            file for file in local if file.member is None and file.path not in used_archives
+        ),
         already_filled=tuple(
             file for file in chosen.values() if file not in sources and file not in held_back
         ),

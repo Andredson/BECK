@@ -240,3 +240,28 @@ def test_an_export_result_orders_its_files_and_counts_what_it_left_out() -> None
 
     assert result.chosen == (a, b, c)
     assert result.left_out == 2
+
+
+@pytest.mark.parametrize(
+    ("member", "is_zip", "contents_md5"),
+    [
+        ("", False, None),  # an empty member name
+        ("a.bin", True, None),  # a member that's a zip: BECK doesn't open archives inside archives
+        (None, False, "a" * 32),  # a contents MD5 on a file that isn't a zip
+        ("a.bin", False, "a" * 32),  # a contents MD5 on a member
+        (None, True, "NOT-AN-MD5"),
+    ],
+)
+def test_a_local_file_refuses_an_impossible_member_or_contents_md5(
+    member: str | None, is_zip: bool, contents_md5: str | None
+) -> None:
+    with pytest.raises(ValueError):
+        LocalFile(
+            path=Path("/bios/a.zip"),
+            relative=PurePosixPath("a.zip"),
+            md5="b" * 32,
+            size=1,
+            is_zip=is_zip,
+            member=member,
+            contents_md5=contents_md5,
+        )
