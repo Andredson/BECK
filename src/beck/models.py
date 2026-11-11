@@ -166,3 +166,42 @@ class RunResult:
     replaced: tuple[PlannedUpload, ...] = ()  # uploads that overwrite a file on the target
     deleted: tuple[LocalFile, ...] = ()  # in a dry run, what it would delete
     extension_changes: tuple[PlannedUpload, ...] = ()  # in a dry run, what it would upload
+
+
+@dataclass(frozen=True, slots=True)
+class RemoteFile:
+    """A file on the target, found by listing it. ``path`` is relative to the BIOS root."""
+
+    path: PurePosixPath
+    size: int
+
+    def __post_init__(self) -> None:
+        """Refuse an unsafe path or a negative size: a target's names could be anything."""
+        _check_relative_file(self.path)
+        if self.size < 0:
+            raise ValueError(f"Negative size for {self.path}")
+
+
+@dataclass(frozen=True, slots=True)
+class ExportResult:
+    """What ``beck export`` did. Each file list is sorted by path, as text."""
+
+    destination: Path
+    copied: tuple[RemoteFile, ...] = ()
+    planned: tuple[RemoteFile, ...] = ()  # in a dry run, what it would copy
+    existing: tuple[RemoteFile, ...] = ()  # already in the destination, so kept as it is
+    failed: tuple[RemoteFile, ...] = ()
+    errors: tuple[ItemError, ...] = ()  # one for each failed file
+    on_target: int = 0  # every file listed on the target
+    dry_run: bool = False
+
+    @property
+    def chosen(self) -> tuple[RemoteFile, ...]:
+        """The ``.rom`` and ``.bin`` files on the target, in order."""
+        files = (*self.copied, *self.planned, *self.existing, *self.failed)
+        return tuple(sorted(files, key=lambda file: file.path.as_posix()))
+
+    @property
+    def left_out(self) -> int:
+        """Files on the target that aren't ``.rom`` or ``.bin``, so weren't exported."""
+        return self.on_target - len(self.chosen)

@@ -104,6 +104,8 @@ other files refer to them.
 
 ### 11.12 — Export: copy BIOS files from the target to this machine
 - [ ] Done
+> BLOCKED (2026-11-11): only the owner's run against the VM or a device is left. The command, its docs and its tests are in
+> `feat(cli): add an export command that copies BIOS files from the target`.
 - **Priority:** planned (1)
 - **Requested by the owner (2026-11-05):** a way to get the BIOS files on the target system and copy them to the machine running BECK,
   for example as a backup or to move to another device. It's the opposite direction to `check`. The owner decided how it works

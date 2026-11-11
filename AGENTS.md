@@ -20,7 +20,7 @@ CI: lint, types, tests on Python 3.11–3.14 with a coverage gate, tests against
 
 | Path | What it is |
 |---|---|
-| `src/beck/` | The application ([design](docs/ARCHITECTURE.md)): `cli`, `config`, `credentials`, `redact`, `models`, `hashing`, `matcher`, `executor`, `errors`, and `frontends/`, `transports/`, `output/`. `beck` finds its [settings](docs/cli.md#settings) from any folder, and `bios/` in the current one. |
+| `src/beck/` | The application ([design](docs/ARCHITECTURE.md)): `cli`, `config`, `credentials`, `redact`, `models`, `hashing`, `matcher`, `executor`, `exporter`, `errors`, and `frontends/`, `transports/`, `output/`. `beck` finds its [settings](docs/cli.md#settings) from any folder, and `bios/` in the current one. |
 | `bios/` | Input folder for the user's BIOS files. Everything except `bios/.keep` is gitignored. |
 | `pyproject.toml`, `uv.lock`, `.python-version` | Project metadata, runtime and dev dependencies, tool settings (ruff, mypy, pytest, coverage, commitizen), the lockfile, and Python 3.11 for local work. Managed with uv; `exclude-newer` is the 14-day cooldown (DEC-45). The distribution is `beck-bios`, built with `uv_build` (DEC-18), and it installs the `beck` command. |
 | `tests/` | pytest suite: `tests/unit/` has a test file per module, full runs through `cli.main` (`test_cli.py`), and the architecture rules checked on the source (`test_architecture.py`). `tests/` has the package tests, the Markdown link checker, and tests for the hygiene guard and the workflow pins. `tests/factories.py` builds test data (always random bytes, and reports in the real format), and `tests/fakes.py` is the in-memory SMB server the application tests use. `tests/fixtures/reports/` holds real and derived Recalbox reports, with provenance in `tests/fixtures/README.md`; the real report keeps its CRLF line endings byte-exact. |
@@ -94,7 +94,7 @@ uv sync --locked && uv run ruff check . && uv run ruff format --check . && uv ru
   ```
 
 - **Updating dependencies or pins** follows [docs/maintenance.md](docs/maintenance.md).
-- `uv run beck check` connects to whatever target your settings name, which may be a **real Recalbox**, over SMB, and upload files to it. Don't run them unless the human explicitly asks you to in this session. `uv run beck config init` writes to your home folder.
+- `uv run beck check` and `uv run beck export` connect to whatever target your settings name, which may be a **real Recalbox**, over SMB: `check` uploads files to it, and `export` copies real BIOS files from it to this computer, so never export into this repository. Don't run them unless the human explicitly asks you to in this session. `uv run beck config init` writes to your home folder.
 
 ## Working on the roadmap (protocol)
 
@@ -248,8 +248,9 @@ Agent Skills live in `.agents/skills/<name>/SKILL.md` (open agentskills.io forma
 
 ## Legal
 
-BIOS files are copyrighted. BECK only matches files the user already owns; it never includes, downloads or
-distributes them. Contributions are licensed under GPL-3.0-only.
+BIOS files are copyrighted. BECK only matches files the user already owns; it never includes or distributes them,
+and never downloads them from the internet. `beck export` copies them from the user's own device to the user's own
+computer, and nothing else. Contributions are licensed under GPL-3.0-only.
 
 ## Keeping this file current
 

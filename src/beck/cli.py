@@ -24,6 +24,7 @@ from beck.config import (
 from beck.credentials import password_for
 from beck.errors import BeckError, ConfigError, ReportNotFoundError, TransportError, UsageError
 from beck.executor import execute
+from beck.exporter import export
 from beck.frontends import get_adapter
 from beck.frontends.base import FrontendAdapter
 from beck.hashing import scan
@@ -46,6 +47,7 @@ examples:
   beck check                  copy the matching files to your device
   beck scan                   list your local files and their MD5s
   beck report                 list what your device is missing
+  beck export ~/bios-backup   copy the .rom and .bin files on your device to a folder
   beck config init            create a settings file
 
 See docs/cli.md for every option, the exit codes, and what gets deleted.
@@ -55,6 +57,10 @@ COMMANDS = {
     "check": ("Copy your matching BIOS files to the device.", "example:\n  beck check\n"),
     "scan": ("List your local BIOS files with their MD5s.", "example:\n  beck scan\n"),
     "report": ("List the BIOS files the device reports as missing.", "example:\n  beck report\n"),
+    "export": (
+        "Copy the .rom and .bin files on the device to a folder here.",
+        "example:\n  beck export ~/bios-backup --dry-run\n",
+    ),
     "config": ("Find, create or show BECK's settings.", "example:\n  beck config show\n"),
 }
 CONFIG_ACTIONS = {
@@ -62,6 +68,14 @@ CONFIG_ACTIONS = {
     "init": "create that settings file",
     "show": "print the settings a run would use, and where each comes from",
 }
+
+EXPORT_DESCRIPTION = """\
+Copy every .rom and .bin file in the device's BIOS folder to DIR, in the same folders. It never
+replaces a file in DIR, and changes nothing on the device.
+
+It isn't a complete backup: BIOS files of other kinds, such as .zip, .img or the Amiga kick files,
+are left out, and so are .rom and .bin files that aren't BIOS files. The result says how many it
+left. These are real BIOS files, so never commit them to a git repository."""
 
 FAILED_IF_MISSING_EXIT_CODE = 5
 REPORT_FILE_HELP = "read this local copy of the report, not the one on the target"
@@ -334,6 +348,37 @@ def _run_report(
     return TransportError.exit_code if rejected else 0
 
 
+def _git_repository_of(folder: Path) -> Path | None:
+    """The git working tree that ``folder`` would be in, if any, even before it's created."""
+    for candidate in (folder.absolute(), *folder.absolute().parents):
+        if (candidate / ".git").exists():
+            return candidate
+    return None
+
+
+def _run_export(args: argparse.Namespace, settings: Settings, renderer: Renderer) -> int:
+    """Copy the target's BIOS files here. It reads the target, and never replaces a local file."""
+    destination = Path(args.directory)
+    renderer.exporting_to(destination)
+    if destination.exists() and not destination.is_dir():
+        raise UsageError(f"{destination} isn't a folder")
+    repository = _git_repository_of(destination)
+    if repository is not None:
+        logging.getLogger(LOGGER_NAME).warning(
+            "%s is inside the git repository in %s. These are real BIOS files: never commit them, "
+            "and check that git ignores them.",
+            destination,
+            repository,
+        )
+    transport = _connect_to_target(settings, renderer)
+    renderer.opened(transport.url())
+    _log.debug("Target: %s", transport.url())
+    with transport:
+        result = export(transport, destination, dry_run=args.dry_run)
+    renderer.exported(result)
+    return TransportError.exit_code if result.errors else 0
+
+
 def _run_scan(settings: Settings, base_dir: Path, renderer: Renderer) -> int:
     """List the local files. It uses no network and writes nothing."""
     source = _source_folder(settings, base_dir)
@@ -471,7 +516,7 @@ def _build_parser(*, json_errors: bool = False) -> argparse.ArgumentParser:
             name,
             json_errors=json_errors,
             help=summary,
-            description=summary,
+            description=EXPORT_DESCRIPTION if name == "export" else summary,
             epilog=example,
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
@@ -524,6 +569,16 @@ def _build_parser(*, json_errors: bool = False) -> argparse.ArgumentParser:
         if name == "report":
             group = _add_target_options(command)
             group.add_argument("--report-file", metavar="FILE", help=REPORT_FILE_HELP)
+        if name == "export":
+            command.add_argument(
+                "directory", metavar="DIR", help="the folder to copy them to, created if needed"
+            )
+            _add_target_options(command)
+            command.add_argument(
+                "--dry-run",
+                action="store_true",
+                help="show what would be copied, and write nothing",
+            )
         if name == "config":
             actions = command.add_subparsers(
                 dest="config_action", required=True, title="actions", metavar="<action>"
@@ -552,6 +607,7 @@ def _build_parser(*, json_errors: bool = False) -> argparse.ArgumentParser:
         verify=False,
         config_action=None,
         force=False,
+        directory=None,
     )
     return parser
 
@@ -607,6 +663,8 @@ def _main(argv: list[str] | None, base_dir: Path | None) -> int:
             return _run_scan(settings, folder, renderer)
         if args.command == "report":
             return _run_report(args, settings, folder, renderer)
+        if args.command == "export":
+            return _run_export(args, settings, renderer)
         return _run_check(args, settings, folder, renderer)
     except BeckError as error:
         renderer.error(error)

@@ -6,7 +6,8 @@ What BECK protects, what it trusts, how it defends itself, and what it doesn't t
 
 - **Your BIOS files:** they're yours, and BECK must not lose them. Deleting one takes a flag you chose (DEC-02).
 - **Your SMB credentials:** the password, and less so the user name.
-- **The BIOS folder on your device:** BECK must not write outside it, or replace something by surprise.
+- **The BIOS folder on your device:** BECK must not write outside it, or replace something by surprise. `beck export` doesn't write there at all.
+- **The folder you export to:** `beck export` must not write outside it, or replace a file in it.
 
 ## What BECK trusts
 
@@ -31,6 +32,7 @@ anything, and whatever answers on the network might not be your Recalbox.
 | **A destructive mistake** deletes your files. | Nothing is deleted without `--move` or `--clean-unmatched`, it asks first, and without a terminal it needs `--yes`. `--clean-unmatched` stops if anything failed or an entry was refused. | `tests/unit/test_safety_flags.py` |
 | **A replaced file** on the device. | BECK keeps what's there unless you pass `--overwrite` (DEC-61). | `tests/unit/test_safety_flags.py` |
 | **A crafted report** writes outside the BIOS folder, or into another folder. | An entry whose path could leave it, or holding a backslash or control characters, is refused. `SmbTransport` and `LocalTransport` refuse such paths too. | `tests/unit/test_path_safety.py`, and on a real server |
+| **A crafted device** makes `beck export` write outside its folder, or replace a file there. | A name the server lists with a separator in it is refused, and a path with `..` can't be built. Export doesn't follow a link inside the folder, and creates each file only if nothing is at that name, so it replaces nothing, even a file that appears meanwhile. | `tests/unit/test_exporter.py`, `tests/unit/test_smb_transport.py`, and on a real server |
 | **A crafted name** acts on your terminal, or fakes the list you confirm before deleting. | Human output and logs show it escaped. | `tests/unit/test_console.py` |
 | **A damaged upload** counts as done, and then the local file goes. | Every upload has its size checked, and `--verify` compares its MD5 too. If it doesn't match, it's `failed`, and the local file stays. | `tests/unit/test_upload_integrity.py` |
 | **An output that fails** changes what a run does. | Output can't change the run or its exit code (DEC-62). | `tests/unit/test_output_streams.py` |
@@ -43,7 +45,8 @@ anything, and whatever answers on the network might not be your Recalbox.
 - **BECK can't tell it's talking to your Recalbox.** SMB here doesn't check who the server is. A fake one that you connect to gets your files, and with a user name, a login exchange that could be attacked offline, so a strong password matters.
 - **MD5 identifies files. It doesn't protect them.** It's what Recalbox's report uses. Two different files can be crafted to have the same MD5, so a match means "the file the report asks for", not that the file is trustworthy.
 - **`BECK_SMB_PASSWORD` is only as safe as your account.** Other programs running as you can read it, and setting it on the command line leaves it in your shell's history. The prompt avoids both.
-- **A malicious server can use up your memory.** BECK reads the report, and with `--verify` each upload, into memory, with no size limit. Any Trivy finding accepted for a while, such as the `pyasn1` bugs that let a server hang BECK until November 2026, is listed in `.trivyignore`, with its expiry date.
+- **A malicious server can use up your memory.** BECK reads the report, with `--verify` each upload, and with `beck export` each file it copies, into memory, with no size limit. Any Trivy finding accepted for a while, such as the `pyasn1` bugs that let a server hang BECK until November 2026, is listed in `.trivyignore`, with its expiry date.
 - **A damaged upload stays on the device,** because BECK has no way to delete there. It's reported, and `--overwrite` tries again.
+- **`beck export` copies whatever the device holds,** under the names it gives. BECK never opens or runs what it copies, but what it writes to your folder is only as trustworthy as the device.
 - **A symlink in your BIOS folder is followed,** if it points to a file. BECK treats that file as yours, and uploads it if the report asks for it.
 - **What the device does is up to the device.** Its Samba settings, including its default guest access, and any links on its share aren't BECK's to control.

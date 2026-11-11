@@ -2,6 +2,7 @@
 """A folder on disk: a mounted SD card or USB drive, a run on the device itself, or a test."""
 
 import logging
+import os
 import shutil
 import time
 from collections.abc import Iterator
@@ -10,6 +11,7 @@ from pathlib import Path, PurePosixPath
 from typing import Self
 
 from beck.errors import TransportError
+from beck.models import RemoteFile
 
 _log = logging.getLogger(__name__)
 
@@ -72,6 +74,30 @@ class LocalTransport:
         """A file's size in bytes, which is how an upload is checked once it's copied."""
         with _reporting("getting the size of", path):
             return self._resolve(path).stat().st_size
+
+    def list_files(self) -> list[RemoteFile]:
+        """Every file under the folder, sorted by path. Linked folders aren't entered.
+
+        A linked file is listed, and reading it checks where it leads, as for any path. One that
+        leads nowhere has no size, so it's left out, with a warning.
+        """
+
+        def failed(error: OSError) -> None:
+            raise error
+
+        found = []
+        with _reporting("listing", self.root):
+            for folder, _dirs, names in os.walk(self.root, onerror=failed):
+                for name in names:
+                    path = Path(folder, name)
+                    relative = PurePosixPath(path.relative_to(self.root).as_posix())
+                    try:
+                        size = path.stat().st_size
+                    except OSError as e:
+                        _log.warning("Left out %s, which can't be read: %s", relative, e.strerror)
+                        continue
+                    found.append(RemoteFile(relative, size))
+        return sorted(found, key=lambda file: file.path.as_posix())
 
     def makedirs(self, path: PurePosixPath) -> None:
         """Create a folder and any missing parents. An existing folder is fine."""

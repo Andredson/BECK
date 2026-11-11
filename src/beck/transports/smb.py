@@ -15,9 +15,10 @@ from smb.smb_structs import OperationFailure
 from smb.SMBConnection import SMBConnection
 
 from beck.errors import TransportError
-from beck.models import SHARE_ROOT
+from beck.models import SHARE_ROOT, RemoteFile
 
 DEFAULT_TIMEOUT = 30  # seconds
+MAX_DEPTH = 32  # folders inside folders: deeper is a loop, through a link on the server
 
 _log = logging.getLogger(__name__)
 
@@ -162,6 +163,36 @@ class SmbTransport:
         with _reporting(f"getting the size of {path} on share {self.share}"):
             attributes = self._conn.getAttributes(self.share, remote, timeout=self.timeout)
             return int(attributes.file_size)
+
+    def list_files(self) -> list[RemoteFile]:
+        """Every file under the BIOS folder, sorted by path, with the size the server reports.
+
+        A link on the server can make a folder contain itself, so it stops after ``MAX_DEPTH``
+        levels.
+        """
+        start = "" if self.root == SHARE_ROOT else f"{self.root.as_posix()}/"
+        found = []
+        folders = [(start, PurePosixPath("."), 0)]
+        while folders:
+            parent, relative, depth = folders.pop()
+            if depth > MAX_DEPTH:
+                raise TransportError(
+                    f"Folders on share {self.share} go more than {MAX_DEPTH} levels deep, at "
+                    f"{relative}: there may be a loop"
+                )
+            for entry in self._list(parent):
+                # A name is one level: a server that lists a separator could lead out of the folder.
+                if "/" in entry.filename or "\\" in entry.filename:
+                    raise TransportError(
+                        f"Share {self.share} listed a name that isn't safe, in {relative}: "
+                        f"{entry.filename!r}"
+                    )
+                path = relative / entry.filename
+                if entry.isDirectory:
+                    folders.append((f"{parent}{entry.filename}/", path, depth + 1))
+                else:
+                    found.append(RemoteFile(path, int(entry.file_size)))
+        return sorted(found, key=lambda file: file.path.as_posix())
 
     def makedirs(self, path: PurePosixPath) -> None:
         """Create a folder and any missing parents, one level at a time.

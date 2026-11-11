@@ -39,12 +39,13 @@ SCHEMAS = ROOT / "docs" / "schemas"
 GUIDE = ROOT / "docs" / "json-output.md"
 
 CHECK, REPORT, SCAN, REJECTED = "check-result", "report-result", "scan-result", "rejected-command"
-CONFIG = "config-result"
+CONFIG, EXPORT = "config-result", "export-result"
 SCHEMA_OF_COMMAND = {
     "check": CHECK,
     "report": REPORT,
     "scan": SCAN,
     "config": CONFIG,
+    "export": EXPORT,
     None: REJECTED,
 }
 
@@ -76,6 +77,12 @@ UPLOAD_STATUS: Json = {"enum": ["planned", "uploaded", "replaced", "kept", "fail
 ERROR: Rules = {"code": TEXT, "message": TEXT, "item": TEXT_OR_NULL}
 FILE: Rules = {"path": TEXT, "md5": MD5, "size": COUNT}
 UNREADABLE: Rules = {"path": TEXT, "reason": TEXT}
+EXPORTED: Rules = {
+    "path": TEXT,
+    "size": COUNT,
+    "status": {"enum": ["planned", "copied", "exists", "failed"]},
+    "error": TEXT_OR_NULL,
+}
 DUPLICATE: Rules = {"path": TEXT, "of": TEXT, "md5": MD5}
 NOT_A_ZIP: Rules = {"path": TEXT, "target": TEXT}
 UPLOAD: Rules = {
@@ -166,6 +173,17 @@ V1_FIELDS: dict[str, Rules] = {
         **summary("files", "unreadable"),
         **listing("files", FILE),
         **listing("unreadable", UNREADABLE),
+    },
+    EXPORT: {  # added in 1.1.0
+        **COMMON,
+        "command": {"const": "export"},
+        "dry_run": FLAG,
+        "target": TEXT_OR_NULL,
+        "destination": TEXT_OR_NULL,
+        **summary(
+            "files_on_target", "rom_and_bin", "copied", "planned", "existing", "failed", "left_out"
+        ),
+        **listing("files", EXPORTED),
     },
     REJECTED: {
         **COMMON,
@@ -942,6 +960,86 @@ def scan_with_a_bug(world: World) -> list[str]:
     return ["--json", "scan", "--source", str(world.source)]
 
 
+# export
+
+
+def exporting(world: World, *flags: str) -> list[str]:
+    return ["--json", "export", str(world.root / "out"), "--target-dir", str(world.device), *flags]
+
+
+@scenario(EXPORT)
+def export_copies_the_rom_and_bin_files(world: World) -> list[str]:
+    make_bios_file(world.device, "ps1/scph1001.bin")
+    make_bios_file(world.device, "atari800/ATARIBAS.ROM")
+    make_bios_file(world.device, "neogeo.zip")
+    return exporting(world)
+
+
+@scenario(EXPORT)
+def export_dry_run(world: World) -> list[str]:
+    make_bios_file(world.device, "ps1/scph1001.bin")
+    return exporting(world, "--dry-run")
+
+
+@scenario(EXPORT)
+def export_keeps_a_file_already_here(world: World) -> list[str]:
+    make_bios_file(world.device, "a.bin")
+    make_bios_file(world.root / "out", "a.bin")
+    return exporting(world)
+
+
+@scenario(EXPORT)
+def export_with_a_target_url(world: World) -> list[str]:
+    server = world.on_smb()
+    server.files[("bios", "a.bin")] = b"beck-test-bytes"
+    return [
+        "--json",
+        "export",
+        str(world.root / "out"),
+        "--target",
+        "smb://beck-test-user@beck-test-server/bios",
+    ]
+
+
+@scenario(EXPORT, 3)
+def export_with_a_file_that_cannot_be_written(world: World) -> list[str]:
+    make_bios_file(world.device, "ps1/a.bin")
+    make_bios_file(world.device, "b.bin")
+    make_bios_file(world.root / "out", "ps1")  # a file where a folder must go
+    return exporting(world)
+
+
+@scenario(EXPORT, 3)
+def export_with_a_file_that_cannot_be_read(world: World) -> list[str]:
+    make_bios_file(world.device, "a.bin")
+    world.monkeypatch.setattr(LocalTransport, "read_bytes", raises(TransportError("refused")))
+    return exporting(world)
+
+
+@scenario(EXPORT, 3)
+def export_with_a_target_that_does_not_exist(world: World) -> list[str]:
+    return ["--json", "export", str(world.root / "out"), "--target-dir", str(world.root / "nope")]
+
+
+@scenario(EXPORT, 2)
+def export_to_a_file(world: World) -> list[str]:
+    make_bios_file(world.root, "out")
+    return exporting(world)
+
+
+@scenario(EXPORT, 2)
+def export_with_a_settings_file_that_has_problems(world: World) -> list[str]:
+    (world.app / "settings.toml").write_text("[target\n", encoding="utf-8")
+    world.monkeypatch.setenv("BECK_CONFIG", str(world.app / "settings.toml"))
+    return ["--json", "export", str(world.root / "out")]
+
+
+@scenario(EXPORT, 1)
+def export_with_a_bug(world: World) -> list[str]:
+    world.monkeypatch.setattr(cli, "export", raises(RuntimeError("a bug")))
+    return exporting(world)
+
+
 # config
 
 
@@ -1222,7 +1320,7 @@ def test_every_field_comes_up_in_every_form(name: str, outcomes: dict[str, Outco
     assert set(seen) == set(V1_FIELDS[name])
     for field, rule in V1_FIELDS[name].items():
         # Only a check and a report have errors about one item. The others share the shape anyway.
-        only_stops = name not in (CHECK, REPORT) and field == "errors[].item"
+        only_stops = name not in (CHECK, REPORT, EXPORT) and field == "errors[].item"
         expected = {"null"} if only_stops else kinds_allowed(rule)
         assert seen[field] == (expected or seen[field]), field
 

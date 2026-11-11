@@ -13,7 +13,7 @@ from beck.executor import execute
 from beck.frontends.recalbox import RecalboxAdapter
 from beck.hashing import scan
 from beck.matcher import plan
-from beck.models import Plan, PlannedUpload, RunResult
+from beck.models import Plan, PlannedUpload, RemoteFile, RunResult
 from beck.transports.local import LocalTransport
 from beck.transports.smb import SmbTransport
 from tests.conftest import REAL_REPORT, load_report
@@ -139,6 +139,9 @@ class Untouchable:
 
     def upload(self, local: Path, remote: PurePosixPath) -> int:
         raise AssertionError("a dry run uploaded a file")
+
+    def list_files(self) -> list[RemoteFile]:
+        raise AssertionError("a check listed the target")
 
     def describe(self) -> str:
         raise AssertionError("a dry run has nothing to describe")

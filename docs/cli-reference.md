@@ -28,12 +28,14 @@ commands:
     check        Copy your matching BIOS files to the device.
     scan         List your local BIOS files with their MD5s.
     report       List the BIOS files the device reports as missing.
+    export       Copy the .rom and .bin files on the device to a folder here.
     config       Find, create or show BECK's settings.
 
 examples:
   beck check                  copy the matching files to your device
   beck scan                   list your local files and their MD5s
   beck report                 list what your device is missing
+  beck export ~/bios-backup   copy the .rom and .bin files on your device to a folder
   beck config init            create a settings file
 
 See docs/cli.md for every option, the exit codes, and what gets deleted.
@@ -116,6 +118,38 @@ options:
 
 example:
   beck report
+```
+
+## `beck export`
+
+```text
+usage: beck export [-h] [-v] [-q] [--no-color] [--config FILE] [--json] [--target URL | --target-dir
+                   DIR] [--dry-run] DIR
+
+Copy every .rom and .bin file in the device's BIOS folder to DIR, in the same folders. It never
+replaces a file in DIR, and changes nothing on the device.
+
+It isn't a complete backup: BIOS files of other kinds, such as .zip, .img or the Amiga kick files,
+are left out, and so are .rom and .bin files that aren't BIOS files. The result says how many it
+left. These are real BIOS files, so never commit them to a git repository.
+
+positional arguments:
+  DIR               the folder to copy them to, created if needed
+
+options:
+  -h, --help        show this help message and exit
+  -v                add debug logs on stderr: steps, timings and the plan, never credentials
+  -q                with check, print only errors, deletions and how the run ended
+  --no-color        don't use colors, the same as setting NO_COLOR
+  --config FILE     read the settings from this file, not the default one (see docs/cli.md)
+  --json            print one JSON document on stdout, and never ask anything (see docs/json-
+                    output.md)
+  --target URL      an SMB target: smb://[user@]host[:port]/share[/sub/path]
+  --target-dir DIR  a folder: a mounted SD card or USB drive, or the device itself
+  --dry-run         show what would be copied, and write nothing
+
+example:
+  beck export ~/bios-backup --dry-run
 ```
 
 ## `beck config`

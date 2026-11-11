@@ -15,6 +15,7 @@ from beck import __version__
 from beck.config import ConfigLocation
 from beck.errors import BeckError, UsageError
 from beck.models import (
+    ExportResult,
     ItemError,
     LocalFile,
     MissingBios,
@@ -25,6 +26,7 @@ from beck.models import (
 )
 from beck.output import (
     distinct_targets,
+    export_status,
     extension_warning,
     print_safely,
     upload_errors,
@@ -157,6 +159,7 @@ class JsonRenderer:
         self.target: str | None = None
         self.files_scanned = 0
         self.unreadable_items: tuple[Unreadable, ...] = ()
+        self.destination: str | None = None
 
     def can_ask(self) -> bool:
         """Never: a consumer can't hang on a question, or confirm one by accident."""
@@ -217,6 +220,14 @@ class JsonRenderer:
         """Write the document for ``beck scan``. ``folder`` is for people, so it isn't in it."""
         _write(self._scan(scanned, []), self.stream)
 
+    def exporting_to(self, destination: Path) -> None:
+        """Keep the folder for the document, masked: it's whatever the command line said."""
+        self.destination = redact(str(destination))
+
+    def exported(self, result: ExportResult) -> None:
+        """Write the document for ``beck export``."""
+        _write(self._export(result, _error_items(result.errors)), self.stream)
+
     def config_file(self, location: ConfigLocation, exists: bool) -> None:
         """Keep the settings file's details, so that even a document about an error has them."""
         self.file = {"path": str(location.path), "source": location.source, "exists": exists}
@@ -253,6 +264,9 @@ class JsonRenderer:
             document = self._scan(ScanResult(), [error])
         elif self.command == "config":
             document = self._config([error])
+        elif self.command == "export":
+            stopped_export = ExportResult(destination=Path(), dry_run=self.dry_run)
+            document = self._export(stopped_export, [error])
         else:
             self.files_scanned = 0
             self.unreadable_items = ()
@@ -329,6 +343,34 @@ class JsonRenderer:
             "file": self.file,
             "created": created,
             "settings": settings,
+            "errors": errors,
+        }
+
+    def _export(self, result: ExportResult, errors: list[dict[str, Any]]) -> dict[str, Any]:
+        failed = {error.item: redact(error.message) for error in result.errors}
+        return {
+            **_header(self.command, ok=not errors),
+            "dry_run": result.dry_run,
+            "target": self.target,
+            "destination": self.destination,
+            "summary": {
+                "files_on_target": result.on_target,
+                "rom_and_bin": len(result.chosen),
+                "copied": len(result.copied),
+                "planned": len(result.planned),
+                "existing": len(result.existing),
+                "failed": len(result.failed),
+                "left_out": result.left_out,
+            },
+            "files": [
+                {
+                    "path": file.path.as_posix(),
+                    "size": file.size,
+                    "status": export_status(file, result),
+                    "error": failed.get(file.path.as_posix()),
+                }
+                for file in result.chosen
+            ],
             "errors": errors,
         }
 

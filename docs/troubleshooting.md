@@ -208,6 +208,80 @@ Error: <target> has a different MD5 on the target. To try again, use --overwrite
 - **Cause:** what arrived isn't what was sent. The connection may have failed, the device may be full, or your file may have changed while BECK was running.
 - **Fix:** the damaged file is still on your Recalbox, and a later run would keep it, so run it again with `--overwrite`. Your local file stays.
 
+## Exporting
+
+`beck export DIR` copies the `.rom` and `.bin` files on your device to `DIR`. It only reads the device, and never replaces a file in `DIR`.
+
+### A file is already in the folder
+
+```text
+<file>: already in <folder>, kept
+<n> were already in <folder>, and were kept: export never replaces a file.
+```
+
+**Exit code 0.** BECK never overwrites a local file, so the copy in the folder stays as it was, even if it's different.
+
+- **Cause:** a file is already at that path: an earlier export, or a file you put there.
+- **Fix:** nothing, if it's from an earlier export. To get the device's copy, move yours out of the way and run the export again.
+
+### Files were left out
+
+```text
+Left out <n> other files on the device, which aren't .rom or .bin. This isn't a complete backup of its BIOS files: see docs/cli.md.
+```
+
+**Exit code 0.** Export copies only `.rom` and `.bin` files (DEC-60).
+
+- **Cause:** the rest are other kinds of file. Most aren't BIOS files, such as `.ini` and `.png` ones, but some are, such as `neogeo.zip`, `atarist/tos.img` and the Amiga `kick` files.
+- **Fix:** if you need those, copy them from the device yourself, for example from its `bios` share.
+
+### A file can't be written
+
+```text
+Error: Couldn't write <path>: <why>
+Error: Couldn't create the folder <folder>: <why>
+```
+
+**Exit code 3,** `write_failed`. The other files carry on.
+
+- **Cause:** the folder is read-only, the disk is full, or a file has the name a folder needs.
+- **Fix:** free some space, or choose a folder you can write to, then run the export again. If the message says part of the file may be there, delete it first: export keeps a file that's already there, even a broken one.
+
+### A folder in the destination is a link
+
+```text
+Error: Refused <file>: <folder> is a link, and export doesn't follow links
+```
+
+**Exit code 3,** `unsafe_path`. The other files carry on.
+
+- **Cause:** a folder inside `DIR` is a symbolic link. It could lead anywhere, so export doesn't write through it.
+- **Fix:** replace the link with a real folder, or export to another folder.
+
+### A file's size changed while it was read
+
+```text
+Error: <file> has <n> bytes when read, but the target listed <m>. Nothing was written.
+```
+
+**Exit code 3,** `size_mismatch`. The other files carry on.
+
+- **Cause:** the file changed on the device during the export, or the connection lost part of it.
+- **Fix:** run the export again. Files already copied are kept, so only the rest are tried.
+
+### The folder isn't a folder, or is inside a git repository
+
+```text
+Error: <folder> isn't a folder
+Error: Can't create the folder <folder>: <why>
+<folder> is inside the git repository in <repository>. These are real BIOS files: never commit them, and check that git ignores them.
+```
+
+The first two are **exit code 2,** `usage`, and nothing was copied. The last is a warning, on stderr, and the export goes on.
+
+- **Cause:** `DIR` is a file, or can't be created. Or it's inside a git repository, where the exported BIOS files could be committed by mistake. In BECK's own repository, only `bios/` is ignored.
+- **Fix:** name another folder. If you meant to export into a repository, make sure git ignores that folder, and never commit BIOS files: they're copyrighted.
+
 ## Deleting
 
 ### It would delete and can't ask
