@@ -18,17 +18,17 @@ hardware you own, and never commit BIOS files to this repository.
 
 ## Install
 
-BECK isn't on PyPI yet, so this installs it from GitHub. With [uv](https://docs.astral.sh/uv/getting-started/installation/), which also gets the right
+BECK is on [PyPI](https://pypi.org/project/beck-bios/) as `beck-bios`. With [uv](https://docs.astral.sh/uv/getting-started/installation/), which also gets the right
 version of Python for you:
 
 ```sh
-uv tool install git+https://github.com/Andredson/BECK
+uv tool install beck-bios
 ```
 
 Or with [pipx](https://pipx.pypa.io/stable/how-to/install-pipx.html), and Python 3.11 or newer:
 
 ```sh
-pipx install git+https://github.com/Andredson/BECK
+pipx install beck-bios
 ```
 
 Either way, you get a `beck` command. If your terminal can't find it, run `uv tool update-shell` or `pipx ensurepath`, and open a new terminal. Your Recalbox needs to be on your
@@ -90,7 +90,7 @@ The most common one is that your computer can't find `recalbox.local`: use your 
 
 ## Project status
 
-BECK is a prototype, with no release yet. It's been tested on Recalbox 10.1.1 in a virtual machine, but not yet on real hardware. Its automatic tests run on Linux only, so Windows and macOS
+BECK is in alpha: its first release is out, and later ones may still change how it works. It's been tested on Recalbox 10.1.1 in a virtual machine, but not yet on real hardware. Its automatic tests run on Linux only, so Windows and macOS
 are untested. [The changelog](https://github.com/Andredson/BECK/blob/main/CHANGELOG.md) lists what has changed.
 
 **If you used an older copy,** note that BECK no longer deletes every file it copies, and no longer reads `config/config.yml`. If you still have that file, BECK prints what to put in

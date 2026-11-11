@@ -62,6 +62,8 @@ commit_preprocessors = [
 # The first match wins. A breaking change is listed even if its type is one this file hides.
 commit_parsers = [
     { message = "^Merge pull request", skip = true },
+    # Merging main into a stage branch to bring it up to date changes nothing of its own.
+    { message = "^Merge remote-tracking branch", skip = true },
     { message = '^feat(\(.+\))?!?:', group = "Added" },
     { message = '^fix(\(.+\))?!?:', group = "Fixed" },
     { message = '^(refactor|perf)(\(.+\))?!?:', group = "Changed" },
