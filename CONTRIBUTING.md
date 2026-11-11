@@ -20,7 +20,7 @@ agents. Where both cover something, it has the exact commands, so this file link
   saw, an issue or a PR helps the next person.
 - **Write code.** [The roadmap](roadmap/README.md#stages) lists the planned work, step by step. For anything that isn't on it, open an
   issue first, so that we can agree on it before you spend time.
-- **Help support another system,** such as Batocera or RetroBat. Open an issue with the *Support another system* form, saying how that
+- **Help support another system,** such as Batocera ([#21](https://github.com/Andredson/BECK/issues/21)) or RetroBat ([#22](https://github.com/Andredson/BECK/issues/22)), or find out whether RetroPie and Lakka can be ([#23](https://github.com/Andredson/BECK/issues/23)). Add what you know to its issue, or for another system open one with the *Support another system* form, saying how that
   system reports missing BIOS files, with an anonymized example of what it produces. [The `add-frontend-adapter` skill](.agents/skills/add-frontend-adapter/SKILL.md) is how the
   code then gets written.
 

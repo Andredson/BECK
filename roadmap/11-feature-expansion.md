@@ -3,8 +3,8 @@
 **Status:** Not started · **Depends on:** 10 · **Branch:** one per feature, `feature/<slug>` · **Effort:** L (total)
 
 ## Goal
-Grow BECK beyond a polished Recalbox tool: fewer manual steps for users, smarter matching, and, through the
-adapter interface built in stage 04, support for other retro-gaming frontends (DEC-03).
+Grow BECK beyond a polished Recalbox tool: fewer manual steps for users, and smarter matching. Support for other retro-gaming
+frontends, through the adapter interface built in stage 04 (DEC-03), moved to GitHub issues (DEC-77): see [Other systems](#other-systems).
 
 ## Why
 - "Idea & usefulness" is BECK's strongest aspect (8/10); this stage builds on it.
@@ -13,7 +13,7 @@ adapter interface built in stage 04, support for other retro-gaming frontends (D
   never with code.
 
 ## Decisions applied
-DEC-03, DEC-04, DEC-09, DEC-14, DEC-22, DEC-43, DEC-75.
+DEC-03, DEC-04, DEC-09, DEC-14, DEC-22, DEC-43, DEC-75, DEC-76, DEC-77.
 
 ## How to run a feature in this stage
 Each feature below is independent and goes through the same sub-steps, using the
@@ -29,13 +29,17 @@ Each feature below is independent and goes through the same sub-steps, using the
 
 ## Steps
 
+Steps 11.6 (hash cache), 11.10 (translations) and 11.11 (SSH/SFTP transport) were dropped and removed (DEC-75, DEC-76). Steps 11.7–11.9
+moved to GitHub issues (DEC-77), listed under [Other systems](#other-systems). The other steps keep their numbers, because decisions and
+other files refer to them.
+
 ### 11.1 — Prioritize with the owner
 - [ ] Done
-- **What:** Present the features below (11.2–11.9 and 11.12) with a one-line value and a cost estimate. Ask the owner to
-  choose which ones to pursue and in what order, and to drop or add items. Record the order in this file and
-  mark dropped items as such; don't delete them.
+- **What:** Present the features below (11.2–11.5 and 11.12) with a one-line value and a cost estimate. Ask the
+  owner to choose which ones to pursue and in what order, and to drop or add items. Record the order in this file, and
+  remove dropped items from it: the decision log keeps the record (DEC-76).
 - **Files:** this file
-- **Done when:** Each feature is marked *planned (n)*, *later* or *dropped*.
+- **Done when:** Each feature is marked *planned (n)* or *later*, and dropped ones are removed.
 - **Verify:** Owner sign-off.
 - **Commit message:** `docs(roadmap): prioritize feature expansion with the owner`
 
@@ -83,75 +87,6 @@ Each feature below is independent and goes through the same sub-steps, using the
 - **Verify:** `uv run pytest -q -k "source or glob"`
 - **Commit message:** `feat(scan): support multiple source folders and glob filters`
 
-### 11.6 — Hash cache
-- [ ] Done
-> DROPPED (2026-11-11, DEC-75): the owner cancelled this feature. Don't do this step. It stays here for the record, and its box stays
-> unchecked without blocking the stage.
-- **What:** For large collections, cache MD5s keyed by `(absolute path, size, mtime_ns)` in a JSON file under
-  `platformdirs.user_cache_path("beck")`. Ignore the cache with `--no-cache`. A corrupt cache is discarded
-  with a warning. Measure the speed-up and record it in the PR.
-- **Files:** `src/beck/hashing.py`, `src/beck/cache.py`, tests
-- **Done when:** A second scan of an unchanged folder reads no file content (asserted by a test).
-- **Verify:** `uv run pytest -q -k cache`
-- **Commit message:** `perf(scan): cache file hashes between runs`
-
-### 11.7 — Batocera adapter
-- [ ] Done
-- **Blocked by:** real Batocera reference data (a missing-BIOS listing or report, plus the share layout)
-  from the owner or a contributor (use the "new frontend" issue form, 12.4).
-- **What:** Follow the `add-frontend-adapter` skill: research how Batocera reports missing BIOS files and
-  where its BIOS folder is exposed over SMB; write an ADR; implement `frontends/batocera.py`; add fixtures; add
-  documentation.
-- **Files:** `docs/research/batocera.md`, `docs/adr/*`, `src/beck/frontends/batocera.py`, fixtures, tests, docs
-- **Done when:** `beck check --frontend batocera --dry-run` works on fixtures, and a contributor has verified it
-  on a device.
-- **Verify:** `uv run pytest -q -k batocera`
-- **Commit message:** `feat(frontends): add Batocera adapter`
-
-### 11.8 — RetroBat adapter
-- [ ] Done
-- **Blocked by:** real RetroBat reference data.
-- **What:** Same procedure as 11.7. RetroBat runs on Windows, so the **local transport** is the natural target.
-- **Files:** `docs/research/retrobat.md`, `docs/adr/*`, `src/beck/frontends/retrobat.py`, fixtures, tests, docs
-- **Done when:** It works on fixtures, and a contributor has verified it on a device.
-- **Verify:** `uv run pytest -q -k retrobat`
-- **Commit message:** `feat(frontends): add RetroBat adapter`
-
-### 11.9 — RetroPie / Lakka feasibility
-- [ ] Done
-- **What:** These frontends may not produce a missing-BIOS report with MD5s. Research what's available on the
-  device. If the only option is an external hash list (e.g. a libretro database), **check its license** and
-  present the options to the owner **before** bundling or downloading anything. Bundling data changes BECK's
-  "no hash database" property (see the assessment strengths), so it needs a DEC.
-- **Files:** `docs/research/retropie-lakka.md`
-- **Done when:** There's a written recommendation and an owner decision (implement, defer or drop).
-- **Verify:** Owner sign-off.
-- **Commit message:** `docs(research): assess RetroPie and Lakka support`
-
-### 11.10 — Optional: translations
-- [ ] Done
-- **What:** If the owner wants it, translate user-facing messages, starting with pt-BR, fr and es. Ask the
-  owner to choose the mechanism (e.g. stdlib `gettext` with `.po` files, or a simple message catalog in
-  Python), with the trade-offs, and record a DEC. JSON output and log messages stay in English: they're an
-  interface, not prose.
-- **Files:** depends on the decision
-- **Done when:** The owner decides; if implemented, messages switch with the locale and a test covers one
-  translated message per language.
-- **Verify:** depends on the decision
-- **Commit message:** `feat(i18n): translate user-facing messages`
-
-### 11.11 — Deferred: SSH/SFTP transport
-- [ ] Done
-> DROPPED (2026-11-11, DEC-75): the owner cancelled this feature, so it's no longer deferred. Don't do this step. It stays here for the
-> record, and its box stays unchecked without blocking the stage.
-- **What:** Deferred by DEC-04. Revisit only if the owner asks or users request it. It would need a new
-  dependency (e.g. paramiko or asyncssh) and a DEC. Leave this box unchecked until then; it doesn't block
-  closing the stage.
-- **Files:** none
-- **Done when:** The owner decides to implement it (then expand this step) or confirms it stays deferred.
-- **Verify:** Owner decision recorded.
-- **Commit message:** none
-
 ### 11.12 — Export: copy BIOS files from the target to this machine
 - [ ] Done
 - **Requested by the owner (2026-11-05):** a way to get the BIOS files on the target system and copy them to the machine running BECK,
@@ -187,6 +122,16 @@ Each feature below is independent and goes through the same sub-steps, using the
 - Anything that downloads BIOS files from the internet, or ships or links to them. That will never be in scope. Copying
   files from the user's own device (11.12) is different.
 
+## Other systems
+
+Support for other systems isn't a step of this stage. Each one is a GitHub issue, for the owner or any contributor to pick up (DEC-77):
+
+| Issue | Was step | What |
+|---|---|---|
+| [#21](https://github.com/Andredson/BECK/issues/21) | 11.7 | Support Batocera. Blocked by real Batocera data. |
+| [#22](https://github.com/Andredson/BECK/issues/22) | 11.8 | Support RetroBat, through the local-folder transport. Blocked by real RetroBat data. |
+| [#23](https://github.com/Andredson/BECK/issues/23) | 11.9 | Research RetroPie and Lakka support, and whether they give MD5s. |
+
 ## Agent notes
-- A new frontend without real reference data is guesswork. If the data isn't there, mark the step BLOCKED
-  and ask for it through the issue form; don't invent formats.
+- A new frontend without real reference data is guesswork. If the data isn't there, say so on its issue and
+  ask for it through the issue form; don't invent formats.

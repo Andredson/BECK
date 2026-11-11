@@ -243,7 +243,7 @@ Labels are created by the owner (DEC-43), for example
 | `area: ci` | `c5def5` | CI, release and security workflows. |
 | `area: agents` | `c5def5` | `AGENTS.md`, the skills, and the JSON output agents read. |
 | `frontend: recalbox` | `f9d0c4` | Something specific to Recalbox. |
-| `frontend: batocera` | `f9d0c4` | Something specific to Batocera ([stage 11](../roadmap/11-feature-expansion.md)). |
+| `frontend: batocera` | `f9d0c4` | Something specific to Batocera ([#21](https://github.com/Andredson/BECK/issues/21)). |
 | `data-loss` | `b60205` | BECK can delete or overwrite files it should keep. Top priority: an open one blocks a release, and 1.0. |
 | `good first issue` | `7057ff` | Small, well-described, and a good start for a new contributor. |
 | `help wanted` | `008672` | The maintainer would welcome someone taking it. |
