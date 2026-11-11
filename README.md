@@ -90,7 +90,7 @@ The most common one is that your computer can't find `recalbox.local`: use your 
 
 ## Project status
 
-BECK is in alpha: its first release is out, and later ones may still change how it works. It's been tested on Recalbox 10.1.1 in a virtual machine, but not yet on real hardware. Its automatic tests run on Linux only, so Windows and macOS
+BECK is stable since 1.0: a change that could break how you use it, such as a command, a flag, an exit code or the `--json` output, waits for a new major version. It's been tested on Recalbox 10.1.1 in a virtual machine, but not yet on real hardware. Its automatic tests run on Linux only, so Windows and macOS
 are untested. [The changelog](https://github.com/Andredson/BECK/blob/main/CHANGELOG.md) lists what has changed.
 
 **If you used an older copy,** note that BECK no longer deletes every file it copies, and no longer reads `config/config.yml`. Since 1.0, `check_bios.py` is gone, and so is

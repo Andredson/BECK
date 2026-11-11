@@ -167,6 +167,7 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-63 | `types-jsonschema` is a dev-only dependency, so that mypy can check the tests that use `jsonschema`, which ships no type hints. *(2026-11-06, step 06.8)* |
 | DEC-67 | BECK's first public version is `0.5.0`, rehearsed as `0.5.0rc1`. *(2026-11-06, step 10.9)* |
 | DEC-68 | The README uses absolute GitHub links, which work on GitHub and on PyPI's project page. *(2026-11-06, step 10.9)* |
+| DEC-73 | From `1.0.0`, the package says `Development Status :: 5 - Production/Stable`, and the README says BECK is stable. *(2026-11-11, step 10.11)* |
 | DEC-65 | The release workflow passes built files between jobs with `actions/download-artifact`, pinned by SHA, so what's published is exactly what was built and checked. *(2026-11-06, step 10.6)* |
 | DEC-66 | `actionlint` is run by hand with `uvx` when a workflow changes, and isn't in CI. *(2026-11-06, step 10.6)* |
 | DEC-64 | An upload whose size, or with `--verify` whose MD5, doesn't match has the status `failed`, not `uploaded` with an `error`. *(2026-11-06, step 07.7)* |
@@ -200,6 +201,7 @@ later rows give their own date and step. The reasoning and rejected alternatives
 | DEC-51 | Step 03.13 and stage 03's acceptance are signed off on a Recalbox 10.1.1 **VM**, not a real device. Later real-device checks (04.1, the stage 10 release check) still apply. *(2026-11-04, step 03.13)* |
 | DEC-52 | Step 04.1 runs on the Recalbox 10.1.1 **VM**, not a real device. The real-device run moves to the release check in step 10.11. *(2026-11-04, step 04.1)* |
 | DEC-71 | Step 10.11 is three commits, not one (an exception to DEC-14's one commit per step): the removals and the 1.0 criteria as `feat!:`, so the changelog names each removal, then `chore(release): 1.0.0rc1`, then `chore(release): 1.0.0` after the owner's run on a real device. *(2026-11-11, step 10.11)* |
+| DEC-72 | **Supersedes DEC-52's move of the real-device run to step 10.11.** 1.0's end-to-end run is on the Recalbox 10.1.1 **VM**, not real hardware. *(2026-11-11, step 10.11)* |
 
 ## Verified facts behind some decisions (checked 2026-11-02)
 

@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-02
-- **Decisions covered:** DEC-14, DEC-16, DEC-20, DEC-30, DEC-31, DEC-39, DEC-51, DEC-52, DEC-71
+- **Decisions covered:** DEC-14, DEC-16, DEC-20, DEC-30, DEC-31, DEC-39, DEC-51, DEC-52, DEC-71, DEC-72
 
 ## Context
 The roadmap is executed one step at a time, often by AI agents. The process has to keep each change small and
@@ -84,3 +84,15 @@ leaves the machine (see DEC-43 in [ADR-0002](0002-ai-agent-support.md)).
 - **Alternatives considered:** *One commit, as the step says, with the release candidate done separately anyway:* the release notes would have to
   explain the removals. Not chosen. The agent recommended three commits, and the owner gave no further reason.
 - **Consequences:** The step's box is ticked in the last of them, once `1.0.0` is on PyPI.
+
+## DEC-72 — 1.0's end-to-end run is on the VM
+- **Date:** 2026-11-11 (step 10.11).
+- **Context:** DEC-51 and DEC-52 signed stages 03 and 04 off on the Recalbox 10.1.1 VM, and moved the run on real hardware to step 10.11, as a
+  1.0 criterion. At 10.11, the owner asked the agent to do the run. `recalbox.local`, which the owner's settings name, didn't resolve, and the only
+  Recalbox reachable was the VM.
+- **Decision:** Supersedes DEC-52's move of the real-device run to 10.11. The 1.0 end-to-end run is on the VM: the installed `1.0.0rc1`, the owner's
+  own BIOS files, a dry run, a real run with `--verify`, and a second dry run.
+- **Alternatives considered:** *Turn a real Recalbox on, so that `recalbox.local` resolves,* or *give its address:* both keep the criterion as it was.
+  Not chosen. The owner gave no further reason.
+- **Consequences:** BECK 1.0 has never run on real hardware, and the README says so. What a real device can differ in, such as its network, its
+  Samba settings and its speed, is untested, so the first reports from real devices matter.

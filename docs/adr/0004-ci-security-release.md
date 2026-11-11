@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-02
-- **Decisions covered:** DEC-11, DEC-25, DEC-32, DEC-33, DEC-34, DEC-35, DEC-37, DEC-38, DEC-41, DEC-48, DEC-65, DEC-66, DEC-67, DEC-68
+- **Decisions covered:** DEC-11, DEC-25, DEC-32, DEC-33, DEC-34, DEC-35, DEC-37, DEC-38, DEC-41, DEC-48, DEC-65, DEC-66, DEC-67, DEC-68, DEC-73
 
 ## Context
 At baseline there was no CI, no security tooling and no release process. Two other decisions shape this area:
@@ -136,3 +136,13 @@ in March 2025). The monthly routine (`docs/maintenance.md`) refreshes the pins.
   to keep accurate) and *leaving them broken* until a later release: not chosen. The owner gave no further reason.
 - **Consequences:** Those links point at `main`, so a new file's link only works once it's merged.
   `tests/test_docs_links.py` checks them against the real files, and fails on a relative link in the README.
+
+## DEC-73 — 1.0.0 is marked stable
+- **Date:** 2026-11-11 (step 10.11).
+- **Context:** PyPI's page for a version can't be changed once it's published. Until 1.0, the package said `Development Status :: 3 - Alpha` (10.2),
+  and the README said BECK was in alpha. 1.0 promises that a breaking change waits for a major version, but it has only run on the VM (DEC-72).
+- **Decision:** From `1.0.0`, the classifier is `Development Status :: 5 - Production/Stable`, and the README says BECK is stable, and that it was
+  tested on a VM, not on real hardware.
+- **Alternatives considered:** *`4 - Beta`,* since nothing has run on real hardware, though it's unusual next to 1.0. *Keep `3 - Alpha`,* which
+  contradicts what 1.0 promises. Not chosen. The agent recommended `5 - Production/Stable`, and the owner gave no further reason.
+- **Consequences:** "Stable" is about the interface: commands, flags, exit codes and the `--json` output. The README's next sentence says what was tested.

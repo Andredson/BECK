@@ -1,6 +1,6 @@
 [project]
 name = "beck-bios"
-version = "1.0.0rc1"
+version = "1.0.0"
 description = "Match your BIOS files by MD5 and send them to the right folder on your Recalbox"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -10,7 +10,7 @@ license-files = ["LICENSE"]
 authors = [{ name = "Andre Salvo" }]
 keywords = ["recalbox", "bios", "retrogaming", "emulation", "smb"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: End Users/Desktop",
     "Operating System :: OS Independent",
