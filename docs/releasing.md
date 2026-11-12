@@ -97,8 +97,13 @@ trivy fs --format cyclonedx --skip-dirs .venv --output "sbom/beck-bios-$(uv vers
 4. **Tag it.** *(Owner)* Only once the PR is merged: a tag pushed before then is on the old `main`, with the old version. The workflow starts from this:
 
    ```sh
-   git switch main && git pull && git tag -a vX.Y.Z -m "beck-bios X.Y.Z" && git push origin vX.Y.Z
+   git switch main && git pull --ff-only && git log -1 --format=%s | grep -F "release/X.Y.Z" && git tag -a vX.Y.Z -m "beck-bios X.Y.Z" && git push origin vX.Y.Z
    ```
+
+   It tags only if `main`'s last commit is the merge of the release PR: `grep` prints that commit's subject, *Merge pull request … from
+   …/release/X.Y.Z*, and stops the line if it isn't. Then your `main` doesn't have the release yet: run the line again once the PR is
+   merged. `--ff-only` stops the pull, instead of merging, if your `main` has drifted. Both 1.0.1 and 1.1.0rc1 were first tagged on the commit
+   before the release, which this check stops.
 
    **Check:** in the *Release* workflow, the `build` job passes. It fails if the tag isn't the project's version, and then nothing has been published.
 
@@ -107,8 +112,9 @@ trivy fs --format cyclonedx --skip-dirs .venv --output "sbom/beck-bios-$(uv vers
 6. **Check the result.** *(Anyone)*
    - **The project's page** on [PyPI](https://pypi.org/project/beck-bios/) or [TestPyPI](https://test.pypi.org/project/beck-bios/): the version, the description, its links, and that the files show attestations.
    - **That it installs:** in a new environment, `pipx install beck-bios==X.Y.Z` or `uv tool install beck-bios==X.Y.Z`, then `beck --version`. Just after a publish,
-     uv's cached copy of the index may not list the new version yet, and the install says there's no such version. Add `--refresh` to `uv tool install` or
-     `uvx`, and run pipx, which installs with uv, as `UV_NO_CACHE=1 pipx install …`. A release candidate is on TestPyPI only. Install that file, checked against its hash, so that its dependencies still come from PyPI. Take the wheel's `url` and `sha256` from `https://test.pypi.org/pypi/beck-bios/X.Y.Z/json`, then:
+     uv's cached copy of the index may not list the new version yet, and the install says there's no such version. Turn uv's cache off for the check:
+     `UV_NO_CACHE=1 uv tool install …`, `UV_NO_CACHE=1 uvx …`, and `UV_NO_CACHE=1 pipx install …`, since pipx installs with uv. `--refresh` isn't
+     always enough: for 1.1.0, `uv tool install --refresh` still found no such version, while `UV_NO_CACHE=1` worked. A release candidate is on TestPyPI only. Install that file, checked against its hash, so that its dependencies still come from PyPI. Take the wheel's `url` and `sha256` from `https://test.pypi.org/pypi/beck-bios/X.Y.Z/json`, then:
 
      ```sh
      D=$(mktemp -d) && W=beck_bios-X.Y.Z-py3-none-any.whl && curl -sSfL -o "$D/$W" "<url>" && echo "<sha256>  $D/$W" | sha256sum -c && uv tool install --reinstall "$D/$W" && beck --version
@@ -125,10 +131,10 @@ trivy fs --format cyclonedx --skip-dirs .venv --output "sbom/beck-bios-$(uv vers
   GitHub Release for it. Then merge the PR, and run:
 
   ```sh
-  git push origin :refs/tags/vX.Y.Z && git tag -d vX.Y.Z && git switch main && git pull && git tag -a vX.Y.Z -m "beck-bios X.Y.Z" && git push origin vX.Y.Z
+  git push origin :refs/tags/vX.Y.Z && git tag -d vX.Y.Z && git switch main && git pull --ff-only && git log -1 --format=%s | grep -F "release/X.Y.Z" && git tag -a vX.Y.Z -m "beck-bios X.Y.Z" && git push origin vX.Y.Z
   ```
 
-  This happened with `1.0.1`.
+  This happened with `1.0.1` and `1.1.0rc1`, before step 4 checked the commit.
 - **A publish job failed:** read why. If it's a setting, such as the trusted publisher or the environment, fix that and re-run the failed jobs.
 - **The GitHub Release failed, after publishing:** the package is out. Re-run that job.
 - **A published version is wrong:** you can't replace it. Publish a fix as a new version, and [yank the bad one](https://pypi.org/help/#yanked) on PyPI if it could harm someone.
