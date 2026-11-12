@@ -45,8 +45,9 @@ See docs/cli.md for every option, the exit codes, and what gets deleted.
 
 ```text
 usage: beck check [-h] [-v] [-q] [--no-color] [--config FILE] [--json] [--source DIR] [--target URL
-                  | --target-dir DIR] [--report-file FILE] [--overwrite] [--dry-run] [--move]
-                  [--clean-unmatched] [--yes] [--verify] [--fail-if-missing] [--frontend NAME]
+                  | --target-dir DIR] [--report-file FILE] [--no-api] [--overwrite] [--dry-run]
+                  [--move] [--clean-unmatched] [--yes] [--verify] [--fail-if-missing] [--frontend
+                  NAME]
 
 Copy your matching BIOS files to the device.
 
@@ -62,6 +63,7 @@ options:
   --target URL        an SMB target: smb://[user@]host[:port]/share[/sub/path]
   --target-dir DIR    a folder: a mounted SD card or USB drive, or the device itself
   --report-file FILE  read this local copy of the report, not the one on the target
+  --no-api            read the report on the device, not Recalbox's web API (see docs/cli.md)
   --overwrite         replace files already on the device, even ones the report calls INCORRECT
   --dry-run           show the plan, including what would be deleted, and change nothing
   --move              delete a local file once it's uploaded to all its targets and sizes match
@@ -100,7 +102,7 @@ example:
 
 ```text
 usage: beck report [-h] [-v] [-q] [--no-color] [--config FILE] [--json] [--target URL | --target-dir
-                   DIR | --report-file FILE]
+                   DIR | --report-file FILE] [--no-api]
 
 List the BIOS files the device reports as missing.
 
@@ -115,6 +117,7 @@ options:
   --target URL        an SMB target: smb://[user@]host[:port]/share[/sub/path]
   --target-dir DIR    a folder: a mounted SD card or USB drive, or the device itself
   --report-file FILE  read this local copy of the report, not the one on the target
+  --no-api            read the report on the device, not Recalbox's web API (see docs/cli.md)
 
 example:
   beck report

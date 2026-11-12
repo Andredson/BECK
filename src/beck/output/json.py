@@ -182,6 +182,7 @@ class JsonRenderer:
         self.files_scanned = 0
         self.unreadable_items: tuple[Unreadable, ...] = ()
         self.destination: str | None = None
+        self.source: str | None = None
 
     def can_ask(self) -> bool:
         """Never: a consumer can't hang on a question, or confirm one by accident."""
@@ -198,6 +199,10 @@ class JsonRenderer:
     def uses_frontend(self, name: str) -> None:
         """Keep the frontend for the document, masked as in ``__init__``."""
         self.frontend = redact(name)
+
+    def missing_from(self, source: str) -> None:
+        """Keep where the missing files were listed: ``api``, ``report`` or ``report_file``."""
+        self.source = source
 
     def missing_count(self, count: int) -> None:
         """Nothing yet: the document has it at the end."""
@@ -306,6 +311,7 @@ class JsonRenderer:
             "dry_run": result.dry_run,
             "frontend": self.frontend,
             "target": self.target,
+            "missing_from": self.source,
             "summary": {
                 "missing_entries": distinct_targets(plan),
                 "satisfied": len(result.skipped if result.dry_run else result.completed),
@@ -352,6 +358,7 @@ class JsonRenderer:
             **_header(self.command, ok=not errors),
             "frontend": self.frontend,
             "target": self.target,
+            "missing_from": self.source,
             "summary": {"missing": len(missing), "incorrect": len(incorrect)},
             "missing": missing,
             "incorrect": incorrect,

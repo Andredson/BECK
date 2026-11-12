@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-02
-- **Decisions covered:** DEC-01, DEC-02, DEC-03, DEC-04, DEC-09, DEC-10, DEC-12, DEC-13, DEC-15, DEC-50, DEC-54, DEC-56, DEC-57, DEC-58, DEC-60, DEC-61, DEC-75, DEC-76, DEC-77
+- **Decisions covered:** DEC-01, DEC-02, DEC-03, DEC-04, DEC-09, DEC-10, DEC-12, DEC-13, DEC-15, DEC-50, DEC-54, DEC-56, DEC-57, DEC-58, DEC-60, DEC-61, DEC-75, DEC-76, DEC-77, DEC-79
 
 ## Context
 At the baseline review ([assessment](../../roadmap/00-assessment.md)), BECK was a 243-line script with an overall
@@ -243,3 +243,33 @@ differed from the recommendation.
   - Stage 11 can close without them. They aren't dropped: DEC-03's adapter interface and the `add-frontend-adapter` skill stay.
   - The issues are labelled `type: feature` and `help wanted`. #21 and #22 are `blocked` until someone sends real data, and #21 also has
     `frontend: batocera`. There's no `frontend: retrobat` label yet: the owner adds one when work starts, as the label guide says.
+
+## DEC-79 — Recalbox's web API tells BECK what's missing
+- **Date:** 2026-11-11 (step 11.2).
+- **Context:** Until now, the user had to generate the report on the device before each run, and a report generated earlier could be out
+  of date. The research in [docs/research/recalbox-bios-definitions.md](../research/recalbox-bios-definitions.md) found that Recalbox's
+  list of BIOS files, `es_bios.xml`, isn't on any SMB share. But the web manager's API, `GET http://<host>:81/api/bios`, gives the same
+  list as the report, worked out when it's asked, with no login. On the 10.1.1 VM, all 80 targets agreed.
+- **Decision:**
+  - **The web API, first.** For an SMB target, `beck check` and `beck report` ask the API on the same host. If it doesn't answer, or
+    answers in a form BECK can't read, BECK warns on stderr and reads `missing_bios_report.txt`, as before. `--no-api` skips the API. A
+    folder target and `--report-file` never use it.
+  - **The standard library's HTTP client.** The owner chose the standard library's `urllib` over httpx or requests, so no dependency is
+    added. BECK uses `http.client`, which `urllib` is built on, because unlike `urllib` it never follows a redirect or goes through a
+    proxy, so it only talks to the device named. It reads at most 16 MiB, and uses the SMB timeout.
+  - **`missing_from` in `--json`,** for `check` and `report`: `api`, `report`, `report_file`, or `null` if BECK stopped first. An
+    addition, allowed within `schema_version` 1.
+- **Alternatives considered:**
+  - *Bundle `es_bios.xml` for each Recalbox version:* works without the API, but BECK would carry a database of hashes, and need a copy
+    for each release. Not chosen. *Drop 11.2:* not chosen.
+  - *Only when asked,* with a flag or setting turning the API on: safer for 1.x, but users must know to ask. Not chosen.
+  - *httpx* or *requests:* a new runtime dependency for one GET. Not chosen.
+  - *No `missing_from`,* with only the logs saying which was used. Not chosen.
+
+  The agent recommended each chosen option, and the owner gave no further reason.
+- **Consequences:**
+  - Most users don't need to generate the report any more, and the list is never out of date.
+  - BECK now talks HTTP to port 81, unencrypted, as the threat model says. A Recalbox without web manager v3, or with it off, gives a
+    warning on each run, which `--no-api` stops.
+  - The API is undocumented, and only 10.1.1 was checked. If it changes, BECK warns and falls back to the report.
+  - Exit code 4 now means that the API didn't answer either.

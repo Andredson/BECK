@@ -262,6 +262,9 @@ class ConsoleRenderer:
     def uses_frontend(self, name: str) -> None:
         """Nothing: human output doesn't name the frontend."""
 
+    def missing_from(self, source: str) -> None:
+        """Nothing: a warning on stderr says when the web API didn't answer."""
+
     def ended_early(self, result: RunResult, failing: Sequence[MissingBios] = ()) -> None:
         """The lines before this one already said why there's nothing to upload."""
         for error in result.errors:

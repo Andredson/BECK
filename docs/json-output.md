@@ -67,6 +67,7 @@ The [schemas](schemas/) describe each document. They allow extra fields on purpo
   "dry_run": false,
   "frontend": "recalbox",
   "target": "smb://recalbox.local:445/bios",
+  "missing_from": "api",
   "summary": {
     "missing_entries": 3,
     "satisfied": 1,
@@ -129,6 +130,7 @@ document.
 | `dry_run` | Whether this was a dry run, which changes nothing. |
 | `frontend` | The kind of device. |
 | `target` | The target as a URL: `smb://host:port/share[/path]` or `file:///path`. It never has a user name or a password. `null` if BECK stopped before opening one. |
+| `missing_from` | Where the list of missing files came from: `api`, Recalbox's web API, which is live; `report`, the report on the device, which may be out of date; or `report_file`, a local copy given with `--report-file`. `null` if BECK stopped before reading one. `beck --json report` has it too. Added in 1.1.0 (DEC-79). |
 | `uploads[]` | One item per target with a local file for it. See below. |
 | `incorrect[]` | Files on the device with a wrong hash, which stay as they are: `name`, `target`, `md5s`, `required` and `current_md5`, the hash of the file there, or `null` if the report doesn't give it. A local file in `unmatched` with an MD5 from `md5s` would fix one, with `--overwrite`. |
 | `still_missing[]` | Targets with no matching local file: `name`, `target`, `md5s` and `required`. A target whose upload failed is in `uploads`, not here. |
@@ -184,7 +186,8 @@ A `failed` upload may have left a damaged file on the target: `error` says so, a
 
 ## `beck --json report`
 
-Reads the report and changes nothing. `target` is `null` with `--report-file`.
+Lists what's missing, from Recalbox's web API or the report, as `check` does, and changes nothing. `target` is `null` with
+`--report-file`. `missing_from` is as in `check`.
 
 ```json
 {
@@ -194,6 +197,7 @@ Reads the report and changes nothing. `target` is `null` with `--report-file`.
   "ok": true,
   "frontend": "recalbox",
   "target": null,
+  "missing_from": "report_file",
   "summary": { "missing": 1, "incorrect": 1 },
   "missing": [
     {

@@ -40,6 +40,12 @@ def block(name: str, *md5s: str, folder: str = "") -> str:
     )
 
 
+def without_api_fallback(stderr: str) -> str:
+    """Stderr without the warning a device with no web API gives, as the fake server is (DEC-79)."""
+    lines = stderr.splitlines(keepends=True)
+    return "".join(line for line in lines if not line.startswith("Recalbox's web API didn't"))
+
+
 def write(path: Path, data: bytes | None = None) -> bytes:
     content = os.urandom(64) if data is None else data
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -700,7 +706,7 @@ def test_beck_check_has_no_hint(
 
     assert run(app) == 0
 
-    assert capsys.readouterr().err == ""
+    assert without_api_fallback(capsys.readouterr().err) == ""
 
 
 def test_scan_lists_path_size_and_md5_in_aligned_columns(
@@ -1365,7 +1371,7 @@ def test_unreadable_local_files_are_reported_and_the_good_ones_upload(
     assert "pipe.bin: can't be read, skipped: not a regular file" in captured.out
     assert "There are 1 possible bios" in captured.out
     assert "Final result: 1/1 missing entries satisfied, 1 files analysed" in captured.out
-    assert captured.err == ""  # no traceback
+    assert without_api_fallback(captured.err) == ""  # no traceback
 
 
 def test_only_unreadable_files_says_so_and_stops_cleanly(

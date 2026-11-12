@@ -179,6 +179,21 @@ def check_holds_back_a_file_that_is_not_a_zip(server: FakeSMBServer, folder: Pat
     return ["check", "--source", str(folder / "source")]
 
 
+def check_with_the_web_api(server: FakeSMBServer, folder: Path) -> list[str]:
+    data = make_bios_file(folder / "source", "good.bin")
+    entry = {
+        "mandatory": True,
+        "hashMatchingMandatory": True,
+        "currentMd5": "0" * 32,
+        "md5List": [data.md5],
+        "realStatus": "FileNotFound",
+    }
+    server.api_answer = json.dumps(
+        {"ps1": {"fullName": "Sony Playstation", "biosList": {"ps1/good.bin": entry}}}
+    ).encode()
+    return ["check", "--source", str(folder / "source")]
+
+
 def check_no_report(server: FakeSMBServer, folder: Path) -> list[str]:
     (folder / "source").mkdir()
     return ["check", "--source", str(folder / "source")]
@@ -276,6 +291,7 @@ SCENARIOS: list[Callable[[FakeSMBServer, Path], list[str]]] = [
     check_fails_if_missing,
     check_refused_login,
     check_holds_back_a_file_that_is_not_a_zip,
+    check_with_the_web_api,
     check_no_report,
     check_unknown_share,
     report_works,

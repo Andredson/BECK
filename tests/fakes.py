@@ -13,6 +13,8 @@ import pytest
 from smb.smb_structs import OperationFailure
 
 import beck.transports.smb
+import beck.transports.webapi
+from beck.errors import TransportError
 
 
 @dataclass(frozen=True)
@@ -49,6 +51,17 @@ class FakeSMBServer:
         self.connections: list[FakeSMBConnection] = []
         self.login_succeeds = True
         self.failures: dict[str, Exception] = {}
+        # The web API on the same host (DEC-79): its answer to GET /api/bios, or None for a device
+        # where it doesn't answer, as on a Recalbox without it.
+        self.api_answer: bytes | None = None
+        self.api_calls: list[tuple[str, int, str, float]] = []
+
+    def api_get(self, host: str, port: int, path: str, timeout: float) -> bytes:
+        """Stands in for ``beck.transports.webapi.get``."""
+        self.api_calls.append((host, port, path, timeout))
+        if self.api_answer is None:
+            raise TransportError(f"No answer from http://{host}:{port}{path}: connection refused")
+        return self.api_answer
 
     def new_connection(self, *args: Any, **kwargs: Any) -> "FakeSMBConnection":
         """Stands in for the ``SMBConnection`` class: same arguments, returns a bound fake."""
@@ -178,6 +191,7 @@ def install_fake_smb(
     """Make BECK use a fake SMB server, and make any real socket connection fail the test."""
     server = server or FakeSMBServer()
     monkeypatch.setattr(beck.transports.smb, "SMBConnection", server.new_connection)
+    monkeypatch.setattr(beck.transports.webapi, "get", server.api_get)
 
     def no_network(*_args: Any, **_kwargs: Any) -> None:
         raise AssertionError("a test tried to open a real network connection")

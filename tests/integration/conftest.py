@@ -16,6 +16,7 @@ from smb.smb_structs import OperationFailure
 from smb.SMBConnection import SMBConnection
 
 from beck.errors import TransportError
+from beck.frontends.recalbox import RecalboxAdapter
 from beck.transports.smb import SmbTransport
 from tests.factories import settings_text
 
@@ -39,6 +40,15 @@ class Samba:
     def settings(self, user: str = "", *, port: int | None = None) -> str:
         """A settings file for this server. A password goes in BECK_SMB_PASSWORD."""
         return settings_text(f"smb://{self.host}:{port or self.port}/bios", user)
+
+
+@pytest.fixture(autouse=True)
+def no_web_api(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The test server is only an SMB server: BECK mustn't ask it for Recalbox's web API (DEC-79).
+
+    Without this, every run would try port 81 on the test host, and warn when nothing answers.
+    """
+    monkeypatch.setattr(RecalboxAdapter, "api_port", None)
 
 
 @pytest.fixture(scope="session")

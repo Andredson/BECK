@@ -7,10 +7,10 @@ The guide to using BECK from the command line. [The command reference](cli-refer
 beck [--version] [-v | -q] [--no-color] [--json] [--config FILE] <command> [options]
 
 beck check   [--source DIR] [--target URL | --target-dir DIR] [--frontend recalbox]
-             [--report-file FILE] [--overwrite] [--dry-run] [--move] [--clean-unmatched]
+             [--report-file FILE] [--no-api] [--overwrite] [--dry-run] [--move] [--clean-unmatched]
              [--yes] [--verify] [--fail-if-missing]
 beck scan    [--source DIR]
-beck report  [--target URL | --target-dir DIR | --report-file FILE]
+beck report  [--target URL | --target-dir DIR | --report-file FILE] [--no-api]
 beck export  DIR [--target URL | --target-dir DIR] [--dry-run]
 beck config  path | init [--force] | show
 ```
@@ -48,8 +48,9 @@ Files: 2, can't be read: 1
 
 ### `beck report`
 
-Lists what the report says is incorrect, then what's missing, grouped by folder, with whether each file is required. A file listed in several
-systems appears once, and counts as required if any of them requires it. It writes nothing.
+Lists what's incorrect, then what's missing, grouped by folder, with whether each file is required. It asks Recalbox's web API, or reads
+the report, as [`check`](#where-beck-finds-whats-missing) does. A file listed in several systems appears once, and counts as required if
+any of them requires it. It writes nothing.
 
 ```sh
 beck report --target smb://recalbox.local/bios
@@ -114,6 +115,7 @@ act on your terminal, or look like something else. `--json` keeps the exact name
 | `--target-dir DIR` | `check`, `report`, `export` | A folder: a mounted SD card or USB drive, or the device itself. It can't be combined with `--target`. |
 | `--frontend NAME` | `check` | The kind of device. Only `recalbox`, for now. |
 | `--report-file FILE` | `check`, `report` | Reads a local copy of the report, not the one on the target. `beck report` then needs no target, and can't take one. `beck check` still needs a target to upload to. |
+| `--no-api` | `check`, `report` | Reads the report on the device, and doesn't ask Recalbox's web API. See [Where BECK finds what's missing](#where-beck-finds-whats-missing). |
 
 All of these except `--report-file` can also come from [Settings](#settings). With no target anywhere, BECK exits with 2 and says how to
 name one.
@@ -228,6 +230,23 @@ no, and BECK exits with 2.
 > device, the report no longer lists them, so a later `--clean-unmatched` treats all your good BIOS files as unmatched and **deletes
 > them**. Always run `beck check --dry-run --clean-unmatched` first, and read the list (DEC-56).
 
+## Where BECK finds what's missing
+
+Since 1.1.0, BECK asks Recalbox itself, so you don't have to generate the report first (DEC-79).
+
+1. **For an SMB target,** BECK asks Recalbox's web manager for the list, with `GET http://<your Recalbox>:81/api/bios`. Recalbox checks
+   its BIOS files there and then, so the list is never out of date. It's the same list the report gives, file for file.
+2. **If that doesn't answer,** or answers with something BECK can't read, BECK says so on stderr, and reads `missing_bios_report.txt` on
+   the device, as before. That report is only as recent as the last time you generated it. This happens with a Recalbox older than web
+   manager v3, or with its web manager turned off.
+3. **A folder target** (`--target-dir`) has no web API, so BECK reads the report there. `--report-file` reads your local copy.
+
+`--no-api` skips step 1, which also stops the warning on a Recalbox without the API. In `--json`, `missing_from` says which was used:
+`api`, `report` or `report_file`.
+
+The web manager uses plain HTTP, with no login, and BECK sends it nothing but that one request. It never follows a redirect or uses a
+proxy, so it only talks to the device you named, and it uses the same timeout as SMB.
+
 ## Files already on the device
 
 BECK keeps them unless you pass `--overwrite` (DEC-61):
@@ -307,7 +326,7 @@ These are a stable contract (DEC-23), and scripts can rely on them. [The trouble
 | 1 | Unexpected internal error (a bug, please report it). |
 | 2 | Usage or configuration error (bad flag, bad URL, invalid config, refused confirmation). |
 | 3 | Transport error: couldn't connect or authenticate, or at least one upload failed or report entry was refused. |
-| 4 | Report error: the missing-BIOS report wasn't found or couldn't be parsed. |
+| 4 | Report error: the missing-BIOS report wasn't found or couldn't be parsed, and Recalbox's web API didn't give the list either. |
 | 5 | `--fail-if-missing` was given and required BIOS files are still missing after the run. |
 
 Some details:

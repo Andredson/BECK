@@ -81,8 +81,19 @@ Error: Can't read the report <file>: <what your system says>
 
 **Exit code 4,** `report_not_found`.
 
-- **Cause:** the report hasn't been generated, BECK is looking at the wrong device, or the file you named with `--report-file` isn't there.
+- **Cause:** Recalbox's web API didn't answer, so BECK looked for the report, and the report hasn't been generated. Or BECK is looking at the wrong device, or the file you named with `--report-file` isn't there.
 - **Fix:** [generate the report](user-guide/generate-report.md). `beck config show` says which target BECK is using.
+
+### The web API didn't answer
+
+```text
+Recalbox's web API didn't give the list of missing files: <why>. BECK reads missing_bios_report.txt instead, which may be out of date.
+```
+
+A warning on stderr. BECK goes on with the report on the device, and with `--json`, `missing_from` is `report`.
+
+- **Cause:** BECK asked Recalbox's web manager, on port 81, for the list of missing files, and got no answer it could use. Your Recalbox may be older than web manager v3, or its web manager may be off, or something else may be answering on that port.
+- **Fix:** nothing, if the report is recent: [generate it again](user-guide/generate-report.md) when in doubt. To stop the warning, add `--no-api`. On a Recalbox with the web manager on, open `http://<your Recalbox>:81/api/bios` in a browser: it should show a list of BIOS files.
 
 ### BECK can't read the report
 

@@ -390,7 +390,19 @@ def test_end_to_end_a_closed_pipe_changes_nothing_on_a_real_server(
     os.close(read_end)
 
     result = subprocess.run(  # noqa: S603 - fixed arguments, no external input
-        [sys.executable, "-m", "beck", *flags, "check", "--source", str(source), "--target", url],
+        # --no-api: another process, so the fixture that turns the web API off can't reach it.
+        [
+            sys.executable,
+            "-m",
+            "beck",
+            *flags,
+            "check",
+            "--no-api",
+            "--source",
+            str(source),
+            "--target",
+            url,
+        ],
         stdout=write_end,
         stderr=subprocess.PIPE,
         stdin=subprocess.DEVNULL,
