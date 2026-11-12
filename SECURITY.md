@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Only the latest minor version gets security fixes: 1.0 now.
+Only the latest minor version gets security fixes: 1.1 now.
 
 ## Reporting a vulnerability
 

@@ -1,6 +1,6 @@
 # Stage 11 — Feature expansion
 
-**Status:** In progress · **Depends on:** 10 · **Branch:** one per feature, `feature/<slug>` · **Effort:** L (total)
+**Status:** Done (2026-11-12; 11.5 is left for later, by the owner's choice) · **Depends on:** 10 · **Branch:** one per feature, `feature/<slug>` · **Effort:** L (total)
 
 ## Goal
 Grow BECK beyond a polished Recalbox tool: fewer manual steps for users, and smarter matching. Support for other retro-gaming
