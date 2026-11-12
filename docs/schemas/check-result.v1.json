@@ -14,6 +14,7 @@
     "target",
     "missing_from",
     "summary",
+    "systems",
     "uploads",
     "incorrect",
     "still_missing",
@@ -115,6 +116,13 @@
           "type": "integer",
           "minimum": 0
         }
+      }
+    },
+    "systems": {
+      "type": "array",
+      "description": "Each system's entries, counted once per target, sorted by name, with no system last. Added in 1.1.0.",
+      "items": {
+        "$ref": "#/$defs/system"
       }
     },
     "uploads": {
@@ -459,6 +467,46 @@
           "$ref": "#/$defs/md5"
         },
         "size": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "system": {
+      "type": "object",
+      "required": [
+        "system",
+        "satisfied",
+        "missing_required",
+        "missing_optional",
+        "missing_unknown",
+        "incorrect"
+      ],
+      "properties": {
+        "system": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The system, as the report or the web API names it, or null if it names none."
+        },
+        "satisfied": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_required": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_optional": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_unknown": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "incorrect": {
           "type": "integer",
           "minimum": 0
         }

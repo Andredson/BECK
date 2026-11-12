@@ -22,7 +22,8 @@ Passwords never go on the command line.
 ### `beck check`
 
 Reads the report of missing BIOS files, hashes your local files, and copies the matches to the right folders on the device. It
-never deletes a local file unless you ask.
+never deletes a local file unless you ask. Before its final line, it says how each system stands: what it copied, and what's still
+missing or incorrect, as in `Sega Dreamcast: 1 copied, 2 still missing (1 required)`. `-q` leaves that out.
 
 ```sh
 beck check --dry-run                          # show the plan and change nothing
@@ -50,7 +51,8 @@ Files: 2, can't be read: 1
 
 Lists what's incorrect, then what's missing, grouped by folder, with whether each file is required. It asks Recalbox's web API, or reads
 the report, as [`check`](#where-beck-finds-whats-missing) does. A file listed in several systems appears once, and counts as required if
-any of them requires it. It writes nothing.
+any of them requires it. It ends with a line for each system, with what's missing and incorrect there. In those lines, a file two
+systems list counts in both. It writes nothing.
 
 ```sh
 beck report --target smb://recalbox.local/bios

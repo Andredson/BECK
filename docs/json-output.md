@@ -79,6 +79,24 @@ The [schemas](schemas/) describe each document. They allow extra fields on purpo
     "deleted": 0,
     "errors": 0
   },
+  "systems": [
+    {
+      "system": "Atari ST",
+      "satisfied": 0,
+      "missing_required": 1,
+      "missing_optional": 0,
+      "missing_unknown": 0,
+      "incorrect": 0
+    },
+    {
+      "system": "SNK Neo-Geo CD",
+      "satisfied": 1,
+      "missing_required": 1,
+      "missing_optional": 0,
+      "missing_unknown": 0,
+      "incorrect": 0
+    }
+  ],
   "uploads": [
     {
       "source": "neocd.bin",
@@ -131,6 +149,7 @@ document.
 | `frontend` | The kind of device. |
 | `target` | The target as a URL: `smb://host:port/share[/path]` or `file:///path`. It never has a user name or a password. `null` if BECK stopped before opening one. |
 | `missing_from` | Where the list of missing files came from: `api`, Recalbox's web API, which is live; `report`, the report on the device, which may be out of date; or `report_file`, a local copy given with `--report-file`. `null` if BECK stopped before reading one. `beck --json report` has it too. Added in 1.1.0 (DEC-79). |
+| `systems[]` | How each system stands after the run, as the report or web API names them (added in 1.1.0). See below. |
 | `uploads[]` | One item per target with a local file for it. See below. |
 | `incorrect[]` | Files on the device with a wrong hash, which stay as they are: `name`, `target`, `md5s`, `required` and `current_md5`, the hash of the file there, or `null` if the report doesn't give it. A local file in `unmatched` with an MD5 from `md5s` would fix one, with `--overwrite`. |
 | `still_missing[]` | Targets with no matching local file: `name`, `target`, `md5s` and `required`. A target whose upload failed is in `uploads`, not here. |
@@ -148,6 +167,18 @@ source folder, and paths in `target` are relative to the target's BIOS folder.
 A local file name that isn't valid UTF-8 has its bad bytes as lone surrogates, so `bad-\xff.bin` on disk is `"bad-\udcff.bin"` here. In
 Python, `os.fsencode` gets the real name back. Other JSON parsers may replace or refuse them, so check yours if your files have such
 names.
+
+### `systems[]`
+
+One item per system, sorted by name, and with no system last. Each target is counted once in each system that lists it, so a file two
+systems list, such as `neogeo.zip`, counts in both, and the counts don't add up to `summary.missing_entries`.
+
+| Field | Meaning |
+|---|---|
+| `system` | The system's name, such as `Sega Dreamcast`, or `null` if the report names none. |
+| `satisfied` | Targets this run filled, or in a dry run would, as in `summary.satisfied`. |
+| `missing_required`, `missing_optional`, `missing_unknown` | Targets still missing, by whether the report says they're required: `missing_unknown` is for a report that doesn't say. A failed or kept upload counts here. |
+| `incorrect` | Targets on the device with a wrong MD5, which this run kept. |
 
 ### `uploads[]`
 
@@ -187,7 +218,7 @@ A `failed` upload may have left a damaged file on the target: `error` says so, a
 ## `beck --json report`
 
 Lists what's missing, from Recalbox's web API or the report, as `check` does, and changes nothing. `target` is `null` with
-`--report-file`. `missing_from` is as in `check`.
+`--report-file`. `missing_from` is as in `check`, and so is `systems`, without `satisfied`, since a report says only what's missing.
 
 ```json
 {
@@ -199,6 +230,10 @@ Lists what's missing, from Recalbox's web API or the report, as `check` does, an
   "target": null,
   "missing_from": "report_file",
   "summary": { "missing": 1, "incorrect": 1 },
+  "systems": [
+    { "system": "Atari ST", "missing_required": 1, "missing_optional": 0, "missing_unknown": 0, "incorrect": 0 },
+    { "system": "Sony Playstation", "missing_required": 0, "missing_optional": 0, "missing_unknown": 0, "incorrect": 1 }
+  ],
   "missing": [
     {
       "name": "tos.img",

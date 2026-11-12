@@ -14,7 +14,7 @@ import pytest
 from beck import cli, hashing
 from beck.hashing import scan
 from beck.matcher import plan
-from beck.models import LocalFile, Plan
+from beck.models import LocalFile, MissingBios, Plan
 from tests.factories import contents_md5, make_bios_file, make_missing, make_report_text, make_zip
 from tests.factories import md5_of as md5
 
@@ -33,9 +33,9 @@ def device(tmp_path: Path) -> Path:
     return folder
 
 
-def report(device: Path, *entries: object) -> None:
+def report(device: Path, *entries: MissingBios) -> None:
     (device / "missing_bios_report.txt").write_text(
-        make_report_text(entries),  # type: ignore[arg-type]
+        make_report_text(entries),
         encoding="utf-8",
         newline="",
     )

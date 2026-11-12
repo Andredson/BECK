@@ -75,7 +75,10 @@ other files refer to them.
 - **Commit message:** `feat(recalbox): detect missing BIOS without a generated report`
 
 ### 11.3 — Per-system summary
-- [ ] Done
+- [x] Done (2026-11-12, DEC-80: grouped by system, as the report or web API names it. `check` prints a "By system:" block before its
+  final line, hidden by `-q`, and `report` one at the end, after its files by folder. `--json` gets a `systems` list in both, with
+  `missing_unknown` and `incorrect` besides the counts this step names; `report` has no `satisfied`. A target two systems list counts in
+  both. Tested with unit and contract tests, and on the real 10.1.1 reports. Not run on a device: it only changes the output.)
 - **Priority:** planned (4)
 - **What:** In `beck report` and the `check` summary, group entries by system or folder, showing counts of
   satisfied, still missing (required) and still missing (optional). Add the same grouping to the JSON output as
