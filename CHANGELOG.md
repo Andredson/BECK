@@ -5,6 +5,18 @@ Notable changes to BECK, in the layout of [Keep a Changelog](https://keepachange
 This file is generated from the commit messages by [git-cliff](https://git-cliff.org/), so don't edit it by hand.
 Changes to the documentation, tests and tooling aren't listed.
 
+## [1.1.0rc1] - 2026-11-12
+
+### Added
+
+- cli: Add an export command that copies BIOS files from the target
+- scan: Match BIOS files inside zip archives
+- recalbox: Detect missing BIOS without a generated report
+- output: Group results by system
+
+### Fixed
+
+- output: Count only files on disk in files_scanned
 ## [1.0.1] - 2026-11-11
 
 ### Fixed
