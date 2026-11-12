@@ -24,6 +24,7 @@ from beck.models import (
 )
 from beck.output import (
     LOGGER_NAME,
+    by_system,
     distinct_targets,
     escaped_for_terminal,
     export_status,
@@ -189,6 +190,7 @@ class ConsoleRenderer:
         self.quiet = quiet
         self.progress = progress and not quiet and sys.stderr is not None and sys.stderr.isatty()
         self._counter = ""
+        self.listed: list[MissingBios] = []
 
     def _paint(self, text: object, color: str) -> _Painted:
         return _Painted(text, color)
@@ -265,10 +267,44 @@ class ConsoleRenderer:
     def missing_from(self, source: str) -> None:
         """Nothing: a warning on stderr says when the web API didn't answer."""
 
+    def entries_listed(self, entries: Sequence[MissingBios]) -> None:
+        """Keep what the report or API listed, for the lines by system at the end."""
+        self.listed = list(entries)
+
+    def _by_system(self, satisfied: set[PurePosixPath], *, dry_run: bool, report: bool) -> None:
+        """One line for each system, with its counts (step 11.3). ``quiet`` hides them."""
+        lines = []
+        for counts in by_system(self.listed, satisfied):
+            parts = []
+            if counts.satisfied:
+                copied = "would be copied" if dry_run else "copied"
+                parts.append(f"{counts.satisfied} {copied}")
+            missing = counts.missing_required + counts.missing_optional + counts.missing_unknown
+            if missing:
+                kinds = [
+                    (counts.missing_required, "required"),
+                    (counts.missing_unknown, "not known if required"),
+                ]
+                which = ", ".join(f"{n} {kind}" for n, kind in kinds if n)
+                if missing == counts.missing_optional:
+                    which = "all optional"
+                elif missing == counts.missing_required:
+                    which = "all required"
+                still = "missing" if report else "still missing"
+                parts.append(f"{missing} {still} ({which})")
+            if counts.incorrect:
+                parts.append(f"{counts.incorrect} incorrect")
+            lines.append(f"  {counts.system or 'Other'}: {', '.join(parts)}")
+        if lines:
+            self._detail("By system:")
+            for line in lines:
+                self._detail(line)
+
     def ended_early(self, result: RunResult, failing: Sequence[MissingBios] = ()) -> None:
         """The lines before this one already said why there's nothing to upload."""
         for error in result.errors:
             self.error(error.message)
+        self._by_system(set(), dry_run=result.dry_run, report=False)
         self._failing_if_missing(failing, dry_run=result.dry_run)
 
     def can_ask(self) -> bool:
@@ -323,6 +359,8 @@ class ConsoleRenderer:
             for target in sorted(by_target, key=PurePosixPath.as_posix):
                 if target.parent == folder:
                     self._print(f"  {target.name} ({_kind(by_target[target])})")
+        self.listed = list(entries)
+        self._by_system(set(), dry_run=False, report=True)
         for error in rejected:
             self.error(error.message)
 
@@ -421,6 +459,8 @@ class ConsoleRenderer:
                 f"{len(result.kept)} files were already on the device, and were kept. If the "
                 "report is out of date, generate a new one. To replace them, use --overwrite."
             )
+        filled = result.skipped if result.dry_run else result.completed
+        self._by_system({upload.target for upload in filled}, dry_run=result.dry_run, report=False)
         self._summary(result)
         self._failing_if_missing(failing, dry_run=result.dry_run)
 

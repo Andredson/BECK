@@ -120,6 +120,14 @@ MISSING: Rules = {
     "required": FLAG_OR_NULL,
 }
 INCORRECT: Rules = {**MISSING, "current_md5": MD5_OR_NULL}
+REPORT_SYSTEM: Rules = {  # added in 1.1.0
+    "system": TEXT_OR_NULL,
+    "missing_required": COUNT,
+    "missing_optional": COUNT,
+    "missing_unknown": COUNT,
+    "incorrect": COUNT,
+}
+CHECK_SYSTEM: Rules = {**REPORT_SYSTEM, "satisfied": COUNT}  # added in 1.1.0
 
 
 def listing(name: str, item: Rules) -> Rules:
@@ -167,6 +175,7 @@ V1_FIELDS: dict[str, Rules] = {
             "deleted",
             "errors",
         ),
+        **listing("systems", CHECK_SYSTEM),
         **listing("uploads", UPLOAD),
         **listing("incorrect", INCORRECT),
         **listing("still_missing", MISSING),
@@ -184,6 +193,7 @@ V1_FIELDS: dict[str, Rules] = {
         "target": TEXT_OR_NULL,
         "missing_from": MISSING_FROM,
         **summary("missing", "incorrect"),
+        **listing("systems", REPORT_SYSTEM),
         **listing("missing", MISSING),
         **listing("incorrect", INCORRECT),
     },

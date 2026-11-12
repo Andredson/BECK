@@ -10,9 +10,20 @@ import logging
 import os
 import re
 import sys
+from collections.abc import Iterable
+from dataclasses import dataclass
+from pathlib import PurePosixPath
 from typing import TextIO
 
-from beck.models import ExportResult, LocalFile, Plan, PlannedUpload, RemoteFile, RunResult
+from beck.models import (
+    ExportResult,
+    LocalFile,
+    MissingBios,
+    Plan,
+    PlannedUpload,
+    RemoteFile,
+    RunResult,
+)
 
 LOGGER_NAME = "beck"
 NOT_ABOUT_AN_UPLOAD = {"delete_failed", "unsafe_path"}
@@ -74,6 +85,59 @@ def finish_output() -> None:
                 stream.flush()
             except OSError as error:
                 _output_lost(stream, error)
+
+
+_STRENGTH = (
+    "satisfied",
+    "incorrect",
+    "missing_required",
+    "missing_unknown",
+    "missing_optional",
+)
+
+
+@dataclass(frozen=True, slots=True)
+class SystemCounts:
+    """How one system's entries stand after a run, or in a report (step 11.3)."""
+
+    system: str | None  # None: the report didn't name one
+    satisfied: int = 0
+    missing_required: int = 0
+    missing_optional: int = 0
+    missing_unknown: int = 0  # the report doesn't say whether it's required
+    incorrect: int = 0
+
+
+def by_system(
+    entries: Iterable[MissingBios], satisfied: Iterable[PurePosixPath] = ()
+) -> list[SystemCounts]:
+    """Each system's targets, counted once each, sorted by name, with no system last.
+
+    A target listed by two systems counts in both. ``satisfied`` is what the run filled, or in a
+    dry run would: it counts as satisfied, even if it was incorrect. The rest is incorrect, if it's
+    on the device with a wrong MD5, or else still missing. Both outputs use this.
+    """
+    filled = set(satisfied)
+    kinds: dict[str | None, dict[PurePosixPath, str]] = {}
+    for entry in entries:
+        if entry.target in filled:
+            kind = "satisfied"
+        elif entry.incorrect:
+            kind = "incorrect"
+        else:
+            required = {True: "required", False: "optional", None: "unknown"}[entry.required]
+            kind = f"missing_{required}"
+        targets = kinds.setdefault(entry.system, {})
+        # One target listed twice by a system counts once, as the stronger of the two: incorrect
+        # wins over missing, because BECK keeps it (DEC-54), and required wins over optional.
+        current = targets.get(entry.target)
+        if current is None or _STRENGTH.index(kind) < _STRENGTH.index(current):
+            targets[entry.target] = kind
+    counted = []
+    for system, targets in kinds.items():
+        totals = {kind: list(targets.values()).count(kind) for kind in set(targets.values())}
+        counted.append(SystemCounts(system, **totals))
+    return sorted(counted, key=lambda counts: (counts.system is None, counts.system or ""))
 
 
 def distinct_targets(plan: Plan) -> int:

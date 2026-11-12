@@ -326,6 +326,7 @@ def _run_check(
         else:
             (entries, rejected), came_from = _entries_on_device(args, settings, adapter, transport)
             renderer.missing_from(came_from)
+        renderer.entries_listed(entries)
         if not entries and not rejected:
             renderer.nothing_missing()
         incorrect = [entry for entry in entries if entry.incorrect]

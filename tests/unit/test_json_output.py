@@ -112,6 +112,16 @@ def test_a_normal_run_gives_the_whole_document(
             "deleted": 0,
             "errors": 0,
         },
+        "systems": [
+            {
+                "system": None,
+                "satisfied": 1,
+                "missing_required": 1,
+                "missing_optional": 0,
+                "missing_unknown": 0,
+                "incorrect": 0,
+            }
+        ],
         "uploads": [
             {
                 "source": "ps1/copy.bin",
@@ -949,6 +959,22 @@ def test_report_lists_missing_and_incorrect_once_each(
         "target": None,
         "missing_from": "report_file",
         "summary": {"missing": 2, "incorrect": 1},
+        "systems": [
+            {
+                "system": "One",
+                "missing_required": 0,
+                "missing_optional": 1,
+                "missing_unknown": 0,
+                "incorrect": 0,
+            },
+            {
+                "system": "Two",
+                "missing_required": 1,
+                "missing_optional": 1,
+                "missing_unknown": 0,
+                "incorrect": 1,
+            },
+        ],
         "missing": [
             {"name": "b.bin", "target": "b.bin", "md5s": [A], "required": False},
             {"name": "a.bin", "target": "ps1/a.bin", "md5s": [A, B], "required": True},

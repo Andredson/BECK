@@ -288,14 +288,19 @@ def test_a_real_report_with_incorrect_files(
     assert run(app) == 0
 
     lines = capsys.readouterr().out.splitlines()
-    assert lines == [
+    by_system = lines[lines.index("By system:") + 1 : -1]
+    assert [line for line in lines if line not in by_system] == [
         "INCORRECT: scummvm/MT32_CONTROL.ROM is on the device with a wrong MD5, and was kept",
         "INCORRECT: xbox/mcpx_1.0.bin is on the device with a wrong MD5, and was kept",
         "There are 78 missing bios in your RECALBOX",
         "There are 1 possible bios to be analysed in your system",
         "junk.bin: no match, kept",
+        "By system:",
         "Final result: 0/78 missing entries satisfied, 1 files analysed",
     ]
+    assert len(by_system) == 20  # the report's systems, each once
+    assert "  Microsoft Xbox: 1 still missing (all required), 1 incorrect" in by_system
+    assert "  ScummVM: 1 still missing (all optional), 1 incorrect" in by_system
     assert server.connections[0].calls.count("storeFile") == 0
 
 
@@ -1176,6 +1181,8 @@ def test_report_from_a_file_uses_no_network_and_no_config(
         "ps1/",
         "  a.bin (optional)",
         "  b.bin (required)",
+        "By system:",
+        "  Other: 4 missing (3 required)",
     ]
 
 
@@ -1194,6 +1201,8 @@ def test_report_lists_a_repeated_target_once_and_required_wins(
         "There are 1 missing bios in your RECALBOX",
         "(BIOS folder)",
         "  x.pce (required)",
+        "By system:",
+        "  Other: 1 missing (all required)",
     ]
 
 
@@ -1232,6 +1241,9 @@ def test_report_says_whether_an_incorrect_file_is_required_and_does_not_say_kept
         "INCORRECT: both.bin (required) is on the device with a wrong MD5",
         "INCORRECT: ps1/bad.bin (required) is on the device with a wrong MD5",
         "INCORRECT: spare.bin (optional) is on the device with a wrong MD5",
+        "By system:",
+        "  One: 3 incorrect",
+        "  Two: 1 incorrect",
     ]
 
 

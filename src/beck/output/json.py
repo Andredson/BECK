@@ -8,7 +8,7 @@ means, without asking the owner: that needs ``schema_version`` 2.
 import json
 import sys
 from collections.abc import Iterable, Sequence
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, TextIO
 
 from beck import __version__
@@ -25,6 +25,7 @@ from beck.models import (
     Unreadable,
 )
 from beck.output import (
+    by_system,
     distinct_targets,
     export_status,
     extension_warning,
@@ -128,6 +129,25 @@ def _scanned_items(files: Iterable[LocalFile]) -> list[dict[str, Any]]:
     ]
 
 
+def _system_items(
+    entries: Iterable[MissingBios], satisfied: Iterable[PurePosixPath] | None
+) -> list[dict[str, Any]]:
+    """``systems``: each system's counts (step 11.3). ``satisfied`` is None for a report."""
+    items = []
+    for counts in by_system(entries, satisfied or ()):
+        item: dict[str, Any] = {"system": counts.system}
+        if satisfied is not None:
+            item["satisfied"] = counts.satisfied
+        item |= {
+            "missing_required": counts.missing_required,
+            "missing_optional": counts.missing_optional,
+            "missing_unknown": counts.missing_unknown,
+            "incorrect": counts.incorrect,
+        }
+        items.append(item)
+    return items
+
+
 def _error_items(errors: Iterable[ItemError]) -> list[dict[str, str]]:
     return [
         {"code": error.code, "message": redact(error.message), "item": error.item}
@@ -183,6 +203,7 @@ class JsonRenderer:
         self.unreadable_items: tuple[Unreadable, ...] = ()
         self.destination: str | None = None
         self.source: str | None = None
+        self.listed: list[MissingBios] = []
 
     def can_ask(self) -> bool:
         """Never: a consumer can't hang on a question, or confirm one by accident."""
@@ -203,6 +224,10 @@ class JsonRenderer:
     def missing_from(self, source: str) -> None:
         """Keep where the missing files were listed: ``api``, ``report`` or ``report_file``."""
         self.source = source
+
+    def entries_listed(self, entries: Sequence[MissingBios]) -> None:
+        """Keep what the report or API listed, for ``systems``."""
+        self.listed = list(entries)
 
     def missing_count(self, count: int) -> None:
         """Nothing yet: the document has it at the end."""
@@ -285,6 +310,7 @@ class JsonRenderer:
         self._stopped(INTERNAL_ERROR)
 
     def _stopped(self, error: dict[str, Any]) -> None:
+        self.listed = []  # a run that stopped has empty lists, systems too
         if self.command == "report":
             document = self._report([], [error])
         elif self.command == "scan":
@@ -323,6 +349,10 @@ class JsonRenderer:
                 "deleted": len(result.deleted),
                 "errors": len(errors),
             },
+            "systems": _system_items(
+                self.listed,
+                {u.target for u in (result.skipped if result.dry_run else result.completed)},
+            ),
             "uploads": _upload_items(result),
             "incorrect": _incorrect_items(plan.incorrect),
             "still_missing": still_missing,
@@ -360,6 +390,7 @@ class JsonRenderer:
             "target": self.target,
             "missing_from": self.source,
             "summary": {"missing": len(missing), "incorrect": len(incorrect)},
+            "systems": _system_items(entries, None),
             "missing": missing,
             "incorrect": incorrect,
             "errors": errors,

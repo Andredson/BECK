@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-05
-- **Decisions covered:** DEC-59, DEC-62, DEC-64, DEC-70, DEC-74, DEC-78. The rest of the contract follows from DEC-02, DEC-05, DEC-17, DEC-23 and DEC-54 (rows in the
+- **Decisions covered:** DEC-59, DEC-62, DEC-64, DEC-70, DEC-74, DEC-78, DEC-80. The rest of the contract follows from DEC-02, DEC-05, DEC-17, DEC-23 and DEC-54 (rows in the
   [decision log](../../roadmap/README.md#decision-log)).
 
 ## Context
@@ -264,3 +264,25 @@ The one-document-on-stdout rule and the `--json` no-prompt rule came from the ro
   - Not read: archives inside archives, `.7z` and `.rar` (which would need a new dependency, and a DEC), encrypted members, which Recalbox
     skips too, and Info-ZIP's Unicode path field. Two members whose names are the same after libzip's conversion are an edge where Recalbox
     reads one twice; BECK reads each once.
+
+## DEC-80 — Results by system
+- **Date:** 2026-11-12 (step 11.3).
+- **Context:** `check` gave only totals, and `report` grouped files by folder. A user thinks in systems, as Recalbox's menus show them:
+  the real 10.1.1 report names 20 systems for its 80 entries.
+- **Decision:**
+  - **By system,** as the report or web API names it. Each target counts once in each system that lists it, so `neogeo.zip`, which
+    two systems list, counts in both. Within a system, the stronger kind wins: satisfied, then incorrect, then required, unknown and
+    optional. Entries with no system are counted together: `null` in JSON, "Other" for people.
+  - **For people, a block of lines:** "By system:", then one line per system, before `check`'s final line and hidden by `-q`, and at
+    the end of `report`. Existing lines don't change, and `report` still lists its files by folder.
+  - **In JSON, every count:** a `systems` list in `check` and `report`, each item with `system`, `missing_required`,
+    `missing_optional`, `missing_unknown` and `incorrect`, and in `check` also `satisfied`, which a report can't know. An addition,
+    allowed within `schema_version` 1. A run that stops has an empty list.
+- **Alternatives considered:**
+  - *By folder:* matches how `report` lists files, but folder names are less familiar. Not chosen.
+  - *`report` listing its files by system,* with the counts in each heading: changes what `report` prints today. Not chosen.
+  - *Only the counts step 11.3 names,* satisfied and missing by required or optional. Not chosen.
+
+  The agent recommended each chosen option, and the owner gave no further reason.
+- **Consequences:** The counts by system don't add up to `summary.missing_entries`, because a target can count in several systems. A
+  report always says whether a file is required, so `missing_unknown` is 0 for Recalbox today.
