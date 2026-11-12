@@ -54,8 +54,10 @@ Someone asks you to cut, prepare or publish a release or a release candidate. If
    And after CI is green and the PR is merged with a merge commit:
 
    ```sh
-   git switch main && git pull && git tag -a vX.Y.Z -m "beck-bios X.Y.Z" && git push origin vX.Y.Z
+   git switch main && git pull --ff-only && git log -1 --format=%s | grep -F "release/X.Y.Z" && git tag -a vX.Y.Z -m "beck-bios X.Y.Z" && git push origin vX.Y.Z
    ```
+
+   It tags only if `main`'s last commit is the release PR's merge, as [step 4](../../../docs/releasing.md#the-release-checklist) explains. The branch has to be named `release/X.Y.Z` for that check to work.
 
    Tell them what comes next: a final release waits for them to approve the `pypi` environment, a release candidate goes to TestPyPI with no approval, and then [step 6 of the checklist](../../../docs/releasing.md#the-release-checklist) checks the result.
 
