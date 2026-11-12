@@ -5,7 +5,7 @@ Notable changes to BECK, in the layout of [Keep a Changelog](https://keepachange
 This file is generated from the commit messages by [git-cliff](https://git-cliff.org/), so don't edit it by hand.
 Changes to the documentation, tests and tooling aren't listed.
 
-## [1.1.0rc1] - 2026-11-12
+## [1.1.0] - 2026-11-12
 
 ### Added
 
